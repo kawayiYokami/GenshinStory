@@ -1,0 +1,28 @@
+services:
+  # Backend Service (FastAPI Application)
+  backend:
+    build:
+      context: .
+      dockerfile: web/backend/Dockerfile
+    # The container name is used for inter-service communication
+    container_name: genshinstory-backend
+    # We don't need to map ports to the host machine for the backend,
+    # as it will only be accessed by the frontend service through the internal Docker network.
+    # The backend will run on port 8666 inside its container.
+
+  # Frontend Service (Vue.js with Nginx)
+  frontend:
+    build:
+      context: ./web/frontend
+      dockerfile: Dockerfile
+    container_name: genshinstory-frontend
+    ports:
+      # Map the host's port 80 to the container's port 80 (where Nginx is listening)
+      # You will be able to access the application at http://localhost
+      - "80:80"
+    depends_on:
+      # This ensures that the backend service is started before the frontend service.
+      - backend
+
+# Docker Compose will automatically create a default network for these services,
+# allowing them to communicate with each other using their service names ('backend', 'frontend').

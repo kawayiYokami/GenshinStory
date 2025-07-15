@@ -109,11 +109,7 @@ def force_load_all(api: GameDataAPI):
             # 只需要调用 get_all 就会触发 _prepare_data
             pass
         
-        # 触发书籍内容加载
-        book_contents = api.book_content.get_all()
-        if book_contents:
-            # 只需要调用 get_all 就会触发 _prepare_data
-            pass
+        # 触发书籍内容加载 (此逻辑已由 BookService 预热过程覆盖，此处移除)
             
         logging.info("    Readable 目录缓存预热完成。")
     except Exception as e:

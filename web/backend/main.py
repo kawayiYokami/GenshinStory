@@ -8,6 +8,11 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+# Also, add the backend directory itself to the path for module resolution (e.g., 'app')
+backend_root = os.path.dirname(os.path.abspath(__file__))
+if backend_root not in sys.path:
+    sys.path.append(backend_root)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv

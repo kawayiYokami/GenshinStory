@@ -15,7 +15,8 @@ class DataLoader:
     _cache = {}
     
     # 默认数据根目录，相对于项目根目录
-    _DEFAULT_ROOT = Path(__file__).parent.parent / "AnimeGameData"
+    # 与实际目录名 'AnimeGameDataX' 保持一致
+    _DEFAULT_ROOT = Path(__file__).parent.parent / "AnimeGameDataX"
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -63,8 +64,8 @@ class DataLoader:
         """
         根据相对于数据根目录的路径获取JSON数据，优先从缓存读取。
         """
-        # 使用 os.path.normpath 确保路径在不同系统上的一致性
-        normalized_path = os.path.normpath(relative_path)
+        # 关键修复：将所有路径分隔符标准化为'/'，以确保跨平台(Windows/Linux)缓存键的一致性
+        normalized_path = relative_path.replace('\\', '/')
 
         if normalized_path in self._cache:
             return self._cache[normalized_path]
@@ -169,8 +170,9 @@ class DataLoader:
 
     def get_text_file(self, relative_path: str) -> Optional[str]:
         """根据相对于数据根目录的路径，读取一个纯文本文件的内容。"""
-        normalized_path = os.path.normpath(relative_path)
-        
+        # 关键修复：将所有路径分隔符标准化为'/'，以确保跨平台(Windows/Linux)缓存键的一致性
+        normalized_path = relative_path.replace('\\', '/')
+
         # 复用 _cache 来缓存文本文件
         if normalized_path in self._cache:
             return self._cache[normalized_path]

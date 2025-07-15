@@ -1,0 +1,51 @@
+# --- Git ---
+.git
+.gitignore
+
+# --- Docker ---
+Dockerfile
+# We can't ignore .dockerignore itself, but we can ignore other Dockerfiles
+web/backend/Dockerfile
+web/frontend/Dockerfile
+docker-compose.yml
+
+# --- Python ---
+.venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# --- Node.js ---
+node_modules/
+dist/
+npm-debug.log
+yarn-error.log
+.npm/
+
+# --- IDE/Editor ---
+.vscode/
+.idea/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Project Specific ---
+# --- Web Specific ---
+web/frontend/
+
+# --- Large Data & Artifacts ---
+GenshinDialog/
+test_outputs/
+*.tar
+
+# --- Project Specific Scripts ---
+create_cache.py
+# The raw data is not needed in the image if we are using the pre-generated cache
+AnimeGameDataX/
+# Local run batch files
+run_backend.bat
+run_frontend.bat
