@@ -1,0 +1,18 @@
+# Ignore large game data directories
+.*/
+agent/
+.__pycache__/
+AnimeGameData/
+GenshinCompanion-Ele/
+GenshinDialog/
+notebook/
+scraper/
+scripts/
+logs/
+test_outputs/
+
+# Python
+__pycache__/
+*.pyc
+
+# Cache files
