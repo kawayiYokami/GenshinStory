@@ -26,15 +26,15 @@ class BookContentInterpreter:
         
         content_files = self.loader.get_all_file_paths_in_folder("Readable/CHS", name_contains="Book")
         
-        for file_path in content_files:
+        for relative_path in content_files:
             try:
                 # Extract ID from filename like "Book37.txt"
-                match = re.search(r"Book(\d+)\.txt", self.loader.get_file_name(file_path))
+                match = re.search(r"Book(\d+)\.txt", self.loader.get_file_name(relative_path))
                 if not match:
                     continue
                 
                 book_id = int(match.group(1))
-                full_content = self.loader.get_text_file(file_path)
+                full_content = self.loader.get_text_file(relative_path)
 
                 if not full_content:
                     continue

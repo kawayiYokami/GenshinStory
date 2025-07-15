@@ -6,7 +6,7 @@ authors = [
     { name = "kawayiYokami" },
 ]
 urls = { Homepage = "https://github.com/kawayiYokami/GenshinStory" }
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "ijson>=3.0",
     "fastapi",

@@ -60,18 +60,17 @@ class ReliquaryInterpreter:
                     self._set_id_to_name_hash[set_id] = name_hash
 
         # Load all relic stories from Readable text files
-        for file_path in self.loader.get_all_file_paths_in_folder("Readable/CHS", "Relic"):
+        for relative_path in self.loader.get_all_file_paths_in_folder("Readable/CHS", "Relic"):
             try:
                 # Filename is like "Relic15001_4.txt"
-                file_name = self.loader.get_file_name(file_path, with_extension=False)
+                file_name = self.loader.get_file_name(relative_path, with_extension=False)
                 match = re.search(r"Relic(\d+_\d+)", file_name)
                 if match:
                     story_key = match.group(1) # Extracts "15001_4"
-                    # Convert absolute path from get_all_file_paths_in_folder to relative for get_text_file
-                    relative_path = os.path.relpath(file_path, self.loader.get_data_root())
+                    # get_all_file_paths_in_folder now returns relative paths directly
                     self._relic_stories[story_key] = self.loader.get_text_file(relative_path)
             except Exception as e:
-                logging.warning(f"无法解析圣遗物故事文件 {file_path}: {e}")
+                logging.warning(f"无法解析圣遗物故事文件 {relative_path}: {e}")
 
         self._is_prepared = True
         logging.info("圣遗物相关数据加载完成。")

@@ -3,6 +3,7 @@
 agent/
 .__pycache__/
 AnimeGameData/
+AnimeGameDataX/
 GenshinCompanion-Ele/
 GenshinDialog/
 notebook/

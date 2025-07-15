@@ -10,7 +10,7 @@ from game_data_parser.api import GameDataAPI
 
 # --- 配置 ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-DATA_ROOT_DIR = "AnimeGameData"
+DATA_ROOT_DIR = "AnimeGameDataX"  # 使用正确的目录名
 CACHE_FILE_PATH = "game_data.cache"
 
 def force_load_all(api: GameDataAPI):
@@ -85,6 +85,39 @@ def force_load_all(api: GameDataAPI):
     except Exception as e:
         logging.error(f"预热 BookService 时发生错误: {e}")
 
+    # 7. 强制触发 Readable 目录的缓存
+    try:
+        logging.info("  强制预热 Readable 目录缓存...")
+        # 触发各个 interpreter 的 _prepare_data 方法，确保 Readable 目录被访问
+        # 这样 get_all_file_paths_in_folder 和 get_text_file 的调用会被缓存
+        
+        # 触发武器故事加载
+        weapon_list = api.weapon.list_weapons()
+        if weapon_list:
+            sample_weapon = weapon_list[0]
+            api.weapon.get_weapon_as_json(sample_weapon['id'])
+        
+        # 触发圣遗物故事加载
+        relic_sets = api.relic.list_relic_sets()
+        if relic_sets:
+            sample_relic_set = relic_sets[0]
+            api.relic.get_relic_set_as_json(sample_relic_set['id'])
+        
+        # 触发材料故事加载
+        materials = api.material.get_all()
+        if materials:
+            # 只需要调用 get_all 就会触发 _prepare_data
+            pass
+        
+        # 触发书籍内容加载
+        book_contents = api.book_content.get_all()
+        if book_contents:
+            # 只需要调用 get_all 就会触发 _prepare_data
+            pass
+            
+        logging.info("    Readable 目录缓存预热完成。")
+    except Exception as e:
+        logging.error(f"预热 Readable 目录缓存时发生错误: {e}")
 
     end_time = time.time()
     logging.info(f"缓存预热完成，总计用时: {end_time - start_time:.2f} 秒。")

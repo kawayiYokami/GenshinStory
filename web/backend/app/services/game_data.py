@@ -6,7 +6,7 @@ from game_data_parser.api import GameDataAPI
 # This file is at /web/backend/app/services/game_data.py
 # The project root is 4 levels up.
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
-data_path = os.path.join(project_root, "AnimeGameData")
+data_path = os.path.join(project_root, "AnimeGameData")  # 使用不存在的目录来强制使用缓存
 cache_file_path = os.path.join(project_root, "game_data.cache")
 
 # Use thread-local storage to create separate GameDataAPI instances for each thread

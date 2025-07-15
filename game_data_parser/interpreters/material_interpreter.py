@@ -43,17 +43,16 @@ class MaterialInterpreter:
                 self._codex_data[book_entry["materialId"]] = book_entry["id"]
         
         # Load wing stories from Readable text files
-        for file_path in self.loader.get_all_file_paths_in_folder("Readable/CHS", "Wings"):
+        for relative_path in self.loader.get_all_file_paths_in_folder("Readable/CHS", "Wings"):
             try:
                 # Extract ID from filename like "Wings140001.txt"
-                match = re.search(r"Wings(\d+)", file_path)
+                match = re.search(r"Wings(\d+)", relative_path)
                 if match:
                     material_id = int(match.group(1))
-                    # Convert absolute path from get_all_file_paths_in_folder to relative for get_text_file
-                    relative_path = os.path.relpath(file_path, self.loader.get_data_root())
+                    # get_all_file_paths_in_folder now returns relative paths directly
                     self._wing_stories[material_id] = self.loader.get_text_file(relative_path)
             except Exception as e:
-                logging.warning(f"无法解析风之翼故事文件 {file_path}: {e}")
+                logging.warning(f"无法解析风之翼故事文件 {relative_path}: {e}")
 
         self._is_prepared = True
         logging.info("材料相关数据加载完成。")

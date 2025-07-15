@@ -33,8 +33,8 @@
       </div>
     </aside>
 
-    <!-- 主内容区 -->
-    <main class="m3-main-content">
+    <!-- 主内容区 - 只在非根路径时显示 -->
+    <main v-if="$route.name !== 'home'" class="m3-main-content">
       <router-view />
     </main>
   </div>

@@ -61,17 +61,16 @@ class WeaponInterpreter:
             self._equip_affix_configs[main_id].sort(key=lambda x: x.get('level', 0))
 
         # Load all weapon stories from Readable text files
-        for file_path in self.loader.get_all_file_paths_in_folder("Readable/CHS", "Weapon"):
+        for relative_path in self.loader.get_all_file_paths_in_folder("Readable/CHS", "Weapon"):
             try:
                 # Extract ID from filename like "Weapon11411.txt"
-                match = re.search(r"Weapon(\d+)", file_path)
+                match = re.search(r"Weapon(\d+)", relative_path)
                 if match:
                     weapon_id = int(match.group(1))
-                    # Convert absolute path from get_all_file_paths_in_folder to relative for get_text_file
-                    relative_path = os.path.relpath(file_path, self.loader.get_data_root())
+                    # get_all_file_paths_in_folder now returns relative paths directly
                     self._weapon_stories[weapon_id] = self.loader.get_text_file(relative_path)
             except Exception as e:
-                logging.warning(f"无法解析武器故事文件 {file_path}: {e}")
+                logging.warning(f"无法解析武器故事文件 {relative_path}: {e}")
 
         self._is_prepared = True
         logging.info("武器相关数据加载完成。")

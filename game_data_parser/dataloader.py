@@ -40,6 +40,7 @@ class DataLoader:
         
         self._talk_id_map: Optional[Dict[int, str]] = None
         self._text_map_cache: Optional[Dict[str, str]] = None
+        self._directory_cache: Dict[str, List[Any]] = {}  # 新增：缓存目录遍历结果
         
         # 优先从缓存加载
         if cache_path and self.load_from_cache(cache_path):
@@ -95,9 +96,18 @@ class DataLoader:
         if not self._data_root:
             raise ValueError("Data root path is not set. Please call set_data_root() first.")
 
+        # 构造缓存键
+        cache_key = f"{relative_dir}::{yield_filename}"
+        
+        # 优先从缓存读取
+        if cache_key in self._directory_cache:
+            return self._directory_cache[cache_key]
+
         full_dir_path = Path(self._data_root) / relative_dir
         if not full_dir_path.is_dir():
             print(f"Error: Directory not found at {full_dir_path}")
+            # 即使是空结果也要缓存，避免重复的文件系统访问
+            self._directory_cache[cache_key] = []
             return []
         
         results = []
@@ -113,25 +123,41 @@ class DataLoader:
                 else:
                     results.append(data)
         
+        # 缓存结果
+        self._directory_cache[cache_key] = results
         return results
 
     def get_all_file_paths_in_folder(self, relative_dir: str, name_contains: str = "") -> List[str]:
         """
         获取指定目录下的所有文件路径，并可选择根据文件名进行过滤。
+        使用缓存机制，避免重复的文件系统访问。
         """
         if not self._data_root:
             raise ValueError("Data root path is not set. Please call set_data_root() first.")
 
+        # 构造缓存键
+        cache_key = f"file_paths::{relative_dir}::{name_contains}"
+        
+        # 优先从缓存读取
+        if cache_key in self._directory_cache:
+            return self._directory_cache[cache_key]
+
         full_dir_path = Path(self._data_root) / relative_dir
         if not full_dir_path.is_dir():
             print(f"Error: Directory not found at {full_dir_path}")
+            # 即使是空结果也要缓存，避免重复的文件系统访问
+            self._directory_cache[cache_key] = []
             return []
         
         all_paths = []
         for file_path in full_dir_path.rglob('*'): # rglob for recursive search
             if file_path.is_file() and (not name_contains or name_contains in file_path.name):
-                all_paths.append(str(file_path))
+                # 存储相对于数据根目录的相对路径，而不是绝对路径
+                relative_path = file_path.relative_to(self._data_root).as_posix()
+                all_paths.append(relative_path)
         
+        # 缓存结果
+        self._directory_cache[cache_key] = all_paths
         return all_paths
 
     def get_file_name(self, full_path: str, with_extension: bool = True) -> str:
@@ -228,7 +254,8 @@ class DataLoader:
         cache_data = {
             'file_cache': self._cache,
             'talk_id_map': self.get_talk_id_map(), # Ensure it's generated
-            'text_map_cache': self.get_text_map() # Ensure it's generated
+            'text_map_cache': self.get_text_map(), # Ensure it's generated
+            'directory_cache': self._directory_cache # New: 目录遍历结果缓存
         }
         
         try:
@@ -253,6 +280,7 @@ class DataLoader:
             self._cache = cache_data.get('file_cache', {})
             self._talk_id_map = cache_data.get('talk_id_map', {})
             self._text_map_cache = cache_data.get('text_map_cache', {})
+            self._directory_cache = cache_data.get('directory_cache', {})
 
             # Mark derivative caches as loaded
             if not self._talk_id_map: self._talk_id_map = {}
