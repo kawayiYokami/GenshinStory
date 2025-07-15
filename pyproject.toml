@@ -1,0 +1,34 @@
+[project]
+name = "GenshinStory"
+version = "0.1.0"
+description = "A project to import Genshin Impact dialog data into a database."
+authors = [
+    { name = "kawayiYokami" },
+]
+urls = { Homepage = "https://github.com/kawayiYokami/GenshinStory" }
+requires-python = ">=3.13"
+dependencies = [
+    "ijson>=3.0",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-dotenv",
+]
+
+[tool.uv]
+# This section can be used for uv-specific configurations if needed in the future.
+
+[tool.ruff]
+# Enable the 'E' (pycodestyle) and 'F' (pyflakes) rules by default.
+select = ["E", "F", "I"]
+ignore = ["E501"] # Line too long, handled by formatter
+line-length = 120
+
+[tool.pytest.ini_options]
+min_version = "7.0"
+addopts = "--strict-markers --strict-paths"
+testpaths = [
+    "game_data_parser/tests",
+    "src/tests",
+    "web/backend/tests",
+]
+python_files = ["test_*.py", "*_test.py"]
