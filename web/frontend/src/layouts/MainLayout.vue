@@ -42,9 +42,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useContentStore } from '@/stores/content'; // 引入 content store
-import PinBar from '@/components/PinBar.vue'; // 恢复 PinBar 导入
+import { useRoute, useRouter } from 'vue-router'
+import { usePinStore } from '@/stores/pin';
+import PinBar from '@/components/PinBar.vue';
 import {
   Menu,
   Star,
@@ -56,18 +56,21 @@ import {
   ArrowRight,
   Collection,
   Box,
-  MagicStick
+  MagicStick,
+  Search
 } from '@element-plus/icons-vue'
 
 // 响应式数据
 const isDrawerOpen = ref(true)
-const activeTab = ref('quests')
+const activeTab = ref('quest')
 const router = useRouter()
-const contentStore = useContentStore(); // 实例化 store
+const route = useRoute()
+const pinStore = usePinStore();
 
 // 导航标签配置 (保持给抽屉使用)
 const navTabs = [
   // { name: 'sample', label: '样本', iconComponent: Star }, // 隐藏样本
+  { name: 'search', label: '搜索', iconComponent: Search },
   { name: 'quest', label: '任务', iconComponent: Document },
   { name: 'weapon', label: '武器', iconComponent: MagicStick },
   { name: 'character', label: '角色', iconComponent: Trophy },
@@ -83,7 +86,11 @@ const toggleDrawer = () => {
 
 const handleTabChange = (tab: any) => {
   activeTab.value = tab.name
-  router.push({ name: 'list', params: { itemType: tab.name } })
+  if (tab.name === 'search') {
+    router.push({ name: 'search' })
+  } else {
+    router.push({ name: 'category', params: { itemType: tab.name } })
+  }
 }
 
 // 生命周期
@@ -93,12 +100,14 @@ onMounted(() => {
   }
 })
 
-// 监视激活的图钉，以同步侧边栏的选中状态
-watch(() => contentStore.activePinnedItem, (newActivePin) => {
-  if (newActivePin) {
-    activeTab.value = newActivePin.type;
+// Watch the route to keep the active tab in sync
+watch(() => route.params.itemType, (newItemType) => {
+  if (newItemType) {
+    activeTab.value = newItemType as string;
+  } else if (route.name === 'search') {
+    activeTab.value = 'search';
   }
-});
+}, { immediate: true });
 
 </script>
 

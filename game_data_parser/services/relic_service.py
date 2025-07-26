@@ -41,13 +41,13 @@ class RelicService:
             })
         return all_relics
 
-    def get_relic_by_id(self, item_id: int) -> Optional[Reliquary]:
+    def get_relic_by_id(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Reliquary]:
         """获取单个圣遗物部件的完整信息。"""
-        return self.interpreter.interpret_single(item_id)
+        return self.interpreter.interpret_single(item_id, index_context=index_context)
 
-    def get_relic_as_json(self, item_id: int) -> Optional[Dict]:
+    def get_relic_as_json(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Dict]:
         """获取单个圣遗物部件的JSON兼容字典。"""
-        relic = self.get_relic_by_id(item_id)
+        relic = self.get_relic_by_id(item_id, index_context=index_context)
         return asdict(relic) if relic else None
 
     def get_relic_as_markdown(self, item_id: int) -> Optional[str]:
@@ -70,13 +70,13 @@ class RelicService:
                 })
         return all_sets
 
-    def get_relic_set_by_id(self, set_id: int) -> Optional[ReliquarySet]:
+    def get_relic_set_by_id(self, set_id: int, index_context: Optional[Any] = None) -> Optional[ReliquarySet]:
         """获取一个完整的圣遗物套装，包含所有部件。"""
-        return self.interpreter.interpret(set_id)
+        return self.interpreter.interpret(set_id, index_context=index_context)
 
-    def get_relic_set_as_json(self, set_id: int) -> Optional[Dict]:
+    def get_relic_set_as_json(self, set_id: int, index_context: Optional[Any] = None) -> Optional[Dict]:
         """获取一个完整的圣遗物套装的JSON兼容字典。"""
-        relic_set = self.get_relic_set_by_id(set_id)
+        relic_set = self.get_relic_set_by_id(set_id, index_context=index_context)
         return asdict(relic_set) if relic_set else None
 
     def get_relic_set_as_markdown(self, set_id: int) -> Optional[str]:

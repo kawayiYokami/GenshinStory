@@ -24,33 +24,41 @@ class RelicFormatter:
         """
         将一个完整的圣遗物套装对象格式化为 Markdown。
         """
-        md = []
-        md.append(f"# {relic_set.name}")
+        # 主文档部分
+        parts = []
+        parts.append(f"# {relic_set.name}")
 
+        # 套装效果
+        effect_parts = []
         if relic_set.effect_2_piece:
-            md.append(f"\n\n**2件套**: {relic_set.effect_2_piece}")
+            effect_parts.append(f"**2件套**: {relic_set.effect_2_piece}")
         if relic_set.effect_4_piece:
-            md.append(f"**4件套**: {relic_set.effect_4_piece}")
+            effect_parts.append(f"**4件套**: {relic_set.effect_4_piece}")
+        if effect_parts:
+            parts.append("\n".join(effect_parts))
 
-        md.append("\n\n---")
+        parts.append("---")
 
-        # Interpreter 已经通过 pos_index 对圣遗物列表进行了排序。
-        # 我们只需要直接遍历并格式化即可。
+        # 各个部件
         for relic in relic_set.reliquaries:
-            md.append(f"\n\n## {relic.name} ({relic.pos_name})")
+            relic_md_parts = []
+            relic_md_parts.append(f"## {relic.name} ({relic.pos_name})")
             
-            # 描述和故事都应放在同一个引述块中
-            content_to_format = ""
+            # 描述（引述块）
             if relic.description:
-                content_to_format += relic.description.strip()
+                cleaned_description = relic.description.replace('\\n', '\n')
+                paragraphs = [p.strip() for p in cleaned_description.split('\n') if p.strip()]
+                if paragraphs:
+                    formatted_content = "> " + "\n> \n> ".join(paragraphs)
+                    relic_md_parts.append(formatted_content)
 
+            # 故事（Story）应该完全保留原文格式
             if relic.story:
-                if content_to_format:
-                    content_to_format += "\\n\\n"
-                content_to_format += relic.story.strip()
+                # 直接使用原始字符串，仅去除首尾空白
+                relic_md_parts.append(relic.story.strip())
             
-            if content_to_format:
-                formatted_content = content_to_format.replace('\\n', '\n> ')
-                md.append(f"\n\n> {formatted_content}")
+            # 将单个部件的所有内容合并成一个字符串
+            parts.append("\n\n".join(relic_md_parts))
             
-        return "\n".join(md)
+        # 用两个换行符连接主文档的各个部分，以确保章节间距
+        return "\n\n".join(parts)

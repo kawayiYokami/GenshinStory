@@ -1,49 +1,51 @@
 <template>
   <TransitionGroup name="pin-list" tag="div" class="pin-bar">
     <div
-      v-for="item in pinnedItems"
-      :key="`${item.type}-${item.id}`"
+      v-for="item in pinStore.pinnedItems"
+      :key="item.targetUrl"
       class="pinned-item"
       :class="{ 'is-active': isActive(item) }"
       @mouseenter="setHovering(item, true)"
       @mouseleave="setHovering(item, false)"
     >
       <div class="pinned-item__icon-wrapper" @click="handleIconClick(item)">
-        <el-icon class="item-icon" :class="{ 'is-hidden': hoveringStates[`${item.type}-${item.id}`] }">
-          <component :is="getIcon(item.navigationType)" />
+        <el-icon class="item-icon" :class="{ 'is-hidden': hoveringStates[item.targetUrl] }">
+          <component :is="getIcon(item.itemType)" />
         </el-icon>
-        <el-icon class="close-icon" :class="{ 'is-visible': hoveringStates[`${item.type}-${item.id}`] }">
+        <el-icon class="close-icon" :class="{ 'is-visible': hoveringStates[item.targetUrl] }">
           <Close />
         </el-icon>
       </div>
-      <span class="pinned-item__name" @click="contentStore.notifyPinClicked(item)">{{ item.name.length > 5 ? `${item.name.slice(0, 5)}...` : item.name }}</span>
+      <span class="pinned-item__name" @click="handlePinContentClick(item)">{{ item.name.length > 5 ? `${item.name.slice(0, 5)}...` : item.name }}</span>
     </div>
   </TransitionGroup>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useContentStore, type PinnedItem } from '@/stores/content';
+import { ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { usePinStore, type PinnedItem } from '@/stores/pin';
+import { useEventBusStore } from '@/stores/eventBus';
 import {
   Document,
-  Reading,
   MagicStick,
   Trophy,
   Collection,
   Folder,
   Box,
   Star,
-  Close
+  Close,
+  Search
 } from '@element-plus/icons-vue';
 
-const contentStore = useContentStore();
-const { pinnedItems, activePinnedItem } = storeToRefs(contentStore);
-const { togglePin, setActivePinnedItem } = contentStore;
+const router = useRouter();
+const route = useRoute();
+const pinStore = usePinStore();
+const eventBus = useEventBusStore();
 
 const hoveringStates = ref<Record<string, boolean>>({});
 const setHovering = (item: PinnedItem, state: boolean) => {
-  hoveringStates.value[`${item.type}-${item.id}`] = state;
+  hoveringStates.value[item.targetUrl] = state;
 };
 
 // 图标映射
@@ -54,7 +56,8 @@ const iconMap: Record<string, any> = {
   book: Collection,
   material: Folder,
   relicset: Box,
-  default: Star, // 保留一个默认图标以防万一
+  search: Search,
+  default: Star,
 };
 
 const getIcon = (type: string) => {
@@ -62,21 +65,24 @@ const getIcon = (type: string) => {
 };
 
 const isActive = (item: PinnedItem) => {
-  if (!activePinnedItem.value) return false;
-  return activePinnedItem.value.type === item.type && activePinnedItem.value.id === item.id;
+  return route.fullPath === item.targetUrl;
+};
+
+const handlePinContentClick = (item: PinnedItem) => {
+  // If the target is a category list, we need to emit an event
+  // so the list view can highlight the item after navigation.
+  const isCategoryNav = item.targetUrl.startsWith('/category');
+  if (isCategoryNav) {
+    eventBus.emit('highlight-item-in-list', { itemType: item.itemType, id: item.id });
+  }
+  router.push(item.targetUrl);
 };
 
 const handleIconClick = (item: PinnedItem) => {
-  const itemKey = `${item.type}-${item.id}`;
-  if (hoveringStates.value[itemKey]) {
-    // 图标是关闭，执行关闭逻辑
-    if (isActive(item)) {
-      setActivePinnedItem(null);
-    }
-    togglePin(item);
+  if (hoveringStates.value[item.targetUrl]) {
+    pinStore.removePin(item.itemType, item.id);
   } else {
-    // 图标是项目图标，执行选择逻辑
-    contentStore.notifyPinClicked(item);
+    handlePinContentClick(item);
   }
 };
 </script>

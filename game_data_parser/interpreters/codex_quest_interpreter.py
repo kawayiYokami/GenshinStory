@@ -1,127 +1,105 @@
-import json
-import os
-import re
 from typing import Dict, Any, List, Optional
 
 from game_data_parser.models import Quest, QuestStep, DialogueNode
 from ..services.text_map_service import TextMapService
 from ..dataloader import DataLoader
+from ..utils.text_transformer import transform_text
 
 class CodexQuestInterpreter:
     """
     专门用于解析 AnimeGameData/BinOutput/CodexQuest/ 目录下的任务文件。
     
-    该解析器采用“文本替换”策略：
-    1. 将整个JSON文件作为纯文本读取。
-    2. 使用正则表达式查找所有 "textId": <hash> 的实例。
-    3. 从TextMapService中查找对应的文本，并替换回原始文本字符串中。
-    4. 将被修改过的、包含所有真实文本的字符串，最终解析为JSON对象。
-    5. 将解析出的JSON对象映射到内部数据模型。
+    该解析器采用标准的“加载-解析-映射”流程：
+    1. 使用 DataLoader 加载并解析原始JSON文件。
+    2. 遍历解析后的数据结构。
+    3. 按需调用 TextMapService 将文本哈希转换为真实文本。
+    4. 将数据映射到内部标准数据模型 (Quest, QuestStep, DialogueNode)。
     """
     def __init__(self, text_map_service: TextMapService, loader: DataLoader):
         self.text_map_service = text_map_service
         self.loader = loader
 
-    def _read_and_replace_text(self, relative_path: str) -> Optional[Dict[str, Any]]:
-        """读取文件，替换textId哈希，然后解析为JSON。"""
-        content = self.loader.get_text_file(relative_path)
-        if not content:
-            return None
-
-        def replacer(match):
-            hash_id = match.group(1)
-            replacement = self.text_map_service.get(int(hash_id), "")
-            # 使用 json.dumps 确保替换的文本是有效的JSON字符串（带引号，转义等）
-            return f'"textId": {json.dumps(replacement, ensure_ascii=False)}'
-
-        # 正则表达式查找 "textId": <数字> 结构
-        # 使用回调函数进行替换
-        modified_content = re.sub(r'"textId":\s*(\d+)', replacer, content)
-
-        try:
-            return json.loads(modified_content)
-        except json.JSONDecodeError:
-            # 如果替换后JSON无效，可以添加日志记录
-            return None
+    def _get_text(self, text_id: int) -> str:
+        """安全地获取原始文本，并进行清洗和转换。"""
+        raw_text = self.text_map_service.get(text_id, "")
+        # 调用通用转换工具处理占位符等
+        transformed_text, _ = transform_text(raw_text)
+        return transformed_text
 
     def _map_to_model(self, data: Dict[str, Any]) -> Quest:
         """将解析后的JSON字典映射到Quest数据模型。"""
         
         quest_steps = []
-        for sub_quest_data in data.get("subQuests", []):
+        # 使用 enumerate 来为没有 subId 的步骤生成一个唯一的、有序的ID
+        for i, sub_quest_data in enumerate(data.get("subQuests", [])):
             dialogue_nodes = []
             for item_data in sub_quest_data.get("items", []):
                 
+                item_id = item_data.get("itemId")
+
                 # 处理旁白
                 if item_data.get("itemType") == "Narratage" or "texts" in item_data:
                     for text_data in item_data.get("texts", []):
                         dialogue_nodes.append(DialogueNode(
-                            id=item_data.get("itemId"),
+                            id=item_id,
                             speaker="旁白",
-                            content=text_data.get("textId", ""),
+                            content=self._get_text(text_data.get("text", {}).get("textId")),
                             node_type="narratage"
                         ))
                     continue
 
                 # 处理对话
-                speaker = item_data.get("speakerText", {}).get("textId", "未知")
+                speaker_hash = item_data.get("speakerText", {}).get("textId")
+                speaker = self._get_text(speaker_hash) if speaker_hash else "未知"
+                
+                # 标准化说话人名称
+                if item_data.get("speakerText", {}).get("textType") == "SpeakerPlayer":
+                    speaker = "旅行者"
+
                 dialogs_data = item_data.get("dialogs", [])
 
-                if item_data.get("itemType") == "MultiDialog" and len(dialogs_data) > 1:
-                    # 玩家选项
-                    player_node = DialogueNode(
-                        id=item_data.get("itemId"),
-                        speaker="旅行者",
-                        content="（选择一个选项）",
-                        node_type="dialogue"
-                    )
+                if item_data.get("itemType") == "MultiDialog":
+                    # 【新】扁平化处理玩家选项，不再创建带占位符的父节点
                     for dialog_data in dialogs_data:
-                        option_content = dialog_data.get("text", {}).get("textId", "")
+                        option_content = self._get_text(dialog_data.get("text", {}).get("textId"))
                         if option_content:
-                            player_node.options.append(DialogueNode(
-                                id=item_data.get("itemId"),
-                                speaker="旅行者",
+                            dialogue_nodes.append(DialogueNode(
+                                id=item_id,
+                                speaker=speaker, # speaker 在外部已被正确设为“旅行者”
                                 content=option_content,
                                 node_type="option"
                             ))
-                    
-                    if player_node.options:
-                        dialogue_nodes.append(player_node)
                 else:
-                    # 单句对话
+                    # 单句对话或旁白
                     for dialog_data in dialogs_data:
                         dialogue_nodes.append(DialogueNode(
-                            id=item_data.get("itemId"),
+                            id=item_id,
                             speaker=speaker,
-                            content=dialog_data.get("text", {}).get("textId", ""),
+                            content=self._get_text(dialog_data.get("text", {}).get("textId")),
                             node_type="dialogue"
                         ))
 
+            step_title = self._get_text(sub_quest_data.get("subQuestTitle", {}).get("textId"))
             quest_steps.append(QuestStep(
-                step_id=sub_quest_data.get("subId", 0),
-                title=sub_quest_data.get("subQuestTitle", {}).get("textId"),
+                # 使用索引 i + 1 作为 step_id，确保其唯一且从1开始
+                step_id=i + 1,
+                title=step_title,
+                # 将标题也作为描述，以兼容旧模型
+                step_description=step_title,
                 dialogue_nodes=dialogue_nodes
             ))
 
-        quest_title = data.get("mainQuestTitle", {}).get("textId", "")
-        chapter_title = data.get("chapterTitle", {}).get("textId", "")
-
-        # 修正：如果主任务标题和章节标题一样，并且存在子任务，则尝试使用第一个子任务的标题
-        if quest_title and quest_title == chapter_title:
-            first_sub_quest = next(iter(data.get("subQuests", [])), None)
-            if first_sub_quest:
-                sub_quest_title = first_sub_quest.get("subQuestTitle", {}).get("textId")
-                if sub_quest_title:
-                    quest_title = sub_quest_title
+        quest_title = self._get_text(data.get("mainQuestTitle", {}).get("textId"))
+        chapter_title = self._get_text(data.get("chapterTitle", {}).get("textId"))
 
         return Quest(
             quest_id=data["mainQuestId"],
             quest_title=quest_title,
-            quest_description=data.get("mainQuestDesp", {}).get("textId", ""),
-            chapter_id=data.get("chapterId", 0),
+            quest_description=self._get_text(data.get("mainQuestDesp", {}).get("textId")),
+            chapter_id=data.get("chapterId"),
             chapter_title=chapter_title,
-            chapter_num=data.get("chapterNum", {}).get("textId"),
-            series_id=data.get("series", 0),
+            chapter_num=self._get_text(data.get("chapterNum", {}).get("textId")),
+            series_id=data.get("series"),
             steps=quest_steps,
             source_json=f"{data['mainQuestId']}.json (Codex)"
         )
@@ -130,11 +108,12 @@ class CodexQuestInterpreter:
         """
         解析指定ID的CodexQuest任务。
         """
-        # 构建相对于数据根目录的路径
         relative_path = f"BinOutput/CodexQuest/{quest_id}.json"
-        quest_data = self._read_and_replace_text(relative_path)
+        # 使用标准的 get_json 方法加载数据
+        quest_data = self.loader.get_json(relative_path)
 
         if not quest_data:
             return None
 
+        # 将解析后的原始字典传递给映射函数
         return self._map_to_model(quest_data)

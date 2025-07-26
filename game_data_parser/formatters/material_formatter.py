@@ -16,28 +16,29 @@ def format_material(material: Material, book_suits: Dict[int, str]) -> str:
     
     parts = []
     
-    # 1. 标题 (物品名称)
+    # 1. 标题和元数据
     parts.append(f"# {material.name}")
-    parts.append("---")
+    parts.append(f"<!-- Material ID: {material.id} -->") # 修正：加入ID注释
+    parts.append(f"**类型:** {material.type_name}")
+    parts.append("")
 
-
-    # 3. 核心描述与故事
-    # 描述和故事都应放在同一个引述块中
-    content_to_format = ""
+    # 2. 核心描述与故事 (恢复原有精细处理逻辑)
+    description_parts = []
     if material.description:
-        content_to_format += material.description.strip()
+        cleaned_description = material.description.replace('\\n', '\n')
+        paragraphs = [p.strip() for p in cleaned_description.split('\n') if p.strip()]
+        description_parts.extend(paragraphs)
 
     if material.story:
-        if content_to_format:
-            content_to_format += "\\n\\n"
-        content_to_format += material.story.strip()
+        story_paragraphs = [p.strip() for p in material.story.replace("\\n", "\n").split('\n') if p.strip()]
+        description_parts.extend(story_paragraphs)
 
-    if content_to_format:
-        formatted_content = content_to_format.replace('\\n', '\n> ')
-        parts.append(f"> {formatted_content}")
+    if description_parts:
+        parts.append("## 描述")
+        parts.append("\n\n".join(description_parts))
         parts.append("")
 
-    # 4. 书籍的特殊处理
+    # 3. 书籍的特殊处理 (恢复原有逻辑)
     if material.is_book and material.set_id:
         series_name = book_suits.get(material.set_id)
         if series_name:

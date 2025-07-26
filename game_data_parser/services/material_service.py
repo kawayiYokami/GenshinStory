@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from ..models import Material
 from ..interpreters.material_interpreter import MaterialInterpreter
+from ..formatters.material_formatter import format_material
 from ..dataloader import DataLoader
 
 class MaterialService:
@@ -13,6 +14,7 @@ class MaterialService:
     def __init__(self, data_loader: DataLoader):
         self._loader = data_loader
         self._interpreter = MaterialInterpreter(data_loader)
+        self.formatter = format_material
         
         self._materials: Dict[int, Material] = {}
         self._book_suits: Dict[int, str] = {}
@@ -46,10 +48,15 @@ class MaterialService:
         self._load_data()
         return list(self._materials.values())
 
-    def get_by_id(self, material_id: int) -> Optional[Material]:
+    def get_by_id(self, material_id: int, index_context: Optional[Any] = None) -> Optional[Material]:
         """通过ID获取单个材料。"""
-        self._load_data()
-        return self._materials.get(material_id)
+        # Note: _load_data needs to be adapted to pass the context,
+        # but for a single get, we can call the interpreter directly.
+        if self._is_loaded:
+            return self._materials.get(material_id)
+        else:
+            # If not loaded, we interpret just this one with context
+            return self._interpreter.interpret(material_id, index_context=index_context)
 
     def _determine_display_category(self, material: Material) -> str:
         """
@@ -116,3 +123,14 @@ class MaterialService:
             result_tree.append(category_node)
             
         return result_tree
+
+    def get_material_as_markdown(self, material_id: int) -> str:
+        """
+        获取单个材料的格式化Markdown文档。
+        """
+        material = self.get_by_id(material_id)
+        if not material:
+            return "未找到该材料。"
+
+        # 修正：调用 formatter 并传递依赖
+        return self.formatter(material, book_suits=self._book_suits)

@@ -1,56 +1,10 @@
 <template>
-  <div class="detail-pane">
-    <!-- 仅在有选中项时显示星星 -->
-    <el-icon
-      v-if="selectedItemId && selectedItemType"
-      class="pin-button"
-      :class="{ 'is-pinned': isPinned(selectedItemType, selectedItemId) }"
-      @click="handlePinClick"
-    >
-      <component :is="isPinned(selectedItemType, selectedItemId) ? 'StarFilled' : 'Star'" />
-    </el-icon>
-    
-    <ItemDetailView
-      v-if="selectedItemId && selectedItemType"
-      :item-id="selectedItemId"
-      :item-type="selectedItemType"
-    />
-    
-    <div v-else class="placeholder">
-      <p>请在左侧选择一个项目以查看详情。</p>
-    </div>
-  </div>
+  <router-view />
 </template>
 
 <script setup lang="ts">
-import { Star, StarFilled } from '@element-plus/icons-vue';
-import { useRoute } from 'vue-router';
-import ItemDetailView from '@/views/ItemDetailView.vue';
-import { useContentStore } from '@/stores/content';
-
-// This component now acts as a host for ItemDetailView.
-// It receives the selected item's identity and passes it down.
-const props = defineProps<{
-  selectedItemType: string | null; // This is the REAL type, e.g., 'chapter' or 'series'
-  selectedItemId: string | null;
-  selectedItemName: string | null;
-}>();
-
-const route = useRoute();
-const contentStore = useContentStore();
-const { isPinned, togglePin } = contentStore;
-
-function handlePinClick() {
-  if (props.selectedItemType && props.selectedItemId && props.selectedItemName) {
-    togglePin({
-      type: props.selectedItemType, // The real type
-      id: props.selectedItemId,
-      name: props.selectedItemName,
-      // The navigation category, taken from the route
-      navigationType: route.params.itemType as string,
-    });
-  }
-}
+// This component is now just a placeholder for the nested detail route.
+// All logic has been moved to ItemDetailView.vue, which is now a routed component.
 </script>
 
 <style scoped>

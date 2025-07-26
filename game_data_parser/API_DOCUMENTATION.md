@@ -16,6 +16,18 @@ DATA_ROOT = "/path/to/your/data"
 api = GameDataAPI(data_root_path=DATA_ROOT)
 ```
 
+## 全局搜索
+
+- **`search(keyword: str) -> List[SearchResult]`**
+  - **作用**: 在所有数据中执行全局关键字搜索。
+  - **返回**: `SearchResult` 对象的列表。每个对象包含:
+    - `id`: 匹配项的ID
+    - `name`: 匹配项的名称
+    - `type`: 匹配项的类型 (e.g., 'Quest', 'Material', 'Weapon')
+    - `match_source`: 关键字匹配的字段 (e.g., 'name', 'description')
+
+---
+
 ## API 服务概览
 
 `api` 对象下包含了多个按领域划分的子服务，你可以通过属性访问它们：

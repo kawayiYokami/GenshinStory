@@ -1,8 +1,10 @@
 from typing import Dict, Any, List, Optional
 import os
+
 from game_data_parser.models import Quest, QuestStep, DialogueNode, Chapter
 from game_data_parser.dataloader import DataLoader
 from ..services.text_map_service import TextMapService
+from .codex_quest_interpreter import CodexQuestInterpreter
 from ..utils.text_transformer import transform_text
 import logging
 
@@ -14,6 +16,7 @@ class QuestInterpreter:
     def __init__(self, data_loader: DataLoader, text_map_service: TextMapService):
         self.loader = data_loader
         self.text_map_service = text_map_service
+        self.codex_interpreter = CodexQuestInterpreter(text_map_service, data_loader)
         self._dialog_excel: Dict[int, Dict] = {}
         self._npc_map: Dict[str, str] = {}
         
@@ -44,23 +47,20 @@ class QuestInterpreter:
         """根据哈希值安全地获取原始文本。"""
         return self.text_map_service.get(text_map_hash, default)
 
-    def _prepare_data_and_build_maps(self):
+    def _prepare_data_and_build_maps(self, index_context: Optional[Any] = None):
         """
-        一次性加载所有需要的数据，并根据最终确定的多级优先级逻辑构建关系。
-        采用分阶段处理，确保逻辑清晰和结果的确定性。
+        【重构后】采用两阶段解析架构，将内容获取和关系建立解耦。
         """
         if self._is_prepared:
             return
 
         # --- Phase 0: 加载基础数据 ---
-        logging.info("Phase 0: 加载基础数据 (DialogExcel, NpcExcel)...")
-        dialog_list = self.loader.get_json("ExcelBinOutput/DialogExcelConfigData.json") or []
-        self._dialog_excel = {item["GFLDJMJKIKE"]: item for item in dialog_list if "GFLDJMJKIKE" in item}
-        npc_data_list = self.loader.get_json("ExcelBinOutput/NpcExcelConfigData.json") or []
+        logging.info("Phase 0: 加载NPC等基础数据...")
+        npc_data_list = self.loader.get_json("ExcelBinOutput/NpcExcelConfigData.json", index_context=index_context) or []
         self._npc_map = {str(item["id"]): self._get_text(item.get("nameTextMapHash"), f"NPC {item['id']}") for item in npc_data_list}
 
-        # --- Phase 1: 扫描并缓存所有任务和章节数据 ---
-        logging.info("Phase 1: 扫描并缓存所有任务和章节数据...")
+        # --- Phase 1: 扫描流程文件，仅为获取关系ID ---
+        logging.info("Phase 1: 扫描所有流程任务文件以建立关系元数据...")
         all_quest_files = self.loader.get_all_json_files_in_dir("BinOutput/Quest", yield_filename=True)
         if not all_quest_files:
             logging.error("在 'BinOutput/Quest' 目录下没有找到任何任务文件。")
@@ -69,16 +69,32 @@ class QuestInterpreter:
         
         for filename, quest_data in all_quest_files:
             quest_id = quest_data.get('id')
-            if not quest_id or quest_data.get('showType') == 'QUEST_HIDDEN':
-                continue
-            # 优先使用主文件（文件名与ID相同）
-            current_is_primary = (str(quest_id) == os.path.splitext(filename)[0])
-            if quest_id in self._raw_quests_cache:
-                existing_is_primary = (str(quest_id) == os.path.splitext(self._raw_quests_cache[quest_id].get('filename', ''))[0])
-                if existing_is_primary and not current_is_primary:
-                    continue
-            self._raw_quests_cache[quest_id] = {'data': quest_data, 'filename': filename}
+            if not quest_id: continue
+            is_invalid, _ = self._is_quest_invalid(quest_id, quest_data)
+            if is_invalid: continue
+            
+            if quest_id not in self._raw_quests_cache:
+                 self._raw_quests_cache[quest_id] = {'data': quest_data, 'filename': filename}
 
+        # --- Phase 2: 获取所有任务的最佳内容版本 ---
+        logging.info("Phase 2: 获取所有任务的最佳内容版本（图鉴优先）...")
+        for quest_id in self._raw_quests_cache.keys():
+            quest = self._interpret_quest_content(quest_id)
+            if quest:
+                self._quest_map[quest_id] = quest
+        
+        # --- Phase 3: 扩充关系信息 ---
+        logging.info("Phase 3: 使用流程文件的元数据扩充任务关系...")
+        for quest_id, quest in self._quest_map.items():
+            raw_data = self._raw_quests_cache.get(quest_id, {}).get('data', {})
+            if not raw_data: continue
+            
+            quest.chapter_id = raw_data.get('chapterId')
+            quest.series_id = raw_data.get('series')
+            quest.quest_type = self._extract_type_from_luapath(raw_data.get('luaPath'))
+
+        # --- Phase 4: 建立章节关系 ---
+        logging.info("Phase 4: 加载章节数据并建立关系...")
         chapter_data_list = self.loader.get_json("ExcelBinOutput/ChapterExcelConfigData.json") or []
         for chapter_data in chapter_data_list:
             chapter_id = chapter_data.get('id')
@@ -90,106 +106,69 @@ class QuestInterpreter:
                 image_title=self._get_text(chapter_data.get('chapterImageTitleTextMapHash')),
                 quest_type=chapter_data.get('questType'),
                 entry_quest_ids=chapter_data.get("PJNNDMHDAPP", []),
-                city_id=chapter_data.get("cityId"),
-                group_id=chapter_data.get("groupId"),
             )
 
-        # --- Phase 2: 实例化所有 Quest 对象 ---
-        logging.info("Phase 2: 正在实例化所有 Quest 对象...")
-        for quest_id in self._raw_quests_cache.keys():
-            quest = self.interpret(quest_id, prepped=True)
-            if quest:
-                self._quest_map[quest_id] = quest
-
-        # --- Phase 3: 建立 Chapter -> Quest 关系 ---
-        logging.info("Phase 3: 正在建立 Chapter -> Quest 关联...")
-        series_to_chapter_map: Dict[int, int] = {}
-
-        # 来源 A (权威): 遍历 Chapter 的 entry_quest_ids (现在我们认为它存的是 series_id)
-        for chapter in self._chapter_map.values():
-            for series_id in chapter.entry_quest_ids:
-                if series_id not in series_to_chapter_map:
-                    series_to_chapter_map[series_id] = chapter.id
-        
-        # 来源 B (后备): 遍历 Quest 自身的 chapterId
+        # --- Phase 5: 分配任务到章节 ---
+        logging.info("Phase 5: 分配任务到章节...")
         for quest in self._quest_map.values():
-            if quest.series_id and quest.chapter_id:
-                if quest.series_id not in series_to_chapter_map:
-                    series_to_chapter_map[quest.series_id] = quest.chapter_id
+            if quest.chapter_id and quest.chapter_id in self._chapter_map:
+                self._chapter_map[quest.chapter_id].quests.append(quest)
 
-        # 最终分配
-        for quest in self._quest_map.values():
-            final_chapter_id = quest.chapter_id
-            
-            if not final_chapter_id and quest.series_id in series_to_chapter_map:
-                final_chapter_id = series_to_chapter_map[quest.series_id]
-                quest.chapter_id = final_chapter_id
-                chapter = self._chapter_map.get(final_chapter_id)
-                if chapter:
-                    quest.chapter_title = chapter.title
-
-            if final_chapter_id and final_chapter_id in self._chapter_map:
-                if not any(q.quest_id == quest.quest_id for q in self._chapter_map[final_chapter_id].quests):
-                    self._chapter_map[final_chapter_id].quests.append(quest)
-
-        # --- Phase 4: 处理孤立任务，为它们创建虚拟章节 ---
-        logging.info("Phase 4: 正在处理孤立任务并创建虚拟章节...")
-        # 使用内部方法安全地获取孤立任务，避免递归
+        # --- Phase 6: 处理孤立任务 ---
+        logging.info("Phase 6: 处理孤立任务...")
         orphan_quests = self._find_orphan_quests_unsafe()
-        
         orphan_by_series: Dict[int, List[Quest]] = {}
-        orphans_no_series: List[Quest] = []
-
         for quest in orphan_quests:
             if quest.series_id:
-                if quest.series_id not in orphan_by_series:
-                    orphan_by_series[quest.series_id] = []
-                orphan_by_series[quest.series_id].append(quest)
-            else:
-                orphans_no_series.append(quest)
+                orphan_by_series.setdefault(quest.series_id, []).append(quest)
         
-        # 为有系列的孤立任务创建章节
         for series_id, quests in orphan_by_series.items():
             quests.sort(key=lambda q: q.quest_id)
             first_quest = quests[0]
-            
             new_chapter_id = series_id + 100000
             new_chapter_title = f"系列 {series_id}: {first_quest.quest_title}"
-            
-            new_chapter = Chapter(
-                id=new_chapter_id,
-                title=new_chapter_title,
-                quest_type="ORPHAN_SERIES", # 自定义类型
-                quests=quests
-            )
+            new_chapter = Chapter(id=new_chapter_id, title=new_chapter_title, quest_type="ORPHAN_SERIES", quests=quests)
             self._chapter_map[new_chapter_id] = new_chapter
-            
-            # 更新任务的章节信息
             for q in quests:
                 q.chapter_id = new_chapter_id
                 q.chapter_title = new_chapter_title
 
-        # 为无系列的孤立任务创建统一章节
-        if orphans_no_series:
-            orphans_no_series.sort(key=lambda q: q.quest_id)
-            misc_chapter_id = 999999
-            misc_chapter_title = "零散任务"
-            
-            misc_chapter = Chapter(
-                id=misc_chapter_id,
-                title=misc_chapter_title,
-                quest_type="ORPHAN_MISC",
-                quests=orphans_no_series
-            )
-            self._chapter_map[misc_chapter_id] = misc_chapter
-
-            # 更新任务的章节信息
-            for q in orphans_no_series:
-                q.chapter_id = misc_chapter_id
-                q.chapter_title = misc_chapter_title
-
         logging.info("结构化映射构建完成。")
         self._is_prepared = True
+
+    def _is_quest_invalid(self, quest_id: int, quest_data: Dict[str, Any]) -> tuple[bool, str]:
+        """
+        检查一个原始任务数据是否应该因为是隐藏、废弃或测试任务而被跳过。
+        返回一个元组 (is_invalid, reason)。
+        """
+        # 规则1: showType 为 QUEST_HIDDEN
+        if quest_data.get('showType') == 'QUEST_HIDDEN':
+            return True, "showType is QUEST_HIDDEN"
+
+        # 规则2: luaPath 为空
+        if quest_data.get('luaPath') == '':
+            return True, "luaPath is empty"
+
+        # 规则3: 标题相关检查
+        title_hash = quest_data.get('titleTextMapHash')
+        title_text = self._get_text(title_hash, '') if title_hash else ''
+
+        if not title_text:
+            return True, "Title is empty"
+        
+        title_lower = title_text.lower()
+        test_keywords = ["(test)", "测试任务", "废弃", "安柏深渊"]
+        for keyword in test_keywords:
+            if keyword.lower() in title_lower:
+                return True, f"Title contains invalid keyword: '{keyword}' (title: {title_text})"
+
+        # 规则4: performCfg 包含测试路径
+        if "talks" in quest_data:
+            for talk in quest_data.get("talks", []):
+                if "/Test/" in talk.get("performCfg", ""):
+                    return True, "performCfg contains /Test/"
+        
+        return False, ""
 
     def _parse_dialog_from_source(self, start_id: int, source_map: Dict[int, Dict], _processed_ids: Optional[set] = None) -> List[DialogueNode]:
         """
@@ -317,51 +296,17 @@ class QuestInterpreter:
             logging.warning(f"  [Quest: {context_quest_id}] 文件 {full_relative_path} 的 dialogList[0] 格式不正确，缺少 'id'。")
             return []
 
-    def interpret(self, quest_id: int, prepped: bool = False) -> Optional[Quest]:
-        """
-        解析单个任务，并利用预先构建的映射来自动关联其所属的系列和章节。
-        :param quest_id: The ID of the quest to interpret.
-        :param prepped: Internal flag to avoid recursive preparation.
-        """
-        if not prepped:
-            self._prepare_data_and_build_maps()
-
-        # If the quest has already been interpreted, return it from the map.
-        if quest_id in self._quest_map:
-            return self._quest_map[quest_id]
-
+    def _interpret_from_flow(self, quest_id: int) -> Optional[Quest]:
+        """【新】只负责从流程文件（Quest/*.json）解析任务内容。"""
         cached_item = self._raw_quests_cache.get(quest_id)
         if not cached_item:
-            logging.warning(f"请求的任务ID {quest_id} 在缓存中不存在。")
             return None
         
         quest_data = cached_item['data']
         source_filename = cached_item['filename']
-
-        # --- 推断 Quest Type (Category) ---
-        quest_type = None
-        chapter_id = quest_data.get('chapterId')
-        chapter = self._chapter_map.get(chapter_id) if chapter_id else None
-        
-        if chapter and chapter.quest_type:
-            quest_type = chapter.quest_type
-        elif quest_data.get('luaPath'):
-            quest_type = self._extract_type_from_luapath(quest_data.get('luaPath'))
-        elif quest_data.get('damageRatio'):
-            quest_type = quest_data.get('damageRatio')
-
-        # 只加载当前任务自身的对话定义
-        current_quest_talks = {}
-        if "talks" in quest_data:
-            for talk in quest_data.get("talks", []):
-                current_quest_talks[talk["id"]] = talk
         
         quest_title_raw = self._get_text(quest_data.get("titleTextMapHash"))
-        quest_title, is_title_valid = transform_text(quest_title_raw)
-        
-        if not is_title_valid:
-            logging.debug(f"Quest {quest_id} has a non-displayable title: '{quest_title}'")
-
+        quest_title, _ = transform_text(quest_title_raw)
         quest_desc_raw = self._get_text(quest_data.get("descTextMapHash"))
         quest_desc, _ = transform_text(quest_desc_raw)
 
@@ -369,54 +314,66 @@ class QuestInterpreter:
             quest_id=quest_id,
             quest_title=quest_title,
             quest_description=quest_desc,
-            quest_type=quest_type,
-            chapter_id=chapter.id if chapter else None,
-            chapter_title=chapter.title if chapter else None,
-            series_id=quest_data.get('series'),
+            # 补全缺失的必需字段，初始值为None
+            chapter_id=None,
+            chapter_title=None,
+            series_id=None,
             source_json=source_filename,
             suggest_track_main_quest_list=quest_data.get("suggestTrackMainQuestList")
         )
 
-        # 解析步骤和对话
-        logging.debug(f"开始解析 Quest {quest_id} 的步骤...")
-        
-        # 1. 按 'order' 字段对子任务进行排序
+        current_quest_talks = {talk["id"]: talk for talk in quest_data.get("talks", [])}
         sorted_sub_quests = sorted(quest_data.get("subQuests", []), key=lambda sq: sq.get("order", 0))
 
         for sub_quest in sorted_sub_quests:
-            # 2. 跳过 showType 为 "QUEST_HIDDEN" 的子任务
-            if sub_quest.get("showType") == "QUEST_HIDDEN" or sub_quest.get("showGuide") == "QUEST_GUIDE_ITEM_DISABLE" :
+            if sub_quest.get("showType") == "QUEST_HIDDEN" or sub_quest.get("showGuide") == "QUEST_GUIDE_ITEM_DISABLE":
                 continue
 
             step_id = sub_quest.get('subId')
-            logging.debug(f"  处理步骤 StepID: {step_id}")
-            
             raw_step_desc = self._get_text(sub_quest.get("descTextMapHash"))
             step_description, is_valid = transform_text(raw_step_desc)
 
-            quest_step = QuestStep(
-                step_id=step_id,
-                step_description=step_description if is_valid and step_description else None,
-                # dialogue_nodes is now empty by default
-            )
+            if not is_valid or not step_description:
+                continue
 
-            logging.debug(f"    检查 finishCond: {sub_quest.get('finishCond')}")
+            quest_step = QuestStep(step_id=step_id, step_description=step_description)
+            
             for cond in sub_quest.get("finishCond", []):
-                condition_type = cond.get("type") or cond.get("damageRatio")
-
-                if condition_type in ["QUEST_CONTENT_COMPLETE_TALK", "QUEST_CONTENT_COMPLETE_ANY_TALK"]:
+                cond_type = cond.get("type") or cond.get("damageRatio")
+                if cond_type in ["QUEST_CONTENT_COMPLETE_TALK", "QUEST_CONTENT_COMPLETE_ANY_TALK"]:
                     talk_id = cond.get("param", [None])[0]
                     if talk_id:
-                        # 惰性加载：只记录 TalkID，不立即解析
-                        logging.debug(f"    在 StepID {step_id} 中找到对话条件, 记录 TalkID: {talk_id} 以待后续解析。")
-                        quest_step.talk_ids.append(talk_id)
+                        dialog_nodes = self._find_and_parse_dialog(talk_id, current_quest_talks, quest_id)
+                        quest_step.dialogue_nodes.extend(dialog_nodes)
+            
+            quest.steps.append(quest_step)
 
-            # 只有当步骤包含有效描述或【潜在】对话时，才将其添加到任务中
-            if quest_step.step_description or quest_step.talk_ids:
-                quest.steps.append(quest_step)
-            else:
-                logging.debug(f"  跳过 StepID: {step_id} 因为其既无有效描述也无潜在对话。")
+        return quest if quest.steps else None
 
+    def _interpret_quest_content(self, quest_id: int) -> Optional[Quest]:
+        """【新】获取单个任务的最佳内容版本（图鉴优先，流程保底）。"""
+        codex_quest = self.codex_interpreter.interpret(quest_id)
+        if codex_quest:
+            return codex_quest
+        return self._interpret_from_flow(quest_id)
+
+    def interpret(self, quest_id: int, index_context: Optional[Any] = None) -> Optional[Quest]:
+        """
+        【重构后】获取单个任务的完整数据（包含内容和关系）。
+        此方法现在是公共API的唯一入口。
+        """
+        self._prepare_data_and_build_maps(index_context=index_context)
+        quest = self._quest_map.get(quest_id)
+        if not quest:
+            logging.warning(f"请求的任务ID {quest_id} 在处理后无法找到。")
+            return None
+        
+        # 关系建立后，章节标题可能需要从 chapter_map 中同步
+        if quest.chapter_id and not quest.chapter_title:
+            chapter = self._chapter_map.get(quest.chapter_id)
+            if chapter:
+                quest.chapter_title = chapter.title
+                
         return quest
 
     def get_all_chapters(self) -> List[Chapter]:

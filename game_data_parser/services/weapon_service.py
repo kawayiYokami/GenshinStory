@@ -47,13 +47,13 @@ class WeaponService:
 
         return all_weapons
 
-    def get_weapon_by_id(self, item_id: int) -> Optional[Weapon]:
+    def get_weapon_by_id(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Weapon]:
         """获取单个武器的完整信息。"""
-        return self.interpreter.interpret(item_id)
+        return self.interpreter.interpret(item_id, index_context=index_context)
 
-    def get_weapon_as_json(self, item_id: int) -> Optional[Dict]:
+    def get_weapon_as_json(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Dict]:
         """根据ID获取单个武器的详细信息，并以JSON兼容的字典格式返回。"""
-        weapon = self.get_weapon_by_id(item_id)
+        weapon = self.get_weapon_by_id(item_id, index_context=index_context)
         if not weapon:
             return None
         return asdict(weapon)
@@ -82,6 +82,10 @@ class WeaponService:
         type_map: Dict[str, List[Weapon]] = {}
         
         for weapon in all_weapons:
+            # 关键修复：确保武器有有效的、非空的名称，再将其添加到树中
+            if not weapon.name or not weapon.name.strip():
+                continue
+
             w_type = weapon.type_name
             if w_type not in type_map:
                 type_map[w_type] = []

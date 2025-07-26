@@ -31,16 +31,16 @@ class BookService:
                 })
         return all_books
 
-    def get_book_by_id(self, item_id: int) -> Optional[Material]:
+    def get_book_by_id(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Material]:
         """获取单个书籍物料的完整信息。"""
-        material = self.material_interpreter.interpret(item_id)
+        material = self.material_interpreter.interpret(item_id, index_context=index_context)
         if material and material.is_book:
             return material
         return None
 
-    def get_book_as_json(self, item_id: int) -> Optional[Dict]:
+    def get_book_as_json(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Dict]:
         """获取单个书籍物料的JSON兼容字典。"""
-        book = self.get_book_by_id(item_id)
+        book = self.get_book_by_id(item_id, index_context=index_context)
         return asdict(book) if book else None
 
     def get_book_as_markdown(self, item_id: int) -> Optional[str]:
@@ -65,9 +65,9 @@ class BookService:
                 all_series.append(series)
         return all_series
 
-    def get_book_series_by_id(self, series_id: int) -> Optional[BookSuit]:
+    def get_book_series_by_id(self, series_id: int, index_context: Optional[Any] = None) -> Optional[BookSuit]:
         """获取单个书籍系列的详细信息，现在会包含所有分卷。"""
-        return self.book_suit_interpreter.interpret(series_id)
+        return self.book_suit_interpreter.interpret(series_id, index_context=index_context)
 
     def get_book_series_as_markdown(self, series_id: int) -> Optional[str]:
         """获取单个书籍系列的完整Markdown文档，包括所有分卷内容。"""

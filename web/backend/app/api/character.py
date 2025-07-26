@@ -1,4 +1,4 @@
-# web/backend/app/api/characters.py
+# web/backend/app/api/character.py
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from typing import List, Dict, Any
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get("/character/list", response_model=List[Dict[str, Any]])
 def get_character_list(game_data: GameDataAPI = Depends(get_game_data_service)):
     """获取所有角色的简明列表，并包装为自描述结构。"""
-    # Note: list_characters returns a list of Avatar objects, not dicts.
+    # Note: list_characters returns a list of Character objects, not dicts.
     # We need to convert them to a JSON-serializable format.
     raw_list = game_data.character.list_characters()
     dict_list = [char.model_dump(mode='json') for char in raw_list]

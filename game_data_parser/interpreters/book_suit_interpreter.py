@@ -26,22 +26,22 @@ class BookSuitInterpreter:
         text, _ = transform_text(self._text_map.get(str(text_map_hash), default))
         return text
 
-    def _prepare_data(self):
+    def _prepare_data(self, index_context: Optional[Any] = None):
         """一次性加载所有需要的数据并进行预处理。"""
         if self._is_prepared:
             return
         
         logging.info("加载书籍系列相关数据 (BookSuit)...")
         # Load original game data
-        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json")
-        self._book_suit_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/BookSuitExcelConfigData.json")}
+        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json", index_context=index_context)
+        self._book_suit_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/BookSuitExcelConfigData.json", index_context=index_context)}
         
         # Load our enhanced volume data using the DataLoader
         try:
             # The data root is '.../AnimeGameData', so we go up one level to the project root
             # and then down to the database file.
             relative_path = "../game_data_parser/database/books_with_content_id.json"
-            enriched_data = self.loader.get_json(relative_path)
+            enriched_data = self.loader.get_json(relative_path, index_context=index_context)
             
             if enriched_data:
                 for series_data in enriched_data:
@@ -63,9 +63,9 @@ class BookSuitInterpreter:
         self._prepare_data()
         return list(self._book_suit_configs.keys())
 
-    def interpret(self, suit_id: int) -> Optional[BookSuit]:
+    def interpret(self, suit_id: int, index_context: Optional[Any] = None) -> Optional[BookSuit]:
         """解析单个书籍系列的完整信息。"""
-        self._prepare_data()
+        self._prepare_data(index_context=index_context)
 
         suit_config = self._book_suit_configs.get(suit_id)
         if not suit_config:

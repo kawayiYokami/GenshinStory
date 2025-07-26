@@ -13,15 +13,34 @@ const router = createRouter({
           component: () => import('../views/HomeView.vue'),
         },
         {
-          path: ':itemType/list',
-          name: 'list',
-          component: () => import('../views/ListDetailView.vue'),
+          // The list view for search results
+          path: 'search',
+          name: 'search',
+          component: () => import('../views/SearchView.vue'),
+          // The detail view is now a sibling, but shares the same path prefix
+          // The SearchView will have a <router-view> to display the detail
+          children: [
+            {
+              path: 'item/:itemType/:id',
+              name: 'search-detail',
+              component: () => import('../views/ItemDetailView.vue'),
+            },
+          ]
         },
         {
-          // The new unified detail route
-          path: ':itemType/:id',
-          name: 'detail',
-          component: () => import('../views/ItemDetailView.vue'),
+          // The list view for categories
+          path: 'category/:itemType',
+          name: 'category',
+          component: () => import('../views/ListDetailView.vue'),
+           // The detail view is a child, so it can be rendered inside ListDetailView's <router-view>
+          children: [
+            {
+              // The path is now more explicit to avoid ambiguity
+              path: 'item/:detailItemType/:id',
+              name: 'category-detail',
+              component: () => import('../views/ItemDetailView.vue'),
+            },
+          ]
         },
         {
           path: 'about',

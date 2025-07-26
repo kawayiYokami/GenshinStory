@@ -66,11 +66,11 @@ class QuestService:
 
         return sorted(filtered_quests, key=lambda q: q['id'])
 
-    def get_quest_by_id(self, item_id: int) -> Optional[Quest]:
+    def get_quest_by_id(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Quest]:
         """
         获取单个任务的完整信息。
         """
-        return self.quest_interpreter.interpret(item_id)
+        return self.quest_interpreter.interpret(item_id, index_context=index_context)
             
     def _fill_quest_details(self, quest: Quest) -> Quest:
         """
@@ -84,9 +84,9 @@ class QuestService:
                 step.dialogue_nodes = self.get_dialogs_for_step(step, quest.quest_id)
         return quest
 
-    def get_quest_as_json(self, item_id: int) -> Optional[Dict]:
+    def get_quest_as_json(self, item_id: int, index_context: Optional[Any] = None) -> Optional[Dict]:
         """根据ID获取单个任务的详细信息，并以JSON兼容的字典格式返回。"""
-        quest = self.get_quest_by_id(item_id)
+        quest = self.get_quest_by_id(item_id, index_context=index_context)
         if not quest:
             return None
         

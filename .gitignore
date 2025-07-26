@@ -3,7 +3,6 @@
 agent/
 .__pycache__/
 AnimeGameData/
-AnimeGameDataX/
 GenshinCompanion-Ele/
 GenshinDialog/
 notebook/
@@ -15,5 +14,6 @@ test_outputs/
 # Python
 __pycache__/
 *.pyc
-
+docs/
 # Cache files
+turnbasedgamedata/

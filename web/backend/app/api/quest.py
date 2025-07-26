@@ -90,33 +90,45 @@ def get_quest_tree(
                 "children": []
             }
 
-            # 遍历章节 (第二层)
-            for chapter_node_data in category_node.get("children", []):
-                chapter_id = chapter_node_data.get("id")
-                
-                # 创建章节节点
-                child_node = {
-                    "key": f"chapter-{chapter_id}",
-                    "label": chapter_node_data.get("title"),
-                    "data": {"type": "chapter", "id": chapter_id},
-                    "isLeaf": True, # 默认章节是叶子
-                    "children": []
-                }
-
-                # 如果章节下有任务 (第三层)，则它不是叶子，并添加任务节点
-                quest_children = chapter_node_data.get("children", [])
-                if quest_children:
-                    child_node["isLeaf"] = False
-                    for quest_node_data in quest_children:
+            # 对零散任务进行特殊处理，直接将任务作为子节点
+            if category_id == "ORPHAN_MISC":
+                for chapter_node_data in category_node.get("children", []):
+                    for quest_node_data in chapter_node_data.get("children", []):
                         quest_id = quest_node_data.get("id")
-                        child_node["children"].append({
+                        top_level_node["children"].append({
                             "key": f"quest-{quest_id}",
                             "label": quest_node_data.get("title"),
                             "data": {"type": "quest", "id": quest_id},
                             "isLeaf": True
                         })
-                
-                top_level_node["children"].append(child_node)
+            else:
+                # 遍历章节 (第二层)
+                for chapter_node_data in category_node.get("children", []):
+                    chapter_id = chapter_node_data.get("id")
+                    
+                    # 创建章节节点
+                    child_node = {
+                        "key": f"chapter-{chapter_id}",
+                        "label": chapter_node_data.get("title"),
+                        "data": {"type": "chapter", "id": chapter_id},
+                        "isLeaf": True, # 默认章节是叶子
+                        "children": []
+                    }
+
+                    # 如果章节下有任务 (第三层)，则它不是叶子，并添加任务节点
+                    quest_children = chapter_node_data.get("children", [])
+                    if quest_children:
+                        child_node["isLeaf"] = False
+                        for quest_node_data in quest_children:
+                            quest_id = quest_node_data.get("id")
+                            child_node["children"].append({
+                                "key": f"quest-{quest_id}",
+                                "label": quest_node_data.get("title"),
+                                "data": {"type": "quest", "id": quest_id},
+                                "isLeaf": True
+                            })
+                    
+                    top_level_node["children"].append(child_node)
 
             frontend_tree.append(top_level_node)
             

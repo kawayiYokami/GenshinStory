@@ -1,56 +1,55 @@
 <template>
-  <!-- 恢复原始的、由父组件控制的 flex 布局 -->
   <ListPane
     :list="filteredList"
     :is-loading="dataStore.isLoading.list"
-    :search-query="searchQuery"
+    v-model:search-query="searchQuery"
     :expanded-groups="expandedGroups"
     :selected-item="selectedItem"
-    @update:searchQuery="searchQuery = $event"
     @toggle-group="toggleGroup"
-    @select-item="selectItem"
+    @select-item="handleSelectItem"
   />
-  <DetailPane
-    :selected-item-type="selectedItem?.data?.type ?? null"
-    :selected-item-id="selectedItem?.data?.id?.toString() ?? null"
-    :selected-item-name="selectedItem?.name ?? null"
-  />
+  <router-view />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDataStore, type ListItem } from '@/stores/data';
-import { useContentStore, type PinnedItem } from '@/stores/content'; // 引入 content store
+import { useEventBusStore, type AppEvent } from '@/stores/eventBus';
 import ListPane from '@/components/ListPane.vue';
-import DetailPane from '@/components/DetailPane.vue';
 
 const route = useRoute();
 const router = useRouter();
 const dataStore = useDataStore();
-const contentStore = useContentStore(); // 实例化 content store
+const eventBus = useEventBusStore();
 
 const searchQuery = ref('');
 const expandedGroups = ref(new Set<string>());
-const selectedItem = ref<ListItem | null>(null);
 
 const currentItemType = computed(() => route.params.itemType as string);
+const selectedItemId = computed(() => {
+  const id = route.params.id;
+  return Array.isArray(id) ? id[0] : id;
+});
 
 const listData = computed(() => dataStore.lists[currentItemType.value] || []);
 
-const filteredList = computed(() => {
-  if (!searchQuery.value) {
-    return listData.value;
+const selectedItem = computed(() => {
+  if (!selectedItemId.value || !listData.value) return null;
+  for (const group of listData.value) {
+    const found = group.children.find(child => child.data.id.toString() === selectedItemId.value);
+    if (found) return found;
   }
+  return null;
+});
+
+const filteredList = computed(() => {
+  if (!searchQuery.value) return listData.value;
   const lowerCaseQuery = searchQuery.value.toLowerCase();
-  return listData.value
-    .map(group => {
-      const filteredChildren = group.children.filter(item =>
-        item.name.toLowerCase().includes(lowerCaseQuery)
-      );
-      return { ...group, children: filteredChildren };
-    })
-    .filter(group => group.children.length > 0);
+  return listData.value.map(group => ({
+    ...group,
+    children: group.children.filter(item => item.name.toLowerCase().includes(lowerCaseQuery)),
+  })).filter(group => group.children.length > 0);
 });
 
 const toggleGroup = (groupName: string) => {
@@ -61,68 +60,62 @@ const toggleGroup = (groupName: string) => {
   }
 };
 
-const selectItem = (item: ListItem) => {
-  selectedItem.value = item;
-  // 当用户从列表中选择项目时，同步更新激活的图钉状态
-  // 确保传递一个完整的 PinnedItem 对象
-  contentStore.setActivePinnedItem({
-    type: item.data.type, // 真实的子类型
-    id: item.data.id.toString(),
-    name: item.name,
-    navigationType: currentItemType.value, // 正确的顶级导航分类
+const handleSelectItem = (item: ListItem) => {
+  // The only source of truth for navigation is the item's own data.
+  router.push({
+    name: 'category-detail',
+    params: {
+      // This is the parent route's param, which should not change.
+      itemType: currentItemType.value,
+      // This is the new param for the detail view's type.
+      detailItemType: item.data.type,
+      id: item.data.id
+    }
   });
 };
 
-/**
- * 处理来自图钉栏的点击事件 (现在由 watch 调用)
- * @param {PinnedItem} pinnedItem - 被点击的图钉项
- */
-const handleSelectPinnedItem = async (pinnedItem: PinnedItem) => {
-  // 检查顶层导航分类是否匹配
-  if (pinnedItem.navigationType !== currentItemType.value) {
-    // 使用正确的 navigationType 进行路由跳转
-    await router.push({ name: 'list', params: { itemType: pinnedItem.navigationType } });
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-
-  for (const group of listData.value) {
-    const foundItem = group.children.find(child =>
-      child.data.id.toString() === pinnedItem.id && child.data.type === pinnedItem.type
-    );
-    if (foundItem) {
-      selectItem(foundItem);
-      if (!expandedGroups.value.has(group.groupName)) {
-        toggleGroup(group.groupName);
+const processHighlightEvent = (event: AppEvent) => {
+  if (event.name === 'highlight-item-in-list' && event.payload.itemType === currentItemType.value) {
+    for (const group of listData.value) {
+      const found = group.children.some(child => child.data.id.toString() === event.payload.id);
+      if (found) {
+        if (!expandedGroups.value.has(group.groupName)) {
+          toggleGroup(group.groupName);
+        }
+        break;
       }
-      break;
     }
+    eventBus.consume(event.id);
   }
 };
 
-// 监视来自 PinBar 的点击信号
-watch(() => contentStore.pinClickSignal, (newSignal) => {
-  if (newSignal) {
-    handleSelectPinnedItem(newSignal);
-    // 消耗信号，防止重复触发
-    contentStore.consumePinClickSignal();
+watch(currentItemType, (newItemType) => {
+  if (newItemType) {
+    dataStore.fetchList(newItemType);
+    expandedGroups.value.clear();
   }
+}, { immediate: true });
+
+// Process any pending highlight events when the component mounts or list data changes
+watch(listData, () => {
+  eventBus.events.forEach(processHighlightEvent);
+}, { immediate: true });
+
+let unsubscribe: (() => void) | undefined;
+onMounted(() => {
+  const cb = (event: AppEvent) => processHighlightEvent(event);
+  eventBus.events.forEach(cb);
+  // A simple way to subscribe to new events. In a real app, a more robust event bus would be better.
+  const interval = setInterval(() => {
+    eventBus.events.forEach(e => {
+      if (!e.consumed) cb(e);
+    });
+  }, 200);
+  unsubscribe = () => clearInterval(interval);
 });
 
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe();
+});
 
-// 监视路由变化
-watch(
-  currentItemType,
-  (newItemType) => {
-    if (newItemType) {
-      selectedItem.value = null;
-      // 当切换主类别时，清除激活的图钉状态
-      contentStore.setActivePinnedItem(null);
-      expandedGroups.value.clear();
-      dataStore.fetchList(newItemType);
-    }
-  },
-  { immediate: true }
-);
 </script>
-
-<!-- No styles needed, as requested -->

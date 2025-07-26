@@ -37,21 +37,21 @@ class ReliquaryInterpreter:
         text, _ = transform_text(self._text_map.get(str(text_map_hash), default))
         return text
 
-    def _prepare_data(self):
+    def _prepare_data(self, index_context: Optional[Any] = None):
         """一次性加载所有需要的数据并进行预处理。"""
         if self._is_prepared:
             return
         
         logging.info("加载圣遗物相关数据 (Reliquary, Set, Affix)...")
-        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json")
+        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json", index_context=index_context)
 
-        self._reliquary_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/ReliquaryExcelConfigData.json")}
-        self._reliquary_set_configs = {item['setId']: item for item in self.loader.get_json("ExcelBinOutput/ReliquarySetExcelConfigData.json")}
-        self._equip_affix_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/EquipAffixExcelConfigData.json") if 'id' in item}
+        self._reliquary_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/ReliquaryExcelConfigData.json", index_context=index_context)}
+        self._reliquary_set_configs = {item['setId']: item for item in self.loader.get_json("ExcelBinOutput/ReliquarySetExcelConfigData.json", index_context=index_context)}
+        self._equip_affix_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/EquipAffixExcelConfigData.json", index_context=index_context) if 'id' in item}
 
         # Build the definitive map for set names from DisplayItemExcelConfigData
         self._set_id_to_name_hash: Dict[int, int] = {}
-        display_items = self.loader.get_json("ExcelBinOutput/DisplayItemExcelConfigData.json")
+        display_items = self.loader.get_json("ExcelBinOutput/DisplayItemExcelConfigData.json", index_context=index_context)
         for item in display_items:
             if item.get("displayType") == "RELIQUARY_ITEM":
                 set_id = item.get("param")
@@ -95,9 +95,9 @@ class ReliquaryInterpreter:
         self._prepare_data()
         return self._reliquary_configs.get(relic_id)
 
-    def interpret_single(self, relic_id: int) -> Optional[Reliquary]:
+    def interpret_single(self, relic_id: int, index_context: Optional[Any] = None) -> Optional[Reliquary]:
         """解析单个圣遗物部件的完整信息。"""
-        self._prepare_data()
+        self._prepare_data(index_context=index_context)
         relic_config = self._reliquary_configs.get(relic_id)
         if not relic_config:
             return None
@@ -127,9 +127,9 @@ class ReliquaryInterpreter:
             pos_index=pos_index,
         )
 
-    def interpret(self, set_id: int) -> Optional[ReliquarySet]:
+    def interpret(self, set_id: int, index_context: Optional[Any] = None) -> Optional[ReliquarySet]:
         """解析单个圣遗物套装的完整信息，包括其所有部件。"""
-        self._prepare_data()
+        self._prepare_data(index_context=index_context)
 
         set_config = self._reliquary_set_configs.get(set_id)
         if not set_config:

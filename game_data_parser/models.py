@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Literal, TYPE_CHECKING
 from pathlib import Path
+import re
 
 if TYPE_CHECKING:
     from .dataloader import DataLoader
@@ -51,11 +52,11 @@ class Quest:
     quest_description: str
     
     # Context from Chapter
-    chapter_id: int
-    chapter_title: str
+    chapter_id: Optional[int] = None
+    chapter_title: Optional[str] = None
 
     # Context from Quest Series
-    series_id: int
+    series_id: Optional[int] = None
 
     # Optional fields with defaults
     chapter_num: Optional[str] = None
@@ -91,54 +92,6 @@ class Chapter:
     
     # Linked Quests
     quests: List['Quest'] = field(default_factory=list)
-
-
-# ==============================================================================
-# Avatar Models
-# ==============================================================================
-
-@dataclass
-class VoiceLine:
-    """代表一条角色的语音台词。"""
-    title: str
-    text: str
-
-@dataclass
-class Story:
-    """代表一个角色的故事。"""
-    title: str
-    text: str
-
-@dataclass
-class CVs:
-    """存储角色的多语言CV信息。"""
-    chinese: Optional[str] = None
-    japanese: Optional[str] = None
-    english: Optional[str] = None
-    korean: Optional[str] = None
-
-
-@dataclass
-class Avatar:
-    """代表一个完整的角色及其所有相关信息。"""
-    id: int
-    name: str
-    description: str
-    
-    # Fetter Info
-    title: Optional[str] = None          # 称号
-    birthday: Optional[str] = None       # 生日 (格式 "月-日")
-    constellation: Optional[str] = None  # 命之座
-    nation: Optional[str] = None         # 所属国家/地区
-    vision: Optional[str] = None         # 神之眼
-    cvs: CVs = field(default_factory=CVs)
-    
-    # Detailed stories and sayings
-    stories: List[Story] = field(default_factory=list)
-    voice_lines: List[VoiceLine] = field(default_factory=list)
-    
-    # Raw related IDs
-    skill_depot_id: Optional[int] = None
 
 
 # ==============================================================================
@@ -198,7 +151,7 @@ class Material:
     name: str
     description: str
     
-    # 存储原始枚举，如 "MATERIAL_AVATAR_MATERIAL"
+    # 存储原始枚举，如 "MATERIAL_CHARACTER_MATERIAL"
     material_type_raw: str
     
     # 存储二级分类描述，如 "角色培养素材"
@@ -271,10 +224,39 @@ class Book:
     description: str
     
     suit_id: Optional[int] = None      # 关联到 BookSuit 的 ID
-    content_id: Optional[int] = None   # 关联到 BookContent 的 ID (需要手动映射)
 
+# ==============================================================================
+# Readable Models
+# ==============================================================================
 @dataclass
-class BookContent:
-    """代表一本书籍的具体内容。"""
-    id: int  # Corresponds to the ID in the filename, e.g., 37 for Book37.txt
-    content: str
+class Readable:
+    """代表一个从 'Readable/' 目录加载的独立文本文件，支持内容懒加载。"""
+    id: str      # 相对路径作为唯一ID
+    title: str   # 根据内容动态生成的标题
+    path: str    # 完整的相对路径
+    
+    _content: Optional[str] = field(default=None, repr=False)
+    _loader: 'DataLoader' = field(default=None, repr=False)
+
+    def get_content(self) -> str:
+        """按需加载并返回文件内容。"""
+        if self._content is not None:
+            return self._content
+        
+        if self._loader and self.path:
+            try:
+                raw_content = self._loader.get_text_file(self.path)
+                self._content = raw_content.strip() if raw_content else ""
+                return self._content
+            except Exception as e:
+                return f"错误：加载内容 '{self.path}' 时发生异常: {e}"
+        
+        return "错误：内容加载器未初始化或缺少路径。"
+
+@dataclass(frozen=True)
+class SearchResult:
+    """代表一个统一的搜索结果条目。"""
+    id: int
+    name: str
+    type: str  # e.g., "Character", "Quest", "Weapon"
+    match_source: str # 匹配到的字段名，如 "description" 或 "name"

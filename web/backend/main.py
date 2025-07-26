@@ -13,9 +13,15 @@ backend_root = os.path.dirname(os.path.abspath(__file__))
 if backend_root not in sys.path:
     sys.path.append(backend_root)
 
+import logging
+from collections import defaultdict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from game_data_parser.api import GameDataAPI
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # .env for environment variables
 load_dotenv()
@@ -25,6 +31,21 @@ app = FastAPI(
     description="API for accessing parsed game data.",
     version="0.1.0",
 )
+
+# Create a single, shared instance of the GameDataAPI
+# This will load the data from the cache file upon startup.
+# The project_root is calculated at the top of the file.
+api = GameDataAPI(data_root_path=project_root)
+
+# Diagnostic logging after initialization
+logging.info("--- API Initialization Status ---")
+logging.info(f"Search index size: {len(api.search_index)}")
+if hasattr(api.loader, '_cache'):
+    logging.info(f"File cache size: {len(api.loader._cache)}")
+else:
+    logging.info("File cache (_cache) not found in loader.")
+logging.info("---------------------------------")
+
 
 # CORS (Cross-Origin Resource Sharing)
 # For debugging, allow all origins.
@@ -43,6 +64,60 @@ app.add_middleware(
 def read_root():
     """A simple endpoint to test if the API is running."""
     return {"message": "Welcome to the Game Data Parser API!"}
+
+@app.get("/api/search/list")
+def get_search_list():
+    """
+    Returns an empty list, as the search results are populated dynamically
+    based on user input, not on initial page load.
+    """
+    return []
+
+@app.get("/api/search")
+def search_all(keyword: str):
+    """
+    Performs a global search across all data types and returns the
+    results grouped by category, matching the format expected by ListPane.
+    """
+    logging.info(f"Received search request with keyword: '{keyword}'")
+    if not keyword:
+        return []
+
+    search_results = api.search(keyword)
+    logging.info(f"Found {len(search_results)} results from api.search")
+    
+    # Group results by type
+    grouped_results = defaultdict(list)
+    for result in search_results:
+        # The item for the list should contain all necessary info for a click
+        item = {
+            "id": str(result.id), # Ensure ID is a string for consistency
+            "name": result.name,
+            "type": result.type # This is crucial for the detail view request
+        }
+        grouped_results[result.type].append(item)
+
+    # --- 汉化和格式化 ---
+    CATEGORY_MAP = {
+        "Readable": "世界文本",
+        "Material": "材料",
+        "Chapter": "章节",
+        "RelicSet": "圣遗物",
+        "Quest": "任务",
+        "Weapon": "武器",
+        "Book": "书籍",
+        "Character": "角色",
+    }
+
+    formatted_list = []
+    for category, items in grouped_results.items():
+        formatted_list.append({
+            "groupName": CATEGORY_MAP.get(category, category), # 使用映射，如果找不到则用回原名
+            "children": items,
+            "collapsed": True  # 默认折叠
+        })
+        
+    return formatted_list
 
 # Import and include the chapters router
 from app.api import chapter as chapters_router
@@ -76,3 +151,7 @@ app.include_router(materials_router.router, prefix="/api", tags=["Materials"])
 # Import and include the new relics router
 from app.api import relic as relics_router
 app.include_router(relics_router.router, prefix="/api", tags=["Relics"])
+
+# Import and include the new readables router
+from app.api import readable as readables_router
+app.include_router(readables_router.router, prefix="/api", tags=["Readables"])

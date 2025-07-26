@@ -30,16 +30,12 @@ export const useDataStore = defineStore('data', () => {
   // Stores the list data, keyed by item type (e.g., 'weapons', 'materials')
   const lists = ref<{ [itemType: string]: ListGroup[] }>({});
   
-  // Stores the content of the currently selected item
-  const content = ref<string | null>(null);
-
-  // Tracks loading state for different data types
+  // Tracks loading state for list data
   const isLoading = ref<{ [key: string]: boolean }>({
     list: false,
-    content: false,
   });
 
-  // Tracks any errors that occur during fetching
+  // Tracks any errors that occur during list fetching
   const error = ref<string | null>(null);
 
   // --- Actions ---
@@ -132,69 +128,10 @@ export const useDataStore = defineStore('data', () => {
     }
   }
 
-  /**
-   * Fetches the markdown content for a specific item.
-   * @param {string} itemType - The type of the item.
-   * @param {number} id - The ID of the item.
-   */
-  async function fetchContent(itemType: string, id: number) {
-    if (!itemType || !id) return;
-
-    isLoading.value.content = true;
-    error.value = null;
-    content.value = null;
-
-    try {
-      if (itemType === 'sample') {
-        const sampleContent = `
-# 样本内容：ID ${id}
-
-这是一个用于 **UI 展示** 的静态样本。
-
-## 核心特性
-- **响应式布局**：在不同尺寸的屏幕上都能良好显示。
-- **组件化**：由独立的、可复用的 Vue 组件构成。
-- **清晰的数据流**：采用 Pinia 进行集中式状态管理。
-
----
-
-### 代码示例
-\`\`\`typescript
-// TypeScript code example
-function greet(name: string): string {
-  return \`Hello, \${name}!\`;
-}
-\`\`\`
-
-### 引用
-> “设计不仅仅是它的外观和感觉，设计是它的工作方式。” - 史蒂夫·乔布斯
-
-这是一个完美的UI原型。
-        `;
-        content.value = sampleContent;
-      } else {
-        // Existing logic for other item types
-        const response = await fetch(`/api/${itemType}/${id}/content`);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: Failed to fetch content for ${itemType}/${id}`);
-        }
-        content.value = await response.text();
-      }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : `An unknown error occurred while fetching content.`;
-      error.value = errorMessage;
-      console.error(e);
-    } finally {
-      isLoading.value.content = false;
-    }
-  }
-
   return {
     lists,
-    content,
     isLoading,
     error,
     fetchList,
-    fetchContent,
   };
 });

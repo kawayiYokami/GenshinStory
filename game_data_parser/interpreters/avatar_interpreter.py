@@ -21,35 +21,43 @@ class AvatarInterpreter:
         
         self._is_prepared = False
 
-    def _get_text(self, text_map_hash: Any, default: str = "") -> str:
+    def _get_text(self, text_map_hash: Any, default: str = "", index_context: Optional[Any] = None) -> str:
         """根据哈希值安全地获取原始文本。"""
         # The transform_text function is not strictly needed for avatars, but we keep it for consistency
-        text, _ = transform_text(self._text_map.get(str(text_map_hash), default))
+        text_value = self._text_map.get(str(text_map_hash), default)
+        
+        if index_context and text_value:
+            # 在这里，我们实际上是在为一个“文本哈希”建立索引，而不是为整个文件。
+            # 这是一个更精细的控制，但需要DataLoader支持对TextMap的特殊处理。
+            # 为了简化，我们暂时只在 get_json 中处理索引。
+            pass
+
+        text, _ = transform_text(text_value)
         return text
 
-    def _prepare_data(self):
+    def _prepare_data(self, index_context: Optional[Any] = None):
         """一次性加载所有需要的数据并进行预处理。"""
         if self._is_prepared:
             return
         
         logging.info("加载角色相关数据 (Avatar, Fetter)...")
-        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json")
+        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json", index_context=index_context)
 
         # Load and map all configs by avatar ID for quick access
-        avatar_config_list = self.loader.get_json("ExcelBinOutput/AvatarExcelConfigData.json")
+        avatar_config_list = self.loader.get_json("ExcelBinOutput/AvatarExcelConfigData.json", index_context=index_context)
         self._avatar_configs = {item['id']: item for item in avatar_config_list if 'id' in item}
 
-        fetter_info_list = self.loader.get_json("ExcelBinOutput/FetterInfoExcelConfigData.json")
+        fetter_info_list = self.loader.get_json("ExcelBinOutput/FetterInfoExcelConfigData.json", index_context=index_context)
         self._fetter_infos = {item['avatarId']: item for item in fetter_info_list if 'avatarId' in item}
 
-        fetters_list = self.loader.get_json("ExcelBinOutput/FettersExcelConfigData.json")
+        fetters_list = self.loader.get_json("ExcelBinOutput/FettersExcelConfigData.json", index_context=index_context)
         for item in fetters_list:
             avatar_id = item.get('avatarId')
             if avatar_id not in self._fetters:
                 self._fetters[avatar_id] = []
             self._fetters[avatar_id].append(item)
 
-        fetter_story_list = self.loader.get_json("ExcelBinOutput/FetterStoryExcelConfigData.json")
+        fetter_story_list = self.loader.get_json("ExcelBinOutput/FetterStoryExcelConfigData.json", index_context=index_context)
         for item in fetter_story_list:
             avatar_id = item.get('avatarId')
             if avatar_id not in self._fetter_stories:
@@ -73,9 +81,9 @@ class AvatarInterpreter:
         self._prepare_data()
         return self._avatar_configs.get(avatar_id)
 
-    def interpret(self, avatar_id: int) -> Optional[Avatar]:
+    def interpret(self, avatar_id: int, index_context: Optional[Any] = None) -> Optional[Avatar]:
         """解析单个角色的完整信息。"""
-        self._prepare_data()
+        self._prepare_data(index_context=index_context)
 
         avatar_config = self._avatar_configs.get(avatar_id)
         if not avatar_config:

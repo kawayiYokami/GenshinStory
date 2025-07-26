@@ -3,8 +3,12 @@ import logging
 import os
 import pickle
 import lzma
+import re
+import collections
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+from .models import SearchResult
 
 class DataLoader:
     """
@@ -42,13 +46,26 @@ class DataLoader:
         self._talk_id_map: Optional[Dict[int, str]] = None
         self._text_map_cache: Optional[Dict[str, str]] = None
         self._directory_cache: Dict[str, List[Any]] = {}  # 新增：缓存目录遍历结果
+        self._search_index: Dict[str, List[SearchResult]] = collections.defaultdict(list) # 新增：搜索索引
+        self._readable_types: Dict[str, str] = {} # path -> 'world' or 'used'
+        self._all_readables_initialized = False
         
         # 优先从缓存加载
-        if cache_path and self.load_from_cache(cache_path):
-            logging.info(f"已成功从缓存 '{cache_path}' 加载数据。")
-        else:
+        cache_loaded = False
+        if cache_path:
+            # 关键修复：确保缓存路径是相对于数据根目录的绝对路径
+            full_cache_path = Path(self.get_data_root()) / cache_path
+            if self.load_from_cache(str(full_cache_path)):
+                logging.info(f"已成功从缓存 '{full_cache_path}' 加载数据。")
+                cache_loaded = True
+                if self._readable_types:
+                    self._all_readables_initialized = True
+        
+        if not cache_loaded:
             # 如果缓存加载失败或未提供，则进行常规初始化
             logging.info("未找到有效缓存或未提供缓存路径，将从原始文件加载。")
+            # 立即初始化可读物分类表
+            self._initialize_all_readables()
         
         self._initialized = True
     
@@ -60,32 +77,41 @@ class DataLoader:
         """获取数据源的根目录。"""
         return self._data_root
 
-    def get_json(self, relative_path: str) -> dict:
+    def get_json(self, relative_path: str, index_context: Optional[Any] = None) -> dict:
         """
         根据相对于数据根目录的路径获取JSON数据，优先从缓存读取。
+        如果提供了 index_context，则会触发索引构建逻辑。
         """
         # 关键修复：将所有路径分隔符标准化为'/'，以确保跨平台(Windows/Linux)缓存键的一致性
         normalized_path = relative_path.replace('\\', '/')
 
+        data = None
         if normalized_path in self._cache:
-            return self._cache[normalized_path]
+            data = self._cache[normalized_path]
+        else:
+            if not self._data_root:
+                raise ValueError("Data root path is not set. Please call set_data_root() first.")
+
+            full_path = os.path.join(self._data_root, normalized_path)
+
+            try:
+                with open(full_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self._cache[normalized_path] = data
+            except FileNotFoundError:
+                print(f"Error: File not found at {full_path}")
+                return None
+            except json.JSONDecodeError:
+                print(f"Error: Could not decode JSON from {full_path}")
+                return None
         
-        if not self._data_root:
-            raise ValueError("Data root path is not set. Please call set_data_root() first.")
-
-        full_path = os.path.join(self._data_root, normalized_path)
-
-        try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self._cache[normalized_path] = data
-                return data
-        except FileNotFoundError:
-            print(f"Error: File not found at {full_path}")
-            return None
-        except json.JSONDecodeError:
-            print(f"Error: Could not decode JSON from {full_path}")
-            return None
+        # 只有在 cache creation 模式下才会传递 context
+        if index_context and data:
+            logging.getLogger('indexer').debug(f"索引触发: path='{relative_path}', context={index_context}")
+            # 确保即使数据来自缓存，也会执行索引
+            self._index_item(data, index_context)
+            
+        return data
 
     def get_all_json_files_in_dir(self, relative_dir: str, yield_filename: bool = False) -> List[Any]:
         """
@@ -168,10 +194,17 @@ class DataLoader:
         else:
             return Path(full_path).stem
 
-    def get_text_file(self, relative_path: str) -> Optional[str]:
-        """根据相对于数据根目录的路径，读取一个纯文本文件的内容。"""
-        # 关键修复：将所有路径分隔符标准化为'/'，以确保跨平台(Windows/Linux)缓存键的一致性
+    def get_text_file(self, relative_path: str, stain: bool = True) -> Optional[str]:
+        """
+        根据相对于数据根目录的路径，读取一个纯文本文件的内容。
+        :param relative_path: 文件的相对路径。
+        :param stain: 如果为 True，则将此文本标记为“已使用”。
+        """
         normalized_path = relative_path.replace('\\', '/')
+
+        # "染色"操作现在依赖于 stain 参数
+        if stain and normalized_path in self._readable_types:
+            self._readable_types[normalized_path] = 'used'
 
         # 复用 _cache 来缓存文本文件
         if normalized_path in self._cache:
@@ -211,6 +244,23 @@ class DataLoader:
                 self._text_map_cache = {}  # Set to empty dict to avoid re-attempts
         
         return self._text_map_cache
+
+    def _initialize_all_readables(self):
+        """扫描所有 .txt 文件并初始化分类表，默认全为'world'。仅在非缓存模式下首次访问时执行。"""
+        if self._all_readables_initialized:
+            return
+        
+        logging.info("首次初始化，扫描所有可读物...")
+        all_txt_files = self.get_all_file_paths_in_folder("Readable/CHS", name_contains=".txt")
+        for path in all_txt_files:
+            self._readable_types[path] = 'world'
+        self._all_readables_initialized = True
+        logging.info(f"可读物分类表初始化完成，找到 {len(all_txt_files)} 个文件。")
+
+    def get_world_text_paths(self) -> List[str]:
+        """获取所有类型为'world'的文本文件路径列表。"""
+        # 此方法现在直接返回结果，因为初始化已在 __init__ 中完成
+        return [path for path, type in self._readable_types.items() if type == 'world']
 
     def get_talk_id_map(self) -> Dict[int, str]:
         """
@@ -253,11 +303,14 @@ class DataLoader:
         """
         将当前的内部缓存保存到二进制文件中。
         """
+        self._initialize_all_readables()
         cache_data = {
             'file_cache': self._cache,
             'talk_id_map': self.get_talk_id_map(), # Ensure it's generated
             'text_map_cache': self.get_text_map(), # Ensure it's generated
-            'directory_cache': self._directory_cache # New: 目录遍历结果缓存
+            'directory_cache': self._directory_cache, # New: 目录遍历结果缓存
+            'search_index': self._search_index, # 新增
+            'readable_types': self._readable_types
         }
         
         try:
@@ -283,6 +336,8 @@ class DataLoader:
             self._talk_id_map = cache_data.get('talk_id_map', {})
             self._text_map_cache = cache_data.get('text_map_cache', {})
             self._directory_cache = cache_data.get('directory_cache', {})
+            self._search_index = cache_data.get('search_index', collections.defaultdict(list)) # 新增
+            self._readable_types = cache_data.get('readable_types', {})
 
             # Mark derivative caches as loaded
             if not self._talk_id_map: self._talk_id_map = {}
@@ -297,3 +352,55 @@ class DataLoader:
         except Exception as e:
             logging.error(f"从 {file_path} 加载缓存时发生错误: {e}")
             return False
+
+    def _clean_text(self, text: str) -> str:
+        """
+        清洗文本，移除标点符号、特殊字符，并转换为小写。
+        """
+        text = re.sub(r'[^\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7a3a-zA-Z0-9\s]', '', text)
+        text = re.sub(r'\s+', '', text)
+        return text.lower()
+
+    def _generate_ngrams(self, text: str, n: int = 2):
+        """为给定的文本生成二元词条集合。"""
+        if len(text) < n:
+            return set()
+        return {text[i:i+n] for i in range(len(text)-n+1)}
+
+    def _add_to_index(self, keyword: str, item_id: int, item_name: str, item_type: str, source_field: str):
+        """向索引中添加一条记录，处理重复。"""
+        key = keyword.lower()
+        # 检查是否已存在完全相同的记录（id 和 type），避免重复
+        if not any(res.id == item_id and res.type == item_type for res in self._search_index[key]):
+            self._search_index[key].append(
+                SearchResult(id=item_id, name=item_name, type=item_type, match_source=source_field)
+            )
+
+    def _index_item(self, data: dict, context: Any):
+        """
+        为从JSON加载的数据(`data`)，根据其归属信息(`context`)，建立搜索索引。
+        """
+        item_id = context.get('id')
+        item_type = context.get('type')
+        item_name = context.get('name') # name 是必须的，用于显示在搜索结果中
+
+        if not all([item_id, item_type, item_name]):
+            logging.getLogger('indexer').warning(f"索引跳过: context 中缺少 id, type 或 name. context={context}")
+            return
+
+        logging.getLogger('indexer').debug(f"正在为 item (id={item_id}, type={item_type}) 建立索引...")
+
+        # 对 name, description, story 等字段进行索引
+        for field in ['name', 'description', 'story', 'title', 'effect_2_piece', 'effect_4_piece', 'content']:
+            if field in data and isinstance(data[field], str):
+                cleaned_text = self._clean_text(data[field])
+                if not cleaned_text:
+                    continue
+                
+                # 对短字段进行完整索引
+                if len(cleaned_text) <= 5: # 假设长度小于等于5的为短字段
+                     self._add_to_index(cleaned_text, item_id, item_name, item_type, field)
+
+                # 对所有字段都进行二元索引
+                for token in self._generate_ngrams(cleaned_text):
+                     self._add_to_index(token, item_id, item_name, item_type, field)

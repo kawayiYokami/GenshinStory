@@ -37,18 +37,18 @@ class WeaponInterpreter:
         text, _ = transform_text(self._text_map.get(str(text_map_hash), default))
         return text
 
-    def _prepare_data(self):
+    def _prepare_data(self, index_context: Optional[Any] = None):
         """一次性加载所有需要的数据并进行预处理。"""
         if self._is_prepared:
             return
         
         logging.info("加载武器相关数据 (Weapon, Affix)...")
-        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json")
+        self._text_map = self.loader.get_json("TextMap/TextMapCHS.json", index_context=index_context)
 
-        self._weapon_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/WeaponExcelConfigData.json")}
+        self._weapon_configs = {item['id']: item for item in self.loader.get_json("ExcelBinOutput/WeaponExcelConfigData.json", index_context=index_context)}
         
         # Group affix configs by their main ID
-        affix_list = self.loader.get_json("ExcelBinOutput/EquipAffixExcelConfigData.json")
+        affix_list = self.loader.get_json("ExcelBinOutput/EquipAffixExcelConfigData.json", index_context=index_context)
         for item in affix_list:
             main_id = item.get("id")
             if main_id:
@@ -75,26 +75,42 @@ class WeaponInterpreter:
         self._is_prepared = True
         logging.info("武器相关数据加载完成。")
 
+    def _is_weapon_invalid(self, config: Dict[str, Any]) -> (bool, str):
+        """检查一个武器是否因为是测试物品而被跳过。"""
+        name = self._get_text(config.get("nameTextMapHash"))
+
+        # 规则1: 标题文本检查
+        if "测试" in name:
+            return True, f"Name contains '测试'"
+        
+        return False, ""
+
     def get_all_weapon_ids(self) -> List[int]:
         """获取所有可解析的武器ID列表。"""
         self._prepare_data()
-        # Simple filter to get non-test weapons
-        return [
-            w_id for w_id, config in self._weapon_configs.items()
-            if config.get("rankLevel", 0) > 1 and self._get_text(config.get("nameTextMapHash"))
-        ]
+        valid_ids = []
+        for w_id, config in self._weapon_configs.items():
+            is_invalid, _ = self._is_weapon_invalid(config)
+            if not is_invalid:
+                valid_ids.append(w_id)
+        return valid_ids
 
     def get_raw_data(self, weapon_id: int) -> Optional[Dict[str, Any]]:
         """获取单个武器的原始配置数据。"""
         self._prepare_data()
         return self._weapon_configs.get(weapon_id)
 
-    def interpret(self, weapon_id: int) -> Optional[Weapon]:
+    def interpret(self, weapon_id: int, index_context: Optional[Any] = None) -> Optional[Weapon]:
         """解析单个武器的完整信息。"""
-        self._prepare_data()
+        self._prepare_data(index_context=index_context)
 
         weapon_config = self._weapon_configs.get(weapon_id)
         if not weapon_config:
+            return None
+        
+        is_invalid, reason = self._is_weapon_invalid(weapon_config)
+        if is_invalid:
+            logging.debug(f"Skipping weapon {weapon_id}. Reason: {reason}")
             return None
 
         weapon = Weapon(
