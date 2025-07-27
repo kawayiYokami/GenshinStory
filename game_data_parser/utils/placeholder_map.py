@@ -16,6 +16,9 @@ INTERNAL_MATE_TAG = '{__MATE__}'
 REGEX_RULES = [
     # 注意: 性别相关的 {M#...} 和 {F#...} 由转换器根据参数动态处理, 不在此处定义。
     
+    # 新增规则：处理 {M#...}{F#...} 格式的性别占位符，默认选择男性版本
+    (r'\{M#(.*?)\}\{F#.*?\}', r'\1'),
+    
     # 规则 1: Ruby 注音格式, 例如 {RUBY#[侯普]希望} -> 希望(侯普)
     (r'\{RUBY#\[(.*?)\](.*?)\}', r'\2(\1)'),
     
@@ -24,7 +27,10 @@ REGEX_RULES = [
     (r'\{MATEAVATAR.*?\}', INTERNAL_MATE_TAG),
     (r'\{NICKNAME\}', INTERNAL_PLAYER_TAG),
     
-    # 规则 3: 移除其他已知的技术性标记
+    # 规则 3: 处理 REALNAME 占位符
+    (r'\{REALNAME\[ID\(1\).*?\]\}', '阿帽'),
+    (r'\{REALNAME\[ID\(2\).*?\]\}', '小龙'),
+    # 捕获并移除任何其他未知的 REALNAME 变体，以防出错
     (r'\{REALNAME.*?\}', ''),
 
     # 规则 4: 移除富文本标签 (例如 <color...>, <image...>)

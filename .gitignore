@@ -4,10 +4,9 @@ agent/
 .__pycache__/
 AnimeGameData/
 GenshinCompanion-Ele/
-GenshinDialog/
+turnbasedgamedata/
 notebook/
 scraper/
-scripts/
 logs/
 test_outputs/
 
@@ -16,4 +15,29 @@ __pycache__/
 *.pyc
 docs/
 # Cache files
-turnbasedgamedata/
+
+turnbasedgamedata/TextMap/TextMapCHT.json
+turnbasedgamedata/TextMap/TextMapDE.json
+turnbasedgamedata/TextMap/TextMapEN.json
+turnbasedgamedata/TextMap/TextMapES.json
+turnbasedgamedata/TextMap/TextMapFR.json
+turnbasedgamedata/TextMap/TextMapID.json
+turnbasedgamedata/TextMap/TextMapJP.json
+turnbasedgamedata/TextMap/TextMapKR.json
+turnbasedgamedata/TextMap/TextMapMainCHS.json
+turnbasedgamedata/TextMap/TextMapMainCHT.json
+turnbasedgamedata/TextMap/TextMapMainDE.json
+turnbasedgamedata/TextMap/TextMapMainEN.json
+turnbasedgamedata/TextMap/TextMapMainES.json
+turnbasedgamedata/TextMap/TextMapMainFR.json
+turnbasedgamedata/TextMap/TextMapMainID.json
+turnbasedgamedata/TextMap/TextMapMainJP.json
+turnbasedgamedata/TextMap/TextMapMainKR.json
+turnbasedgamedata/TextMap/TextMapMainPT.json
+turnbasedgamedata/TextMap/TextMapMainRU.json
+turnbasedgamedata/TextMap/TextMapMainTH.json
+turnbasedgamedata/TextMap/TextMapMainVI.json
+turnbasedgamedata/TextMap/TextMapPT.json
+turnbasedgamedata/TextMap/TextMapRU.json
+turnbasedgamedata/TextMap/TextMapTH.json
+turnbasedgamedata/TextMap/TextMapVI.json

@@ -211,10 +211,13 @@ class QuestInterpreter:
         if role_type == 'TALK_ROLE_BLACK_SCREEN':
             final_role_name = "旁白"
 
+        # 在最终赋值前，对发言人名称进行一次最终的、统一的文本转换
+        cleaned_speaker, _ = transform_text(final_role_name)
+
         # 创建当前节点
         current_node = DialogueNode(
             id=start_id,
-            speaker=final_role_name,
+            speaker=cleaned_speaker,
             content=content,
             node_type="option" if role_type == 'TALK_ROLE_PLAYER' else "dialogue"
         )

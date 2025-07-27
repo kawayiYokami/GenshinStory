@@ -1,43 +1,63 @@
-from .services import DataLoader, TextMapService
-from .interpreters import QuestInterpreter
+import os
+import random
+import re
+
+from hsr_data_parser.formatters.rogue_event_formatter import RogueEventFormatter
+from hsr_data_parser.services import DataLoader, TextMapService
+from hsr_data_parser.interpreters import RogueEventInterpreter
 
 def main():
     """
-    Main function to test the HSR data parser.
+    Main function to test the RogueEventInterpreter.
     """
     # --- Initialization ---
-    # Note: TextMapCHS.json is not in the provided file list, so this might fail.
-    # Assuming it exists in the same directory.
-    loader = DataLoader(data_path="turnbasedgamedata/ExcelOutput")
+    print("--- 初始化服务 ---")
+    loader = DataLoader()
     text_map_service = TextMapService(loader, language_code="CHS")
-    quest_interpreter = QuestInterpreter(loader, text_map_service)
+    interpreter = RogueEventInterpreter(loader, text_map_service)
+    formatter = RogueEventFormatter()
 
-    # --- Select a quest to test ---
-    # From QuestData.json, QuestID 1001714 has FinishWayID 1001714.
-    # From FinishWay.json, ID 1001714 is of type "FinishMission" and has ParamIntList.
-    # This makes it a good candidate for a test.
-    test_quest_id = 1001714
+    # --- 动态获取所有事件ID ---
+    event_dir = "turnbasedgamedata/Config/Level/Rogue/RogueDialogue/"
+    all_event_ids = []
+    if os.path.exists(event_dir):
+        for event_folder in os.listdir(event_dir):
+            if event_folder.startswith("Event"):
+                # 使用正则表达式从 "Event0313601" 中提取数字 313601
+                match = re.search(r'\d+', event_folder)
+                if match:
+                    all_event_ids.append(int(match.group()))
+    
+    if not all_event_ids:
+        print("错误: 找不到任何事件。")
+        return
 
-    # --- Interpretation ---
-    print(f"Attempting to interpret Quest ID: {test_quest_id}")
-    quest = quest_interpreter.interpret(test_quest_id)
-
-    # --- Output ---
-    if quest:
-        print("\n--- Quest Details ---")
-        print(f"  ID: {quest.quest_id}")
-        print(f"  Title: {quest.quest_title}")
-        if quest.steps:
-            print("  Steps:")
-            for i, step in enumerate(quest.steps, 1):
-                print(f"    {i}. ID: {step.step_id}")
-                print(f"       Title: {step.title}")
-                print(f"       Description: {step.description}")
-        else:
-            print("  No steps found for this quest.")
-        print("---------------------\n")
+    # --- 随机选择3个事件进行测试 ---
+    # 使用 if/else 避免数量不足时出错
+    num_to_sample = 3
+    if len(all_event_ids) < num_to_sample:
+        test_event_ids = all_event_ids
     else:
-        print(f"Failed to interpret Quest ID: {test_quest_id}")
+        test_event_ids = random.sample(all_event_ids, num_to_sample)
+
+    for test_event_id in test_event_ids:
+        print(f"\n--- 正在解析模拟宇宙事件: {test_event_id} ---")
+        try:
+            event_data = interpreter.interpret(test_event_id)
+
+            if event_data:
+                formatted_output = formatter.format(event_data)
+                if formatted_output:
+                    print("\n--- 解析结果 ---")
+                    print(formatted_output)
+                else:
+                    print("解析成功但无有效对话数据。")
+            else:
+                print("解析失败。")
+        except Exception as e:
+            print(f"解析事件 {test_event_id} 时发生错误: {e}")
+
+    print("\n--- 测试完成 ---")
 
 
 if __name__ == "__main__":
