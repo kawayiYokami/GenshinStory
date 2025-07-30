@@ -14,4 +14,4 @@ command = "python scripts/hsr_generate_markdown.py && python scripts/gi_generate
 # Set the Python and Node.js versions to ensure a consistent build environment.
 # These should match the versions you use in development.
 PYTHON_VERSION = "3.10"
-NODE_VERSION = "18"
+NODE_VERSION = "20"
