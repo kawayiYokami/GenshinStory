@@ -1,11 +1,13 @@
-import { ref, watch, computed } from 'vue';
+import { watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '@/stores/app';
+import { useDataStore } from '@/stores/data';
+import { storeToRefs } from 'pinia';
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
-const fullIndex = ref([]);
-const categories = ref([]);
+const dataStore = useDataStore();
+const { indexData: fullIndex } = storeToRefs(dataStore);
 const categoryTranslations = {
     // HSR
     books: '书籍',
@@ -26,7 +28,7 @@ const categoryTranslations = {
     book: '书籍',
     readable: '读物'
 };
-const allNavigableCategories = computed(() => {
+const categories = computed(() => {
     if (!fullIndex.value.length)
         return [];
     const categoryNames = new Set();
@@ -40,24 +42,9 @@ const allNavigableCategories = computed(() => {
         path: name
     }));
 });
-async function loadIndexAndDeriveCategories(game) {
-    try {
-        // 修正：加载正确的、用于列表展示的目录索引文件
-        const response = await fetch(`/index_${game}.json`);
-        if (!response.ok)
-            throw new Error(`Failed to load index for ${game}`);
-        fullIndex.value = await response.json();
-        categories.value = allNavigableCategories.value;
-    }
-    catch (error) {
-        console.error("Error loading index:", error);
-        fullIndex.value = [];
-        categories.value = [];
-    }
-}
 watch(() => appStore.currentGame, (newGame) => {
     if (newGame) {
-        loadIndexAndDeriveCategories(newGame);
+        dataStore.fetchIndex(newGame);
     }
 }, { immediate: true });
 function getNavPath(type, payload) {

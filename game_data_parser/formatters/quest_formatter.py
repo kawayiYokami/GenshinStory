@@ -41,7 +41,12 @@ class QuestFormatter:
                 
                 if step.dialogue_nodes:
                     md.append("") # 对话前添加空行
-                    for line in step.dialogue_nodes:
-                        md.append(f"- **{line.speaker}**: {line.content}")
+                    for node in step.dialogue_nodes:
+                        if node.node_type == 'narratage':
+                            # 为旁白使用引用块格式，使其在视觉上更突出
+                            md.append(f"> {node.content}")
+                        else:
+                            # 对话和选项保持原有格式
+                            md.append(f"- **{node.speaker}**: {node.content}")
         
         return "\n".join(md)

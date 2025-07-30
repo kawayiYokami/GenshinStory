@@ -1,44 +1,21 @@
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useAppStore } from '@/stores/app';
+import { useDataStore } from '@/stores/data';
+import { storeToRefs } from 'pinia';
 // --- 响应式状态 ---
 const appStore = useAppStore();
+const dataStore = useDataStore();
+const { isLoading, error, indexData: catalogIndex } = storeToRefs(dataStore);
 const searchQuery = ref('');
-const isLoading = ref(true); // 初始加载目录
 const isSearching = ref(false); // 搜索过程状态
-const error = ref(null);
 const results = ref([]); // 结果现在是完整的目录条目
 const hasSearched = ref(false);
 // --- 索引数据存储 ---
-let catalogIndex = [];
-// 缓存已加载的分片，key是分片名(如'旅'), value是分片内容
-let chunkCache = {};
+// 搜索分片缓存现在由 dataStore 管理
 // 将目录索引转换为以ID为键的Map，以便快速查找
 const catalogMap = computed(() => {
-    return new Map(catalogIndex.map(item => [item.id, item]));
+    return new Map(catalogIndex.value.map(item => [item.id, item]));
 });
-// --- 数据加载 ---
-async function loadCatalogIndex(game) {
-    isLoading.value = true;
-    error.value = null;
-    results.value = [];
-    searchQuery.value = '';
-    hasSearched.value = false;
-    catalogIndex = [];
-    chunkCache = {}; // 切换游戏时清空所有缓存
-    try {
-        const response = await fetch(`/index_${game}.json`);
-        if (!response.ok)
-            throw new Error(`无法加载 ${game} 的目录索引文件。`);
-        catalogIndex = await response.json();
-    }
-    catch (e) {
-        error.value = e instanceof Error ? e.message : '未知错误';
-        console.error(e);
-    }
-    finally {
-        isLoading.value = false;
-    }
-}
 // --- 搜索逻辑 ---
 /**
  * 将字符串切分为二字词组 (bigrams)
@@ -54,56 +31,10 @@ function getBigrams(text) {
     }
     return Array.from(bigrams);
 }
-/**
- * 根据搜索词，按需、并行地加载所需的分片文件
- */
-async function fetchSearchChunks(terms) {
-    const game = appStore.currentGame;
-    const requiredChars = new Set();
-    // 确定需要哪些分片文件
-    terms.forEach(term => {
-        if (term.length > 0) {
-            const firstChar = term[0];
-            // 如果分片尚未被缓存，则加入请求列表
-            if (!chunkCache[firstChar]) {
-                requiredChars.add(firstChar);
-            }
-        }
-    });
-    if (requiredChars.size === 0) {
-        return; // 所有需要的分片都已在缓存中
-    }
-    // 并行请求所有未缓存的分片
-    try {
-        const searchDir = game === 'hsr' ? 'search_hsr' : 'search';
-        const promises = Array.from(requiredChars).map(char => fetch(`/${searchDir}/${char}.json`).then(res => {
-            if (res.ok)
-                return res.json();
-            // 如果文件不存在（例如搜索了一个罕见的字），则返回一个空对象，而不是抛出错误
-            if (res.status === 404)
-                return {};
-            throw new Error(`无法加载分片 ${char}.json`);
-        }));
-        const settledResults = await Promise.allSettled(promises);
-        settledResults.forEach((result, index) => {
-            const char = Array.from(requiredChars)[index];
-            if (result.status === 'fulfilled') {
-                chunkCache[char] = result.value; // 缓存加载到的分片
-            }
-            else {
-                console.error(`加载分片 ${char} 失败:`, result.reason);
-                chunkCache[char] = {}; // 即使失败也缓存空对象，避免重试
-            }
-        });
-    }
-    catch (e) {
-        // 这个 catch 块可能不会被执行，因为 Promise.allSettled 不会短路
-        error.value = e instanceof Error ? e.message : '加载搜索分片时发生未知错误';
-    }
-}
+// fetchSearchChunks 逻辑已移至 dataStore
 async function performSearch() {
     hasSearched.value = true;
-    if (!searchQuery.value.trim() || catalogIndex.length === 0) {
+    if (!searchQuery.value.trim() || catalogIndex.value.length === 0) {
         results.value = [];
         return;
     }
@@ -112,13 +43,13 @@ async function performSearch() {
     error.value = null;
     try {
         const queryBigrams = getBigrams(searchQuery.value);
-        // 1. 确保所有需要的分片都已加载
-        await fetchSearchChunks(queryBigrams);
+        // 1. 并行从 dataStore 获取所有需要的分片
+        const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentGame, bigram[0]));
+        const chunks = await Promise.all(chunkPromises);
         // 2. 获取每个二元组对应的ID列表
         const idSets = [];
-        queryBigrams.forEach(bigram => {
-            const firstChar = bigram[0];
-            const chunk = chunkCache[firstChar];
+        queryBigrams.forEach((bigram, index) => {
+            const chunk = chunks[index];
             if (chunk && chunk[bigram]) {
                 idSets.push(new Set(chunk[bigram]));
             }
@@ -153,11 +84,15 @@ async function performSearch() {
 }
 // --- 生命周期钩子 ---
 watch(() => appStore.currentGame, (newGame) => {
-    loadCatalogIndex(newGame);
-});
-onMounted(() => {
-    loadCatalogIndex(appStore.currentGame);
-});
+    if (newGame) {
+        // Clear search results when game changes
+        results.value = [];
+        searchQuery.value = '';
+        hasSearched.value = false;
+        // The dataStore now handles clearing its own caches when the game changes.
+        dataStore.fetchIndex(newGame);
+    }
+}, { immediate: true });
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
 const __VLS_ctx = {};
 let __VLS_components;
@@ -257,10 +192,10 @@ var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
         return {
-            searchQuery: searchQuery,
             isLoading: isLoading,
-            isSearching: isSearching,
             error: error,
+            searchQuery: searchQuery,
+            isSearching: isSearching,
             results: results,
             hasSearched: hasSearched,
             performSearch: performSearch,

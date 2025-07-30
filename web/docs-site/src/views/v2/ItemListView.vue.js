@@ -1,14 +1,15 @@
-import { ref, watch, computed } from 'vue';
+import { watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/app';
+import { useDataStore } from '@/stores/data';
+import { storeToRefs } from 'pinia';
 import { ElAutoResizer } from 'element-plus/es/components/table-v2/index.mjs';
 import { FixedSizeList as ElVirtualList } from 'element-plus/es/components/virtual-list/index.mjs';
 import 'element-plus/es/components/virtual-list/style/css';
 const route = useRoute();
 const appStore = useAppStore();
-const isLoading = ref(false);
-const error = ref(null);
-const fullIndex = ref([]);
+const dataStore = useDataStore();
+const { isLoading, error, indexData: fullIndex } = storeToRefs(dataStore);
 const category = computed(() => {
     return Array.isArray(route.params.categoryName)
         ? route.params.categoryName[0]
@@ -21,31 +22,12 @@ const filteredItems = computed(() => {
     // Use startsWith for broader category matching (e.g., "Weapon" should match "Weapon/Sword")
     return fullIndex.value.filter(item => item.type.toLowerCase().startsWith(category.value.toLowerCase()));
 });
-async function loadIndex(game) {
-    isLoading.value = true;
-    error.value = null;
-    try {
-        // 修正：加载正确的、用于列表展示的目录索引文件
-        const response = await fetch(`/index_${game}.json`);
-        if (!response.ok)
-            throw new Error(`索引文件加载失败: ${response.statusText}`);
-        fullIndex.value = await response.json();
-    }
-    catch (e) {
-        error.value = e instanceof Error ? e.message : '未知错误';
-        console.error(e);
-    }
-    finally {
-        isLoading.value = false;
-    }
-}
 // Watch for game changes from the store.
-// When the game changes, reload the index.
+// When the game changes, trigger the fetch action in the data store.
 // immediate: true ensures it runs once on component creation.
-watch(() => appStore.currentGame, (newGame, oldGame) => {
-    // Only reload if the game actually changes or if it's the first load (oldGame is undefined)
-    if (newGame && newGame !== oldGame) {
-        loadIndex(newGame);
+watch(() => appStore.currentGame, (newGame) => {
+    if (newGame) {
+        dataStore.fetchIndex(newGame);
     }
 }, { immediate: true });
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */

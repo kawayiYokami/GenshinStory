@@ -1,13 +1,15 @@
-import { ref, watch } from 'vue';
+import { ref, watch, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { marked } from 'marked';
 import 'github-markdown-css/github-markdown-light.css';
+import { useDataStore } from '@/stores/data';
+import MarkdownWorker from '@/workers/markdown.worker.ts?worker';
 const route = useRoute();
+const dataStore = useDataStore();
 const contentHtml = ref('');
 const isLoading = ref(false);
 const error = ref(null);
+let markdownWorker = new MarkdownWorker();
 async function loadContent() {
-    // 从路由中解构出 game 参数
     const { game } = route.params;
     if (!game) {
         error.value = '无效的游戏参数。';
@@ -15,34 +17,41 @@ async function loadContent() {
     }
     isLoading.value = true;
     error.value = null;
+    contentHtml.value = '';
     try {
-        // 1. 从 route.path 获取当前页面的完整 URL 路径
-        // 例如: /v2/gi/category/weapon/单手剑/西风剑-11401
         const urlPath = route.path;
-        // 2. 将 URL 路径转换为实际的 Markdown 文件路径
-        // 将 /v2/gi/category/ 替换为 /gi_md/
         const mdPath = urlPath.replace(`/v2/${game}/category`, `/${game}_md`) + '.md';
-        // 3. 发起 fetch 请求
-        const mdResponse = await fetch(mdPath);
-        if (!mdResponse.ok) {
-            if (mdResponse.status === 404) {
-                throw new Error(`文件未找到: ${mdPath}`);
-            }
-            throw new Error(`Markdown 文件加载失败: ${mdResponse.statusText}`);
+        // Fetch markdown from dataStore (which handles caching)
+        const markdownText = await dataStore.fetchMarkdownContent(mdPath);
+        if (!markdownWorker) {
+            throw new Error('Markdown parser worker is not available.');
         }
-        const markdownText = await mdResponse.text();
-        contentHtml.value = await marked(markdownText);
+        // Post the markdown text to the worker for parsing
+        markdownWorker.postMessage(markdownText);
+        markdownWorker.onmessage = (event) => {
+            if (event.data.error) {
+                throw new Error(event.data.error);
+            }
+            contentHtml.value = event.data.html;
+            isLoading.value = false;
+        };
+        markdownWorker.onerror = (event) => {
+            throw new Error(`Markdown worker error: ${event.message}`);
+        };
     }
     catch (e) {
         error.value = e instanceof Error ? e.message : '加载内容时发生未知错误。';
-        contentHtml.value = ''; // 清空旧内容
-        console.error(e);
-    }
-    finally {
         isLoading.value = false;
+        console.error(e);
     }
 }
 watch(() => route.path, loadContent, { immediate: true });
+onUnmounted(() => {
+    if (markdownWorker) {
+        markdownWorker.terminate();
+        markdownWorker = null;
+    }
+});
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
 const __VLS_ctx = {};
 let __VLS_components;

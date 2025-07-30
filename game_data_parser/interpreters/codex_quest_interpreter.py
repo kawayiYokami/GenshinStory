@@ -43,7 +43,7 @@ class CodexQuestInterpreter:
                         dialogue_nodes.append(DialogueNode(
                             id=item_id,
                             speaker="旁白",
-                            content=self._get_text(text_data.get("text", {}).get("textId")),
+                            content=self._get_text(text_data.get("textId")),
                             node_type="narratage"
                         ))
                     continue
