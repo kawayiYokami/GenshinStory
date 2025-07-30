@@ -51,13 +51,11 @@
 
 ### 步骤 2: 生成数据内容
 
-返回项目根目录。`scripts` 目录下的脚本负责将游戏数据转换为前端可以展示的 Markdown 文件。
+返回项目根目录。`scripts` 目录下的脚本负责利用已有的数据缓存，生成前端可以展示的 Markdown 文件。
 
-请按顺序执行以下脚本：
+请执行以下脚本：
 ```bash
-python scripts/hsr_create_cache.py
 python scripts/hsr_generate_markdown.py
-python scripts/gi_create_cache.py
 python scripts/gi_generate_markdown.py
 ```
 执行完毕后，所需的数据和 Markdown 文件会生成在前端项目的指定目录中。
