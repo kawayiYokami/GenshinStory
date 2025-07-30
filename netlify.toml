@@ -1,0 +1,17 @@
+# Netlify configuration file
+
+[build]
+# Directory (relative to the root) that contains the deploy-ready assets.
+publish = "web/docs-site/dist"
+
+# The full command to run to build the site.
+# 1. Run the Python scripts to generate data and markdown files.
+# 2. Change directory into the frontend application.
+# 3. Install frontend dependencies and build the static site.
+command = "python scripts/hsr_create_cache.py && python scripts/hsr_generate_markdown.py && python scripts/gi_create_cache.py && python scripts/gi_generate_markdown.py && cd web/docs-site && npm install && npm run build"
+
+[build.environment]
+# Set the Python and Node.js versions to ensure a consistent build environment.
+# These should match the versions you use in development.
+PYTHON_VERSION = "3.10"
+NODE_VERSION = "18"

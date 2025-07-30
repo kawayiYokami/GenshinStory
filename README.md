@@ -1,83 +1,82 @@
 # Genshin Story
 
-这是一个用于浏览和检索游戏剧情数据的 Web 应用。项目采用前后端分离架构，并使用 Docker 进行了完全容器化，以实现一键部署和运行。
+这是一个用于浏览和检索游戏剧情数据的静态 Web 应用。
 
-- **后端**: 使用 `FastAPI` 构建，负责提供数据 API。
-- **前端**: 使用 `Vue.js` 构建，负责展示数据和用户交互。
-- **数据层**: 由 `game_data_parser` 模块提供支持，该模块负责解析和管理游戏数据。
+## 核心思想
+
+项目的核心思想是**数据与展示分离**：
+- **数据处理**: 使用纯 Python 脚本，将原始的游戏数据解析、转换并生成为一系列 Markdown 文件。
+- **内容展示**: 使用一个独立的 Vue.js 应用，负责读取这些生成的 Markdown 文件，并提供一个美观、可交互的界面进行展示和搜索。
 
 ## 项目结构
 
 ```
 .
-├── game_data_parser/   # 核心数据解析模块 (Python)
+├── scripts/              # 用于生成数据的 Python 脚本
 ├── web/
-│   ├── backend/        # FastAPI 后端应用
-│   └── frontend/       # Vue.js 前端应用
-├── docker-compose.yml  # Docker 服务编排文件
-├── game_data.cache     # 必需的游戏数据缓存文件
-└── README.md           # 本文档
+│   └── docs-site/        # Vue.js 前端应用
+├── start_web.bat         # 一键启动 Web 服务器的批处理文件
+└── README.md             # 本文档
 ```
 
-- `game_data_parser/`: 一个独立的 Python 库，负责从 `game_data.cache` 加载和解析所有游戏数据，并为后端提供结构化的数据服务。
-- `web/backend/`: 基于 FastAPI 的后端服务。它利用 `game_data_parser` 模块，并通过 RESTful API 将数据暴露给前端。
-- `web/frontend/`: 基于 Vue.js 的单页面应用 (SPA)。它通过调用后端的 API 来获取数据，并在浏览器中进行渲染。
+## 快速开始
 
-## 快速开始 (使用 Docker)
-
-本项目已经完全配置为通过 Docker 运行。您无需在本地安装 Python, Node.js 或任何相关的依赖。
+请遵循以下步骤在您的本地计算机上运行本项目。
 
 ### 先决条件
 
-- [Docker](https://www.docker.com/get-started) 已安装并正在运行。
-- 确保 `game_data.cache` 文件位于项目的根目录。
+- **Python**: 版本需 >= 3.10
+- **uv**: 用于安装 Python 依赖。如果您的系统中还没有 `uv`，请先通过以下命令安装：
+  ```shell
+  pip install uv
+  ```
+- **Node.js**: 用于运行和构建前端应用。
 
-### 启动应用
+### 步骤 1: 安装项目依赖
 
-1.  **克隆或下载项目到本地。**
+项目分为 Python 数据处理部分和 Node.js 前端部分，需要分别安装依赖。
 
-2.  **打开终端，进入项目根目录。**
-
-3.  **使用 `docker-compose` 构建并启动服务：**
-
+1.  **安装 Python 依赖**:
+    在项目根目录下打开终端，运行：
     ```bash
-    docker-compose up --build
+    uv install
     ```
 
-    - `--build` 参数会强制 Docker 根据 `Dockerfile` 重新构建镜像。首次运行时是必需的。
-    - 该命令会同时启动 `backend` 和 `frontend` 两个服务。
-    - 您将在终端看到来自两个服务的日志输出。
+2.  **安装前端依赖**:
+    进入前端应用目录并安装依赖。
+    ```bash
+    cd web/docs-site
+    npm install
+    ```
 
-4.  **访问应用**
+### 步骤 2: 生成数据内容
 
-    构建完成后，打开您的浏览器并访问：
-    **[http://localhost](http://localhost)**
+返回项目根目录。`scripts` 目录下的脚本负责将游戏数据转换为前端可以展示的 Markdown 文件。
 
-    您应该能看到应用的前端界面。
-
-### 工作原理
-
-- `docker-compose` 根据 `docker-compose.yml` 文件启动两个服务：`backend` 和 `frontend`。
-- **后端服务 (`backend`)**:
-    - 使用 `web/backend/Dockerfile` 构建。
-    - 这是一个多阶段构建的 Python 镜像，包含了所有依赖和应用代码。
-    - FastAPI 应用在容器的 `8666` 端口上运行。此端口不对外暴露，仅在 Docker 内部网络中可访问。
-- **前端服务 (`frontend`)**:
-    - 使用 `web/frontend/Dockerfile` 构建。
-    - 这是一个多阶段构建的 Node.js/Nginx 镜像。
-    - 第一阶段使用 `npm run build` 构建出静态文件。
-    - 第二阶段将构建好的静态文件（HTML, CSS, JS）放入一个轻量级的 `Nginx` 服务器中。
-    - Nginx 在容器的 `80` 端口上提供服务，该端口被映射到您主机的 `80` 端口。
-- **服务通信**:
-    - 当您在浏览器中与前端交互时，前端会向 `/api/...` 发出请求。
-    - `Nginx` (在前端容器中) 根据 `web/frontend/nginx.conf` 的配置，将所有 `/api/` 的请求反向代理到 `http://backend:8666`。
-    - Docker 的内部 DNS 会将服务名 `backend` 解析为后端容器的内部 IP 地址，从而实现前后端通信。
-
-### 停止应用
-
-在您启动 `docker-compose` 的终端中，按下 `Ctrl + C`。
-
-要彻底移除容器和网络，可以运行：
+请按顺序执行以下脚本：
 ```bash
-docker-compose down
+python scripts/hsr_create_cache.py
+python scripts/hsr_generate_markdown.py
+python scripts/gi_create_cache.py
+python scripts/gi_generate_markdown.py
 ```
+执行完毕后，所需的数据和 Markdown 文件会生成在前端项目的指定目录中。
+
+### 步骤 3: 构建前端应用
+
+数据生成后，我们需要构建生产环境下的静态前端文件。
+
+确保您当前位于 `web/docs-site` 目录下，然后运行：
+```bash
+npm run build
+```
+此命令会将 Vue.js 应用打包成优化后的 HTML, CSS 和 JavaScript 文件，存放在 `web/docs-site/dist` 目录中。
+
+### 步骤 4: 启动并浏览网站
+
+回到项目的根目录，您会找到一个名为 `start_web.bat` 的文件。
+
+**双击运行 `start_web.bat`**。
+
+它会自动为您启动一个本地的 HTTP 服务器，并打开您的默认浏览器访问 `http://localhost:8000`。现在您可以看到运行中的网站了。
+

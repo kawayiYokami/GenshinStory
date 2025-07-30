@@ -2,6 +2,7 @@ import pickle
 import gzip
 import re
 from typing import Any, Dict, List
+from collections import defaultdict
 
 class CacheService:
     """
@@ -20,39 +21,48 @@ class CacheService:
         self.rogue_events: List[Any] = []
         
         # 搜索索引
-        self._search_index: Dict[str, List[Dict[str, Any]]] = {}
+        self._search_index: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
-    def _clean_markdown_for_search(self, markdown_text: str) -> str:
-        """移除Markdown格式，保留纯文本内容。"""
-        if not markdown_text: return ""
-        text = re.sub(r'#+\s?', '', markdown_text)
-        text = re.sub(r'(\*\*|__)(.*?)(\*\*|__)', r'\2', text)
-        text = re.sub(r'(\*|_)(.*?)(\*|_)', r'\2', text)
-        text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)
-        text = re.sub(r'^\s*>\s+', '', text, flags=re.MULTILINE)
-        text = re.sub(r'---', '', text)
-        return text.strip()
+    def _clean_text_for_search(self, text: str) -> str:
+        """清洗文本，移除标点符号、特殊字符，并转换为小写。"""
+        if not text: return ""
+        text = re.sub(r'[^\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7a3a-zA-Z0-9\s]', '', text)
+        text = re.sub(r'\s+', '', text)
+        return text.lower()
+
+    def _generate_ngrams(self, text: str, n: int = 2):
+        """为给定的文本生成二元词条集合。"""
+        if len(text) < n:
+            return set()
+        return {text[i:i+n] for i in range(len(text)-n+1)}
+    
+    def _add_to_index(self, token: str, item_id: Any, item_name: str, item_type: str):
+        """向索引中添加一条记录，处理重复。"""
+        context = {'id': item_id, 'name': item_name, 'type': item_type}
+        if context not in self._search_index[token]:
+            self._search_index[token].append(context)
 
     def index_item(self, item_id: Any, item_name: str, item_type: str, markdown_content: str):
         """
-        为给定的项目创建索引。
+        为给定的项目创建索引 (使用二元组分词)。
         """
         if not item_name or not markdown_content:
             return
-            
-        full_text = f"{item_name}\n{self._clean_markdown_for_search(markdown_content)}"
-        
-        # 使用简单的分词（非中文优化）
-        tokens = set(re.findall(r'\b\w+\b', full_text.lower()))
-        
-        context = {'id': item_id, 'name': item_name, 'type': item_type}
 
-        for token in tokens:
-            if token not in self._search_index:
-                self._search_index[token] = []
-            # 避免重复添加完全相同的上下文
-            if context not in self._search_index[token]:
-                self._search_index[token].append(context)
+        # 索引名称
+        cleaned_name = self._clean_text_for_search(item_name)
+        if cleaned_name:
+            for token in self._generate_ngrams(cleaned_name):
+                self._add_to_index(token, item_id, item_name, item_type)
+            if len(cleaned_name) <= 5: # 短名称也作为整体索引
+                 self._add_to_index(cleaned_name, item_id, item_name, item_type)
+
+        # 索引内容
+        content_text = re.sub(r'#+\s?.*', '', markdown_content) # 移除标题
+        cleaned_content = self._clean_text_for_search(content_text)
+        if cleaned_content:
+            for token in self._generate_ngrams(cleaned_content):
+                self._add_to_index(token, item_id, item_name, item_type)
 
     def save(self, file_path: str):
         """

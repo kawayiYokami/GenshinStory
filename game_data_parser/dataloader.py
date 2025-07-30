@@ -53,8 +53,8 @@ class DataLoader:
         # 优先从缓存加载
         cache_loaded = False
         if cache_path:
-            # 关键修复：确保缓存路径是相对于数据根目录的绝对路径
-            full_cache_path = Path(self.get_data_root()) / cache_path
+            # 关键修正：缓存路径应独立于数据根目录，直接作为路径处理
+            full_cache_path = Path(cache_path)
             if self.load_from_cache(str(full_cache_path)):
                 logging.info(f"已成功从缓存 '{full_cache_path}' 加载数据。")
                 cache_loaded = True
@@ -99,10 +99,8 @@ class DataLoader:
                     data = json.load(f)
                     self._cache[normalized_path] = data
             except FileNotFoundError:
-                print(f"Error: File not found at {full_path}")
                 return None
             except json.JSONDecodeError:
-                print(f"Error: Could not decode JSON from {full_path}")
                 return None
         
         # 只有在 cache creation 模式下才会传递 context
@@ -132,7 +130,6 @@ class DataLoader:
 
         full_dir_path = Path(self._data_root) / relative_dir
         if not full_dir_path.is_dir():
-            print(f"Error: Directory not found at {full_dir_path}")
             # 即使是空结果也要缓存，避免重复的文件系统访问
             self._directory_cache[cache_key] = []
             return []
@@ -171,7 +168,6 @@ class DataLoader:
 
         full_dir_path = Path(self._data_root) / relative_dir
         if not full_dir_path.is_dir():
-            print(f"Error: Directory not found at {full_dir_path}")
             # 即使是空结果也要缓存，避免重复的文件系统访问
             self._directory_cache[cache_key] = []
             return []
@@ -221,7 +217,6 @@ class DataLoader:
                 self._cache[normalized_path] = content
                 return content
         except FileNotFoundError:
-            print(f"Error: Text file not found at {full_path}")
             return None
 
     def get_text_map(self, language: str = "CHS") -> Dict[str, str]:

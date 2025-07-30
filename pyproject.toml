@@ -8,10 +8,6 @@ authors = [
 urls = { Homepage = "https://github.com/kawayiYokami/GenshinStory" }
 requires-python = ">=3.10"
 dependencies = [
-    "ijson>=3.0",
-    "fastapi",
-    "uvicorn[standard]",
-    "python-dotenv",
 ]
 
 [tool.uv]

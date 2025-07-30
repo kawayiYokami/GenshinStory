@@ -1,5 +1,5 @@
 # 在文件顶部添加对 DataLoader 的类型引用
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Literal, TYPE_CHECKING
 from pathlib import Path
 import re
@@ -260,3 +260,7 @@ class SearchResult:
     name: str
     type: str  # e.g., "Character", "Quest", "Weapon"
     match_source: str # 匹配到的字段名，如 "description" 或 "name"
+
+    def to_dict(self):
+        """将 dataclass 实例转换为字典。"""
+        return asdict(self)

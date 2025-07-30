@@ -31,6 +31,10 @@ class MissionFormatter:
                         description_lines = md_description.split('\n')
                         lines.extend([f"> {line}" for line in description_lines])
                     last_ui_info = current_ui_info
+                
+                # If there is dialogue, ensure there's a blank line separating it from the header/description
+                if current_ui_info and sub_mission_script.script and sub_mission_script.script.dialogue_blocks:
+                    lines.append("")
 
                 # Print dialogue
                 if sub_mission_script.script and sub_mission_script.script.dialogue_blocks:
@@ -41,9 +45,11 @@ class MissionFormatter:
                                 text = sentence.text or ""
                                 # If speaker is present, format as dialogue
                                 if speaker:
-                                    lines.append(f"**{speaker}**: {text}")
+                                    # Add two spaces at the end for a markdown line break
+                                    lines.append(f"**{speaker}**: {text}  ")
                                 # If no speaker, output the raw text and sentence ID for investigation
                                 else:
-                                    lines.append(f"> **未知来源文本 (SentenceID: {sentence.id})**: {text}")
+                                    # Add two spaces at the end for a markdown line break
+                                    lines.append(f"**未知来源文本 (SentenceID: {sentence.id})**: {text}  ")
         
         return "\n".join(lines)

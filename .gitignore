@@ -14,30 +14,11 @@ test_outputs/
 __pycache__/
 *.pyc
 docs/
-# Cache files
 
-turnbasedgamedata/TextMap/TextMapCHT.json
-turnbasedgamedata/TextMap/TextMapDE.json
-turnbasedgamedata/TextMap/TextMapEN.json
-turnbasedgamedata/TextMap/TextMapES.json
-turnbasedgamedata/TextMap/TextMapFR.json
-turnbasedgamedata/TextMap/TextMapID.json
-turnbasedgamedata/TextMap/TextMapJP.json
-turnbasedgamedata/TextMap/TextMapKR.json
-turnbasedgamedata/TextMap/TextMapMainCHS.json
-turnbasedgamedata/TextMap/TextMapMainCHT.json
-turnbasedgamedata/TextMap/TextMapMainDE.json
-turnbasedgamedata/TextMap/TextMapMainEN.json
-turnbasedgamedata/TextMap/TextMapMainES.json
-turnbasedgamedata/TextMap/TextMapMainFR.json
-turnbasedgamedata/TextMap/TextMapMainID.json
-turnbasedgamedata/TextMap/TextMapMainJP.json
-turnbasedgamedata/TextMap/TextMapMainKR.json
-turnbasedgamedata/TextMap/TextMapMainPT.json
-turnbasedgamedata/TextMap/TextMapMainRU.json
-turnbasedgamedata/TextMap/TextMapMainTH.json
-turnbasedgamedata/TextMap/TextMapMainVI.json
-turnbasedgamedata/TextMap/TextMapPT.json
-turnbasedgamedata/TextMap/TextMapRU.json
-turnbasedgamedata/TextMap/TextMapTH.json
-turnbasedgamedata/TextMap/TextMapVI.json
+# Cache files
+web/docs-site/public/gi_md/
+web/docs-site/public/hsr_md/
+web/docs-site/public/search/
+web/docs-site/public/search_hsr/
+web/docs-site/public/index_gi.json
+web/docs-site/public/index_hsr.json
