@@ -5,6 +5,7 @@
       <button @click="switchGame('hsr')" :class="{ active: appStore.currentGame === 'hsr' }">星穹铁道</button>
     </div>
     <ul class="nav-list">
+      <li><router-link :to="getNavPath('agent')">问答</router-link></li>
       <li><router-link :to="getNavPath('search')">搜索</router-link></li>
       <li v-for="cat in categories" :key="cat.path">
         <router-link :to="getNavPath('category', cat.path)" :class="{ 'router-link-active': isActive(cat.path) }">{{ cat.name }}</router-link>
@@ -71,10 +72,13 @@ watch(() => appStore.currentGame, (newGame) => {
   }
 }, { immediate: true });
 
-function getNavPath(type: 'search' | 'category', payload?: string) {
+function getNavPath(type: 'search' | 'category' | 'agent', payload?: string) {
   const game = appStore.currentGame;
   if (type === 'search') {
     return `/v2/${game}/search`;
+  }
+  if (type === 'agent') {
+    return `/v2/${game}/agent`;
   }
   if (type === 'category' && payload) {
     return `/v2/${game}/category/${payload}`;
@@ -85,7 +89,7 @@ function getNavPath(type: 'search' | 'category', payload?: string) {
 function switchGame(game: Game) {
   if (appStore.currentGame !== game) {
     appStore.setCurrentGame(game);
-    router.push(`/v2/${game}/search`);
+    router.push(`/v2/${game}/agent`);
   }
 }
 

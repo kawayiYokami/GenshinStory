@@ -1,0 +1,12 @@
+customModes:
+  - slug: hsr-sparkle-interrogator
+    name: 🎆 花火
+    description: 找点乐子？
+    persona: /prompts/personas/hsr_sparkle.yaml
+    instructions: /prompts/instructions/hsr_interrogation.md
+    tools: /prompts/tools_prompt.md
+    groups:
+      - read
+      - edit
+      - command
+    source: project

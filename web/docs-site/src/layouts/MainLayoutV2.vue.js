@@ -2,26 +2,35 @@ import { shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ItemListView from '@/views/v2/ItemListView.vue';
 import SearchViewV2 from '@/views/v2/SearchViewV2.vue';
+import AgentChatView from '@/views/v2/AgentChatView.vue';
 const route = useRoute();
 const functionComponent = shallowRef(ItemListView); // Default component
 const componentMap = {
     'ItemListView': ItemListView,
-    'SearchViewV2': SearchViewV2
+    'SearchViewV2': SearchViewV2,
+    'AgentChatView': AgentChatView
 };
 // Watch for route changes to decide which component to show in the function pane
 watch(() => route.name, (toName) => {
+    console.log('--- Layout Watcher ---');
+    console.log('Route Name:', toName);
+    console.log('Route Meta:', route.meta);
     // When navigating to a detail view, we want to keep the function pane as it is.
     // The 'keepFunctionPane' meta field signals this intent.
     if (route.meta.keepFunctionPane) {
+        console.log('Keeping function pane as is.');
         return;
     }
     const componentName = route.meta.functionPane;
+    console.log('Target Component Name:', componentName);
     if (componentName && componentMap[componentName]) {
         functionComponent.value = componentMap[componentName];
+        console.log('Switched to component:', componentName);
     }
     else {
         // Fallback to a default if the meta field is not set or invalid
         functionComponent.value = ItemListView;
+        console.log('Fallback to default component: ItemListView');
     }
 }, { immediate: true } // Run on initial load
 );

@@ -52,6 +52,9 @@ function getNavPath(type, payload) {
     if (type === 'search') {
         return `/v2/${game}/search`;
     }
+    if (type === 'agent') {
+        return `/v2/${game}/agent`;
+    }
     if (type === 'category' && payload) {
         return `/v2/${game}/category/${payload}`;
     }
@@ -108,24 +111,36 @@ const __VLS_2 = __VLS_1({
 }, ...__VLS_functionalComponentArgsRest(__VLS_1));
 __VLS_3.slots.default;
 var __VLS_3;
+__VLS_asFunctionalElement(__VLS_intrinsicElements.li, __VLS_intrinsicElements.li)({});
+const __VLS_4 = {}.RouterLink;
+/** @type {[typeof __VLS_components.RouterLink, typeof __VLS_components.routerLink, typeof __VLS_components.RouterLink, typeof __VLS_components.routerLink, ]} */ ;
+// @ts-ignore
+const __VLS_5 = __VLS_asFunctionalComponent(__VLS_4, new __VLS_4({
+    to: (__VLS_ctx.getNavPath('agent')),
+}));
+const __VLS_6 = __VLS_5({
+    to: (__VLS_ctx.getNavPath('agent')),
+}, ...__VLS_functionalComponentArgsRest(__VLS_5));
+__VLS_7.slots.default;
+var __VLS_7;
 for (const [cat] of __VLS_getVForSourceType((__VLS_ctx.categories))) {
     __VLS_asFunctionalElement(__VLS_intrinsicElements.li, __VLS_intrinsicElements.li)({
         key: (cat.path),
     });
-    const __VLS_4 = {}.RouterLink;
+    const __VLS_8 = {}.RouterLink;
     /** @type {[typeof __VLS_components.RouterLink, typeof __VLS_components.routerLink, typeof __VLS_components.RouterLink, typeof __VLS_components.routerLink, ]} */ ;
     // @ts-ignore
-    const __VLS_5 = __VLS_asFunctionalComponent(__VLS_4, new __VLS_4({
+    const __VLS_9 = __VLS_asFunctionalComponent(__VLS_8, new __VLS_8({
         to: (__VLS_ctx.getNavPath('category', cat.path)),
         ...{ class: ({ 'router-link-active': __VLS_ctx.isActive(cat.path) }) },
     }));
-    const __VLS_6 = __VLS_5({
+    const __VLS_10 = __VLS_9({
         to: (__VLS_ctx.getNavPath('category', cat.path)),
         ...{ class: ({ 'router-link-active': __VLS_ctx.isActive(cat.path) }) },
-    }, ...__VLS_functionalComponentArgsRest(__VLS_5));
-    __VLS_7.slots.default;
+    }, ...__VLS_functionalComponentArgsRest(__VLS_9));
+    __VLS_11.slots.default;
     (cat.name);
-    var __VLS_7;
+    var __VLS_11;
 }
 /** @type {__VLS_StyleScopedClasses['category-nav']} */ ;
 /** @type {__VLS_StyleScopedClasses['game-switcher']} */ ;

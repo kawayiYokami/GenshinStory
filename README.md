@@ -1,23 +1,25 @@
-# Genshin Story
+# Genshin Story V2 - 与您最喜爱的角色进行 AI 对话
 
-这是一个用于浏览和检索游戏剧情数据的静态 Web 应用。
+Genshin Story 已经进化为一个先进的 AI 对话平台，您可以选择并扮演游戏中的角色，通过自然语言与庞大的游戏知识库进行智能交互和探索。
 
-## 核心思想
+## 功能特性
 
-项目的核心思想是**数据与展示分离**：
-- **数据处理**: 使用纯 Python 脚本，将原始的游戏数据解析、转换并生成为一系列 Markdown 文件。
-- **内容展示**: 使用一个独立的 Vue.js 应用，负责读取这些生成的 Markdown 文件，并提供一个美观、可交互的界面进行展示和搜索。
+-   **多角色 AI Agent 对话**:
+    -   您可以从多个预设的游戏角色（如钟离、阮•梅、芙宁娜等）中选择一个作为您的 AI Agent。
+    -   每个角色都拥有独特的“个性”和知识，为您提供沉浸式的对话体验。
 
-## 项目结构
+-   **强大的上下文感知与工具使用**:
+    -   AI Agent 能够“阅读”整个项目的 Markdown 文件结构，精准定位信息。
+    -   Agent 具备执行本地工具的能力，例如，当需要时，它可以主动搜索文件内容来回答您提出的复杂问题。
 
-```
-.
-├── scripts/              # 用于生成数据的 Python 脚本
-├── web/
-│   └── docs-site/        # Vue.js 前端应用
-├── start_web.bat         # 一键启动 Web 服务器的批处理文件
-└── README.md             # 本文档
-```
+-   **高度可配置的 LLM 连接**:
+    -   您可以轻松连接到任何兼容 OpenAI API 标准的大语言模型服务（如 OpenAI, Groq, Kimi, Zhipu AI 等）。
+    -   支持自定义模型的参数，包括上下文长度（Max Tokens）和温度（Temperature），以满足不同的需求。
+
+-   **流畅的现代化交互体验**:
+    -   对话内容采用流式响应（Streaming），打字机效果让等待不再枯燥。
+    -   完整的会话历史记录管理，您可以随时回顾、继续或删除之前的对话。
+    -   支持在对话中直接打开和预览相关的游戏文档。
 
 ## 快速开始
 
@@ -25,25 +27,22 @@
 
 ### 先决条件
 
-- **Python**: 版本需 >= 3.10
-- **uv**: 用于安装 Python 依赖。如果您的系统中还没有 `uv`，请先通过以下命令安装：
-  ```shell
-  pip install uv
-  ```
-- **Node.js**: 版本需 >= 20，用于运行和构建前端应用。
+-   **Python**: 版本需 >= 3.10
+-   **uv**: 用于安装 Python 依赖。如果您的系统中还没有 `uv`，请先通过以下命令安装：
+    ```shell
+    pip install uv
+    ```
+-   **Node.js**: 版本需 >= 20，用于运行和构建前端应用。
+-   **AI 模型访问权限**: 您需要拥有一个兼容 OpenAI API 的服务提供商的 API Key。
 
 ### 步骤 1: 安装项目依赖
 
-项目分为 Python 数据处理部分和 Node.js 前端部分，需要分别安装依赖。
-
 1.  **安装 Python 依赖**:
-    在项目根目录下打开终端，运行：
     ```bash
     uv install
     ```
 
 2.  **安装前端依赖**:
-    进入前端应用目录并安装依赖。
     ```bash
     cd web/docs-site
     npm install
@@ -51,30 +50,41 @@
 
 ### 步骤 2: 生成数据内容
 
-返回项目根目录。`scripts` 目录下的脚本负责利用已有的数据缓存，生成前端可以展示的 Markdown 文件。
+返回项目根目录。请依次执行以下脚本：
 
-请执行以下脚本：
+1.  **生成 Markdown 内容**:
+    ```bash
+    python scripts/hsr_generate_markdown.py
+    python scripts/gi_generate_markdown.py
+    ```
+
+2.  **生成 AI 感知目录树**:
+    ```bash
+    python scripts/hsr_generate_catalog_tree.py
+    python scripts/gi_generate_catalog_tree.py
+    ```
+
+### 步骤 3: 启动前端开发服务器
+
+推荐使用开发服务器以获得最佳体验。
+
+**进入前端目录并启动服务器**:
 ```bash
-python scripts/hsr_generate_markdown.py
-python scripts/gi_generate_markdown.py
+cd web/docs-site
+npm run dev
 ```
-执行完毕后，所需的数据和 Markdown 文件会生成在前端项目的指定目录中。
+此命令会启动一个本地开发服务器，通常位于 `http://localhost:5173`。
 
-### 步骤 3: 构建前端应用
+### 步骤 4: 配置 AI Agent
 
-数据生成后，我们需要构建生产环境下的静态前端文件。
+应用启动后，您需要进行初次配置：
 
-确保您当前位于 `web/docs-site` 目录下，然后运行：
-```bash
-npm run build
-```
-此命令会将 Vue.js 应用打包成优化后的 HTML, CSS 和 JavaScript 文件，存放在 `web/docs-site/dist` 目录中。
+1.  在界面中，点击模型选择区域，展开配置面板。
+2.  创建一个新配置。
+3.  填入您的 **API URL** 和 **API Key**。
+4.  点击“刷新”按钮获取并选择一个可用的模型。
+5.  现在，您可以开始与您选择的 AI 角色进行对话了！
 
-### 步骤 4: 启动并浏览网站
+---
 
-回到项目的根目录，您会找到一个名为 `start_web.bat` 的文件。
-
-**双击运行 `start_web.bat`**。
-
-它会自动为您启动一个本地的 HTTP 服务器，并打开您的默认浏览器访问 `http://localhost:8000`。现在您可以看到运行中的网站了。
-
+*注意：旧的 `start_web.bat` 和 `npm run build` 流程依然可用，但主要用于生产环境的静态部署。对于开发和本地使用，我们强烈推荐 `npm run dev`。*

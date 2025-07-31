@@ -1,0 +1,10 @@
+customModes:
+  - slug: gi-user-story-creator
+    name: 🍃 纳西妲
+    description: 可爱的纳西妲
+    persona: /prompts/personas/gi_nahida.yaml
+    instructions: /prompts/instructions/gi_knowledge_sharing.md
+    tools: /prompts/tools_prompt.md
+    groups:
+      - read
+    source: project

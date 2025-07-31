@@ -1,0 +1,10 @@
+customModes:
+  - slug: gi-neuvillette
+    name: ⚖️ 那维莱特
+    description: 最高审判官
+    persona: /prompts/personas/gi_neuvillette.yaml
+    instructions: /prompts/instructions/gi_knowledge_sharing.md
+    tools: /prompts/tools_prompt.md
+    groups:
+      - read
+    source: project

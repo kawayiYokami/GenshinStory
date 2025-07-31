@@ -47,9 +47,12 @@ async function loadContent() {
     }
 
     // Post the markdown text to the worker for parsing
-    markdownWorker.postMessage(markdownText);
+    markdownWorker.postMessage({ markdownText: markdownText, originalId: urlPath });
 
     markdownWorker.onmessage = (event) => {
+      if (event.data.originalId !== route.path) {
+        return; // Stale message, ignore.
+      }
       if (event.data.error) {
         throw new Error(event.data.error);
       }
@@ -83,7 +86,7 @@ onUnmounted(() => {
   width: 100%;
 }
 .markdown-body {
-  max-width: 1000px;
+  max-width: 800px;
   margin: 0 auto;
 }
 .loading-state, .error-state {

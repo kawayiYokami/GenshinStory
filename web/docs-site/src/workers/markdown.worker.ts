@@ -1,22 +1,21 @@
 // web/docs-site/src/workers/markdown.worker.ts
 import { marked } from 'marked';
 
-// Listen for messages from the main thread
-self.onmessage = async (event: MessageEvent<string>) => {
-  const markdownText = event.data;
+// --- Worker Message Handling ---
+self.onmessage = async (event: MessageEvent<{ markdownText: string; originalId: any }>) => {
+  const { markdownText, originalId } = event.data;
 
   if (typeof markdownText !== 'string') {
-    self.postMessage({ error: 'Invalid input. Expected a string.' });
+    self.postMessage({ error: 'Invalid input. Expected a string.', originalId });
     return;
   }
 
   try {
-    // Perform the CPU-intensive task in the worker thread
     const html = await marked(markdownText);
-    
-    // Send the result back to the main thread
-    self.postMessage({ html });
+    // Send back the HTML along with the original ID to map it correctly.
+    self.postMessage({ html, originalId });
   } catch (error) {
-    self.postMessage({ error: error instanceof Error ? error.message : 'An unknown error occurred during Markdown parsing.' });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during Markdown parsing.';
+    self.postMessage({ error: errorMessage, originalId });
   }
 };

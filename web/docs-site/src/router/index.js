@@ -13,6 +13,15 @@ const router = createRouter({
             component: () => import('@/layouts/MainLayoutV2.vue'),
             children: [
                 {
+                    path: 'agent',
+                    name: 'v2-agent',
+                    meta: { functionPane: 'AgentChatView' },
+                    components: {
+                        nav: () => import('@/views/v2/CategoryNav.vue'),
+                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                    }
+                },
+                {
                     path: 'category/:categoryName',
                     name: 'v2-category',
                     meta: { functionPane: 'ItemListView' },
@@ -54,6 +63,9 @@ const router = createRouter({
 });
 // Global navigation guard to update game state based on URL
 router.beforeEach((to, from, next) => {
+    console.log('--- Router Navigation ---');
+    console.log('From:', { path: from.path, name: from.name });
+    console.log('To:', { path: to.path, name: to.name, params: to.params, meta: to.meta });
     const game = to.params.game;
     // It's safe to call useAppStore() here because Pinia is already installed.
     const appStore = useAppStore();

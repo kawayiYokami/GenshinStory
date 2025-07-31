@@ -1,10 +1,19 @@
 <template>
-  <div>
-    <h2>内容详情</h2>
-    <p>请在中间栏选择一个条目以查看详情。</p>
+  <div class="detail-placeholder">
+    <!-- This is a placeholder component. -->
   </div>
 </template>
 
 <script setup lang="ts">
-// Logic will be added in Stage 2
+// No script logic needed for this placeholder.
 </script>
+
+<style scoped>
+.detail-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--m3-on-surface-variant);
+}
+</style>

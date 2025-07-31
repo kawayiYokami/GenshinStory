@@ -1,0 +1,10 @@
+customModes:
+  - slug: hsr-welt
+    name: 👓 瓦尔特
+    description: 星穹列车领航员
+    persona: /prompts/personas/hsr_welt.yaml
+    instructions: /prompts/instructions/hsr_interrogation.md
+    tools: /prompts/tools_prompt.md
+    groups:
+      - read
+    source: project
