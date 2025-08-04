@@ -93,6 +93,13 @@
                <input id="request-interval" type="number" v-model.number="activeConfig.requestInterval" min="0" step="100" />
              </div>
               <div class="config-item switch-item">
+                <label for="stream-output">启用流式输出</label>
+                <label class="switch">
+                  <input id="stream-output" type="checkbox" v-model="activeConfig.stream">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <div v-if="isDevMode" class="config-item switch-item">
                 <label for="show-raw">显示源码 (Debug)</label>
                 <label class="switch">
                   <input id="show-raw" type="checkbox" v-model="showRawContent">
@@ -209,6 +216,8 @@ const configStore = useConfigStore();
 const { configs, activeConfigId, activeConfig, isFetchingModels } = storeToRefs(configStore);
 const { fetchModels, addConfig, updateConfig, deleteConfig, setActiveConfig } = configStore;
 
+
+const isDevMode = import.meta.env.DEV;
 
 // --- Local UI State ---
 const userInput = ref('');
