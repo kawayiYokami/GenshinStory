@@ -1,6 +1,11 @@
 import logger from './loggerService.js';
 import { useDataStore } from '@/stores/data';
 import { useAppStore } from '@/stores/app';
+import localforage from 'localforage';
+
+const catalogStore = localforage.createInstance({
+  name: "catalogTreeCache"
+});
 
 /**
  * 将字符串切分为二字词组 (bigrams)
@@ -38,6 +43,8 @@ function _normalizeQuery(query) {
 }
 
 class LocalToolsService {
+  _catalogLoadingPromise = {}; // Cache for in-flight promises
+
   // --- REFACTORED PATH HELPERS ---
 
   /**
@@ -119,7 +126,6 @@ class LocalToolsService {
    * @returns {Promise<string|null>} The full logical path, or null if not found.
    */
    async resolveLogicalPath(logicalPath) {
-    logger.log(`[resolveLogicalPath] 开始解析...`, { logicalPath });
     try {
         await this.ensureCatalogReady();
     } catch (error) {
@@ -135,7 +141,6 @@ class LocalToolsService {
     const cleanPath = logicalPath.split('#')[0];
     const normalizedPath = cleanPath.trim().replace(/\\/g, '/');
     const pathParts = normalizedPath.split('/').filter(p => p);
-    logger.log(`[resolveLogicalPath] 清理后`, { cleanPath, normalizedPath, pathParts });
 
     // --- 1. Attempt to resolve the full path directly ---
     let currentNode = catalogTree;
@@ -152,11 +157,9 @@ class LocalToolsService {
     if (isValid && currentNode === null) {
         return normalizedPath;
     }
-    logger.log(`[resolveLogicalPath] 精确匹配失败`, { isValid, currentNode });
 
     // --- 2. Fallback: Search by filename only ---
     const justTheFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1].toLowerCase() : null;
-    logger.log(`[resolveLogicalPath] 回退到模糊搜索`, { justTheFileName });
     if (!justTheFileName) return null; // No filename to search for
 
     const traverse = (node, currentPath) => {
@@ -175,7 +178,6 @@ class LocalToolsService {
     };
 
     const foundPath = traverse(catalogTree, '');
-    logger.log(`[resolveLogicalPath] 模糊搜索结果`, { foundPath });
     return foundPath;
 }
 
@@ -327,11 +329,9 @@ class LocalToolsService {
        const dataStore = useDataStore();
        const appStore = useAppStore();
        const currentGame = appStore.currentGame;
-       //logger.log(`[Search] 开始单次搜索: "${query}"`, { game: currentGame });
 
        const queryBigrams = getBigrams(query);
        if (queryBigrams.length === 0) return [];
-       //logger.log('[Search] 生成二元词组:', queryBigrams);
 
        const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(currentGame, bigram[0]));
        const chunks = await Promise.all(chunkPromises);
@@ -429,7 +429,6 @@ class LocalToolsService {
     }
 
     try {
-       logger.log('[Search] 开始嵌套搜索...');
        const orGroups = query.split('|').map(g => g.trim()).filter(g => g);
        if (orGroups.length === 0) return "请输入有效的查询词。";
 
@@ -538,7 +537,8 @@ class LocalToolsService {
 
   /**
    * Ensures the catalog tree for the current game is loaded into the cache.
-   * This method is idempotent and can be safely called multiple times.
+   * This method is idempotent and handles concurrent calls gracefully.
+   * It uses a hybrid memory -> promise -> persistent cache strategy.
    * @private
    */
   async ensureCatalogReady() {
@@ -546,20 +546,51 @@ class LocalToolsService {
     const currentGame = appStore.currentGame;
     if (!this._catalogTreeCache) this._catalogTreeCache = {};
 
-    if (!this._catalogTreeCache[currentGame]) {
-      const mapPath = `/catalog_tree_${currentGame}.json`;
-      logger.log(`目录树缓存未命中，正在为游戏 '${currentGame}' 加载: ${mapPath}`);
+    // 1. Check memory cache (fastest)
+    if (this._catalogTreeCache[currentGame]) {
+      return;
+    }
+
+    // 2. Check for an in-flight promise to avoid race conditions
+    if (this._catalogLoadingPromise[currentGame]) {
+      await this._catalogLoadingPromise[currentGame];
+      return;
+    }
+
+    // 3. Create a promise and store it. This is the core of the race condition prevention.
+    const loadPromise = (async () => {
       try {
+        // 3a. Check persistent cache (localforage)
+        const cachedTree = await catalogStore.getItem(currentGame);
+        if (cachedTree) {
+          logger.log(`目录树 for '${currentGame}' 从持久化缓存中加载成功。`);
+          this._catalogTreeCache[currentGame] = cachedTree;
+          return;
+        }
+
+        // 3b. If all caches miss, fetch from network
+        const mapPath = `/catalog_tree_${currentGame}.json`;
+        logger.log(`目录树缓存未命中，正在为游戏 '${currentGame}' 加载: ${mapPath}`);
         const response = await fetch(mapPath);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        this._catalogTreeCache[currentGame] = await response.json();
+        const tree = await response.json();
+
+        // Store in both memory and persistent cache
+        this._catalogTreeCache[currentGame] = tree;
+        await catalogStore.setItem(currentGame, tree);
+
         logger.log(`目录树 for '${currentGame}' 加载并缓存成功。`);
       } catch (error) {
         logger.error(`加载目录树失败 for '${currentGame}':`, error);
-        // Re-throw the error to let callers handle the failure state
-        throw error;
+        throw error; // Re-throw to let callers handle it
+      } finally {
+        // 4. Clean up the promise cache once loading is complete (or has failed)
+        delete this._catalogLoadingPromise[currentGame];
       }
-    }
+    })();
+
+    this._catalogLoadingPromise[currentGame] = loadPromise;
+    await loadPromise;
   }
 }
 

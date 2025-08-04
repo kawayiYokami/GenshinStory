@@ -38,6 +38,9 @@ export const useAgentStore = defineStore('agent', () => {
   const logMessages = ref(logs);
   const activeAgentName = ref('AI');
 
+  // --- Internal State ---
+  const _isFetchingAgents = ref({ gi: false, hsr: false });
+
   // --- Safety Net State ---
   const consecutiveToolErrors = ref(0);
   const consecutiveAiTurns = ref(0);
@@ -116,23 +119,27 @@ export const useAgentStore = defineStore('agent', () => {
   }
   
   async function fetchAvailableAgents(game) {
-    // 1. Try to load the last used role from cache first.
-    const cachedRoleId = await lastUsedRolesStore.getItem(game);
-    if (cachedRoleId) {
-      activeRoleId.value[game] = cachedRoleId;
-      logger.log(`[AgentStore] Loaded last used role '${cachedRoleId}' for game '${game}'.`);
-    }
-
-    if (availableAgents.value[game]?.length > 0) {
-      logger.log(`Agent Store: '${game}' 的 Agent 列表已存在，跳过获取。`);
+    // 1. Prevent concurrent executions
+    if (_isFetchingAgents.value[game] || availableAgents.value[game]?.length > 0) {
+      // logger.log(`Agent Store: '${game}' 的 Agent 列表获取已在进行中或已存在，跳过。`);
       return;
     }
+    _isFetchingAgents.value[game] = true;
+
     try {
+      // 2. Try to load the last used role from cache first.
+      const cachedRoleId = await lastUsedRolesStore.getItem(game);
+      if (cachedRoleId) {
+        activeRoleId.value[game] = cachedRoleId;
+        logger.log(`[AgentStore] Loaded last used role '${cachedRoleId}' for game '${game}'.`);
+      }
+
+      // 3. Fetch from service
       logger.log(`Agent Store: 正在为游戏 '${game}' 获取可用 Agent 列表...`);
       const agents = await promptService.listAvailableAgents(game);
       availableAgents.value[game] = agents;
 
-      // 2. If after fetching, there's still no active role ID (i.e., cache was empty and it's the first run)
+      // 4. If after fetching, there's still no active role ID, set a default.
       if (agents.length > 0 && !activeRoleId.value[game]) {
         const defaultRoles = {
           gi: 'gi_role',
@@ -141,11 +148,12 @@ export const useAgentStore = defineStore('agent', () => {
         const defaultId = defaultRoles[game] || agents[0]?.id;
         activeRoleId.value[game] = defaultId;
         logger.log(`Agent Store: 已为 '${game}' 设置默认 Agent: ${defaultId}`);
-        // Also save this default to cache for next time
         await lastUsedRolesStore.setItem(game, defaultId);
       }
     } catch (e) {
       logger.error(`Agent Store: 获取 '${game}' 的 Agent 列表失败:`, e);
+    } finally {
+      _isFetchingAgents.value[game] = false;
     }
   }
 
@@ -407,6 +415,27 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  function retryLastTurn() {
+    if (!currentSession.value) return;
+
+    // 1. Get the last message
+    const lastMessage = orderedMessages.value[orderedMessages.value.length - 1];
+
+    // 2. Validate it's a retryable error message
+    if (lastMessage && lastMessage.type === 'error') {
+      logger.log(`[AgentStore] Retrying from error message ${lastMessage.id}`);
+      
+      // 3. Remove the error message
+      removeMessage(lastMessage.id);
+      
+      // 4. Restart the agent's turn. The service will pick up the history.
+      agentService.startTurn();
+
+    } else {
+      logger.warn(`[AgentStore] Retry called, but the last message was not a retryable error.`);
+    }
+  }
+
   // --- Persistence ---
   const persistState = debounce(async () => {
     try {
@@ -488,5 +517,6 @@ export const useAgentStore = defineStore('agent', () => {
     deleteSession,
     renameSession,
     startNewChatWithAgent,
+    retryLastTurn,
   };
 });

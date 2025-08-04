@@ -8,13 +8,15 @@
     <!-- Conversation History -->
     <div class="history-panel" ref="historyPanel">
       <MessageBubble
-        v-for="message in visibleMessages"
+        v-for="(message, index) in visibleMessages"
         :key="message.id"
         :message="message"
         :show-raw-content="showRawContent"
+        :is-last-message="index === visibleMessages.length - 1"
         @select-suggestion="handleSuggestionSelected"
         @send-suggestion="handleSendSuggestionSelected"
         @delete-from-here="handleDeleteFrom"
+        @retry="handleRetry"
       />
     </div>
 
@@ -23,10 +25,8 @@
     </div>
     
     <div v-if="isLoading || !error"
-          class="status-panel thinking-indicator"
-          :class="{ 'clickable': !isLoading }"
-          @click="toggleAgentSelector">
-      <span v-if="isLoading">{{ activeAgentName }} 正在思考中...</span>
+          class="status-panel thinking-indicator">
+      <span v-if="isLoading">{{ activeAgentName }} 正在思考中... ({{ thinkingTime }}s)</span>
       <span v-else>{{ activeAgentName }} ，期待与您对话。</span>
     </div>
 
@@ -77,7 +77,7 @@ const { currentGame } = storeToRefs(appStore);
 
 const agentStore = useAgentStore();
 const { orderedMessages, isLoading, error, activeAgentName, availableAgents, currentRoleId } = storeToRefs(agentStore);
-const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache } = agentStore;
+const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache, retryLastTurn } = agentStore;
 
 const configStore = useConfigStore();
 const { activeConfig } = storeToRefs(configStore);
@@ -89,6 +89,8 @@ const inputPanelRef = ref(null);
 const isAgentSelectorVisible = ref(false);
 const isHistoryPanelVisible = ref(false);
 const showRawContent = ref(false); // DEBUG: Raw content toggle
+const thinkingTime = ref(0);
+let timerInterval = null;
 
 // --- Computed Properties ---
 const visibleMessages = computed(() =>
@@ -117,6 +119,10 @@ const handleDeleteFrom = (messageId) => {
   agentStore.deleteMessagesFrom(messageId);
 };
 
+const handleRetry = () => {
+  retryLastTurn();
+};
+
 const handleSelectAgent = (roleId) => {
   switchAgent(roleId);
   isAgentSelectorVisible.value = false;
@@ -125,9 +131,9 @@ const handleSelectAgent = (roleId) => {
 // --- Agent & Message Methods ---
 
 const toggleAgentSelector = () => {
-  if (!isLoading.value) {
-    isAgentSelectorVisible.value = !isAgentSelectorVisible.value;
-  }
+  // This is no longer needed as the primary way to switch agents.
+  // Kept for the modal's close button functionality if reused.
+  isAgentSelectorVisible.value = !isAgentSelectorVisible.value;
 };
 
 const handleSend = async () => {
@@ -209,10 +215,27 @@ watch(currentGame, (newGame) => {
   fetchAvailableAgents(newGame);
 });
 
+watch(isLoading, (newValue) => {
+  if (newValue) {
+    // Start timer when loading begins
+    thinkingTime.value = 0;
+    timerInterval = setInterval(() => {
+      thinkingTime.value++;
+    }, 1000);
+  } else {
+    // Stop timer when loading ends
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+});
+
 onUnmounted(() => {
   historyPanel.value?.removeEventListener('click', handleHistoryPanelClick);
   if (mutationObserver) {
     mutationObserver.disconnect();
+  }
+  if (timerInterval) {
+    clearInterval(timerInterval);
   }
 });
 </script>
@@ -249,10 +272,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   transition: background-color 0.2s;
 }
-.thinking-indicator.clickable:hover {
-  background-color: var(--m3-surface-variant);
-  cursor: pointer;
-}
+/* .clickable class and its hover effect are no longer needed */
 .status-panel.error {
   color: var(--m3-error);
 }

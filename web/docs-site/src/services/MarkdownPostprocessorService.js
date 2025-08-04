@@ -55,7 +55,7 @@ class MarkdownPostprocessorService {
             
             // The final template uses the processed display text.
             const template = `<a href="#" class="internal-doc-link ${validityClass}" data-is-valid="${isValid}" data-raw-link="${rawLink}" data-path="${pathForValidation}" data-anchor="${anchor}">${finalDisplayText}</a>`;
-            logger.log(`[MarkdownPostprocessor] 生成链接模板`, { rawLink, finalDisplayText, pathForValidation, isValid });
+            // logger.log(`[MarkdownPostprocessor] 生成链接模板`, { rawLink, finalDisplayText, pathForValidation, isValid });
           return template;
 
         } catch (error) {

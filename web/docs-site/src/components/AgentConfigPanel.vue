@@ -225,7 +225,7 @@ const handleNewChatWithAgent = (roleId) => {
   position: absolute;
   right: 0;
   top: 100%;
-  background-color: var(--m3-surface-container-high);
+  background-color: var(--m3-surface-container-high, white); /* Added fallback color */
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   list-style: none;

@@ -56,7 +56,13 @@
                 <pre v-if="message.content" class="tool-result-pre">{{ message.content }}</pre>
               </details>
             </div>
-            <div v-else-if="message.type === 'error'" class="error-text">{{ message.content }}</div>
+            <div v-else-if="message.type === 'error'" class="error-container">
+              <span class="error-text">{{ message.content }}</span>
+              <button v-if="isLastMessage" @click="$emit('retry')" class="retry-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                重试
+              </button>
+            </div>
           </template>
         </template>
       </div>
@@ -80,9 +86,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isLastMessage: {
+    type: Boolean,
+    default: false,
+  }
 });
 
-const emit = defineEmits(['select-suggestion', 'send-suggestion', 'delete-from-here']);
+const emit = defineEmits(['select-suggestion', 'send-suggestion', 'delete-from-here', 'retry']);
 
 const toast = useToast();
 const finalContent = ref(null);
@@ -228,9 +238,33 @@ watch(
   white-space: pre-wrap;
   word-break: break-all;
 }
+.error-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .error-text {
   color: var(--m3-error);
   font-style: italic;
+  flex-grow: 1;
+}
+.retry-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--m3-outline);
+  color: var(--m3-on-surface-variant);
+  padding: 4px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background-color 0.2s, color 0.2s;
+}
+.retry-button:hover {
+  background-color: var(--m3-primary-container);
+  color: var(--m3-on-primary-container);
+  border-color: var(--m3-primary);
 }
 
 .raw-content-debug {
