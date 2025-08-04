@@ -15,7 +15,9 @@ const logger = {
       details: details.length > 0 ? details : null,
     };
     logs.push(logEntry);
-    console.log(message, ...details);
+    if (import.meta.env.DEV) {
+      console.log(message, ...details);
+    }
   },
 
   warn(message, ...details) {
@@ -27,7 +29,9 @@ const logger = {
       details: details.length > 0 ? details : null,
     };
     logs.push(logEntry);
-    console.error(message, ...details);
+    if (import.meta.env.DEV) {
+      console.error(message, ...details);
+    }
   },
 
   error(message, ...details) {
@@ -39,7 +43,9 @@ const logger = {
       details: details.length > 0 ? details : null,
     };
     logs.push(logEntry);
-    console.error(message, ...details);
+    if (import.meta.env.DEV) {
+      console.error(message, ...details);
+    }
   },
 
   clear() {
