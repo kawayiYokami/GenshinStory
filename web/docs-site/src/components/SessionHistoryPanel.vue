@@ -14,7 +14,10 @@
           :class="{ active: session.id === activeSessionId }"
           @click="handleSwitchSession(session.id)"
         >
-          <span class="session-name">{{ getSessionDisplayName(session) }}</span>
+          <div class="session-info">
+            <span class="session-agent-name">{{ getSessionAgentName(session) }}</span>
+            <span class="session-name">{{ getSessionDisplayName(session) }}</span>
+          </div>
           <div class="session-actions">
             <button @click.stop="handleDeleteSession(session.id)" class="delete-button" title="删除会话">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -45,7 +48,7 @@ defineProps({
 const emit = defineEmits(['close']);
 
 const agentStore = useAgentStore();
-const { sessions, activeSessionId } = storeToRefs(agentStore);
+const { sessions, activeSessionId, availableAgents } = storeToRefs(agentStore);
 const { switchSession, deleteSession } = agentStore;
 
 const appStore = useAppStore();
@@ -59,6 +62,14 @@ const sortedSessions = computed(() =>
   gameSessions.value.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 );
 
+const getSessionAgentName = (session) => {
+  if (!session?.roleId || !availableAgents.value[session.game]) {
+    return '未知角色';
+  }
+  const agent = availableAgents.value[session.game].find(a => a.id === session.roleId);
+  return agent ? agent.name : '未知角色';
+};
+
 const getSessionDisplayName = (session) => {
   if (!session || !session.messageIds || !session.messagesById) {
     return session.name || '未命名会话';
@@ -67,11 +78,11 @@ const getSessionDisplayName = (session) => {
     .map(id => session.messagesById[id])
     .find(msg => msg && msg.role === 'user' && msg.content);
     
-  if (firstUserMessage) {
-    return firstUserMessage.content.substring(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '');
+  if (firstUserMessage && firstUserMessage.content.trim()) {
+    return firstUserMessage.content.trim().substring(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '');
   }
   
-  return session.name;
+  return '新会话';
 };
 
 const handleSwitchSession = (sessionId) => {
@@ -168,10 +179,26 @@ const closePanel = () => {
   border-color: var(--m3-primary);
   font-weight: bold;
 }
+.session-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 4px;
+}
+.session-agent-name {
+  font-weight: 600;
+  color: var(--m3-primary);
+  font-size: 0.9em;
+}
 .session-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.95em;
+  color: var(--m3-on-surface-variant);
+}
+.session-item.active .session-name {
+  color: var(--m3-on-primary-container);
 }
 .session-actions {
   display: flex;

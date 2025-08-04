@@ -3,7 +3,6 @@
     <AgentConfigPanel
       v-model:show-raw-content="showRawContent"
       @history-click="handleHistoryButtonClick"
-      @new-chat-click="resetAgentAndStableList"
     />
 
     <!-- Conversation History -->
@@ -154,7 +153,9 @@ const handleSend = async () => {
 };
 
 const resetAgentAndStableList = () => {
-  resetAgent();
+  // This function is now handled by the new-chat-dropdown in AgentConfigPanel
+  // Kept here for now to avoid breaking changes if called elsewhere, but can be removed.
+  // agentStore.startNewChatWithAgent(currentRoleId.value);
 };
 
 const handleHistoryPanelClick = async (event) => {

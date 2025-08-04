@@ -7,12 +7,20 @@
         <svg :class="{ 'is-expanded': isConfigVisible }" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
       </button>
       <div class="button-group">
-          <button @click.stop="$emit('history-click')" title="历史会话">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M21 12H3"/><path d="M21 18H3"/></svg>
-          </button>
-        <button @click.stop="$emit('new-chat-click')" title="新对话">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        <button @click.stop="$emit('history-click')" title="历史会话">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M21 12H3"/><path d="M21 18H3"/></svg>
         </button>
+        
+        <div class="new-chat-dropdown">
+          <button @click.stop="isNewChatMenuVisible = !isNewChatMenuVisible" title="新对话">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <ul v-if="isNewChatMenuVisible" class="dropdown-menu">
+            <li v-for="agent in availableAgents[currentGame]" :key="agent.id" @click="handleNewChatWithAgent(agent.id)">
+              {{ agent.name }}
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
     <transition name="slide-fade">
@@ -120,6 +128,8 @@
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useConfigStore } from '@/stores/config';
+import { useAgentStore } from '@/stores/agent';
+import { useAppStore } from '@/stores/app';
 import logger from '@/services/loggerService';
 
 // This component now encapsulates all logic for configuration.
@@ -129,8 +139,15 @@ const configStore = useConfigStore();
 const { configs, activeConfigId, activeConfig, isFetchingModels } = storeToRefs(configStore);
 const { fetchModels, addConfig, updateConfig, deleteConfig, setActiveConfig } = configStore;
 
+const agentStore = useAgentStore();
+const { availableAgents } = storeToRefs(agentStore);
+const { startNewChatWithAgent } = agentStore;
+
+const appStore = useAppStore();
+const { currentGame } = storeToRefs(appStore);
+
 // --- Emits & Props ---
-const emit = defineEmits(['update:showRawContent', 'history-click', 'new-chat-click']);
+const emit = defineEmits(['update:showRawContent', 'history-click']);
 const props = defineProps({
   showRawContent: {
     type: Boolean,
@@ -140,6 +157,7 @@ const props = defineProps({
 
 // --- Local UI State ---
 const isConfigVisible = ref(false);
+const isNewChatMenuVisible = ref(false);
 const isDevMode = import.meta.env.DEV;
 
 // Create a local computed property to use with v-model on the input
@@ -189,10 +207,49 @@ const handleRenameConfig = () => {
 const handleSelectConfig = (id) => {
   logger.log(`--- UI: Config <select> changed. New ID selected: ${id}. Calling setActiveConfig. ---`);
   setActiveConfig(id);
-}
+};
+
+const handleNewChatWithAgent = (roleId) => {
+  startNewChatWithAgent(roleId);
+  isNewChatMenuVisible.value = false; // Close menu after selection
+};
 </script>
 
 <style scoped>
+.new-chat-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: var(--m3-surface-container-high);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  list-style: none;
+  padding: 8px 0;
+  margin: 4px 0 0;
+  z-index: 100;
+  min-width: 180px;
+  border: 1px solid var(--m3-outline);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.dropdown-menu li {
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--m3-on-surface);
+  white-space: nowrap;
+}
+
+.dropdown-menu li:hover {
+  background-color: var(--m3-surface-variant);
+}
+
+
 /* --- Configuration Section --- */
 .config-section {
   padding-bottom: 10px;

@@ -65,12 +65,32 @@ export const useAgentStore = defineStore('agent', () => {
 
   // --- Actions ---
 
-  function switchSession(sessionId) {
+  async function switchSession(sessionId) {
     const game = currentGame.value;
-    if (sessions.value[sessionId] && activeSessionIds.value[game] !== sessionId) {
-      activeSessionIds.value[game] = sessionId;
-      logger.log(`[AgentStore] Switched to session ${sessionId}`);
+    if (!sessions.value[sessionId] || activeSessionIds.value[game] === sessionId) return;
+
+    const targetSession = sessions.value[sessionId];
+    const targetRoleId = targetSession.roleId;
+
+    if (!targetRoleId) {
+      logger.warn(`[AgentStore] Session ${sessionId} has no roleId. Cannot switch.`);
+      return;
     }
+    
+    // Switch the active session ID
+    activeSessionIds.value[game] = sessionId;
+
+    // Update the active role to match the session's role
+    activeRoleId.value[game] = targetRoleId;
+    await lastUsedRolesStore.setItem(game, targetRoleId);
+    
+    // Update the agent name display
+    const agent = availableAgents.value[game]?.find(a => a.id === targetRoleId);
+    if (agent) {
+      activeAgentName.value = agent.name;
+    }
+
+    logger.log(`[AgentStore] Switched to session ${sessionId} (Agent: ${targetRoleId}).`);
   }
   
   function deleteSession(sessionId) {
@@ -159,6 +179,7 @@ export const useAgentStore = defineStore('agent', () => {
       const newSession = {
         id: newSessionId,
         game: game,
+        roleId: roleId, // <-- BIND THE AGENT TO THE SESSION
         name: `会话 ${new Date().toLocaleString()}`,
         createdAt: new Date().toISOString(),
         messagesById: {},
@@ -197,22 +218,46 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  async function switchAgent(roleId) {
-    const game = currentGame.value;
-    if (!roleId || activeRoleId.value[game] === roleId) return;
-    
-    logger.log(`Agent Store: 正在为游戏 '${game}' 切换 Agent 至 '${roleId}'...`);
-    
-    // Persist the new roleId for the current game
-    try {
-      await lastUsedRolesStore.setItem(game, roleId);
-      logger.log(`[AgentStore] Persisted last used role '${roleId}' for game '${game}'.`);
-    } catch (e) {
-      logger.error(`[AgentStore] Failed to persist last used role for game '${game}':`, e);
+    // This is now for creating a NEW chat with a specific agent
+    async function startNewChatWithAgent(roleId) {
+      const game = currentGame.value;
+      if (!roleId) return;
+  
+      logger.log(`[AgentStore] User requested to start a new chat with agent '${roleId}'.`);
+      
+      // Logic: If the current session is empty, just transform it. Otherwise, create a new one.
+      const session = currentSession.value;
+      const isSessionEmpty = !session || session.messageIds.length <= 1; // (only system message)
+  
+      if (isSessionEmpty && session) {
+        logger.log(`[AgentStore] Current session is empty. Transforming it for new agent.`);
+        isLoading.value = true;
+        // 1. Stop any ongoing activity
+        stopAgent();
+        // 2. Load the new prompt
+        const { systemPrompt, agentName } = await promptService.loadSystemPrompt(roleId);
+        // 3. Clear existing messages (should just be the old system prompt)
+        session.messagesById = {};
+        session.messageIds = [];
+        // 4. Add the new system message
+        addMessage({ role: 'system', content: systemPrompt, type: 'system' });
+        // 5. Update session and active state
+        session.roleId = roleId;
+        activeRoleId.value[game] = roleId;
+        activeAgentName.value = agentName;
+        await lastUsedRolesStore.setItem(game, roleId);
+        logger.log(`[AgentStore] Session ${session.id} transformed for agent ${roleId}.`);
+        isLoading.value = false;
+      } else {
+        logger.log(`[AgentStore] Current session is not empty. Starting a new session.`);
+        await startNewSession(game, roleId);
+      }
     }
-
-    await startNewSession(game, roleId);
-  }
+  
+    // Legacy function, now just an alias for clarity.
+    async function switchAgent(roleId) {
+      await startNewChatWithAgent(roleId);
+    }
 
   // --- New Atomic Actions ---
   function addMessage(messageData) {
@@ -442,5 +487,6 @@ export const useAgentStore = defineStore('agent', () => {
     switchSession,
     deleteSession,
     renameSession,
+    startNewChatWithAgent,
   };
 });
