@@ -136,9 +136,9 @@ const toggleAgentSelector = () => {
   isAgentSelectorVisible.value = !isAgentSelectorVisible.value;
 };
 
-const handleSend = async () => {
-  const messageToSend = userInput.value.trim();
-  if (!messageToSend) return;
+const handleSend = async (payload) => {
+  // The payload from ChatInputPanel is now an object: { text, images }
+  const messageToSend = payload;
 
   if (!activeConfig.value || !activeConfig.value.apiUrl || !activeConfig.value.apiKey) {
     alert("请先完成当前AI配置，API URL 和 API Key 不能为空。");
@@ -152,8 +152,11 @@ const handleSend = async () => {
     await nextTick();
   }
   
+  // Pass the entire payload object to the store
   sendMessage(messageToSend);
-  userInput.value = '';
+
+  // userInput is now cleared inside the ChatInputPanel itself upon sending.
+  // We just need to ensure the textarea height is adjusted.
   await nextTick();
   inputPanelRef.value?.adjustTextareaHeight();
 };

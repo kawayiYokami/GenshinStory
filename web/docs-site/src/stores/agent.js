@@ -338,7 +338,7 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  async function sendMessage(userMessageContent) {
+  async function sendMessage(payload) {
     if (!currentSession.value) {
       const initError = "没有激活的会话。";
       logger.error(initError);
@@ -346,10 +346,46 @@ export const useAgentStore = defineStore('agent', () => {
       return;
     }
 
+    // Adapt to handle both simple text and rich content {text, images}
+    const isRichContent = typeof payload === 'object' && (payload.text || payload.images);
+    const text = isRichContent ? payload.text : payload;
+    const images = isRichContent ? payload.images : [];
+
+    const contentPayload = [];
+
+    // Add text part if it exists
+    if (text && text.trim()) {
+      contentPayload.push({
+        type: 'text',
+        text: text
+      });
+    }
+
+    // Add image parts if they exist
+    if (images && images.length > 0) {
+      for (const imageUrl of images) {
+        contentPayload.push({
+          type: 'image_url',
+          image_url: {
+            url: imageUrl
+          }
+        });
+      }
+    }
+    
+    // Do not add an empty message
+    if (contentPayload.length === 0) {
+      logger.warn("sendMessage called with empty payload.");
+      return;
+    }
+
     addMessage({
       role: 'user',
-      content: userMessageContent,
-      type: 'text'
+      // If there's only text, keep content as a simple string for backward compatibility
+      // Otherwise, use the array payload for multimodal content.
+      content: contentPayload.length === 1 && contentPayload[0].type === 'text'
+               ? contentPayload[0].text
+               : contentPayload,
     });
     
     agentService.startTurn();

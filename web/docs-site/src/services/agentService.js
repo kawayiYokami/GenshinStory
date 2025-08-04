@@ -285,6 +285,14 @@ class AgentService {
         
         const apiMessages = history
             .filter(m => m.type !== 'tool_status' && m.type !== 'tool_result')
+            .map(m => {
+                // OpenAI API expects 'content' to be a string for text-only messages,
+                // or an array for multimodal messages. This ensures compatibility.
+                if (m.role === 'user' && !Array.isArray(m.content)) {
+                    return { ...m, content: [{ type: 'text', text: m.content }] };
+                }
+                return m;
+            });
 
         const requestBody = {
             model: activeConfig.value.modelName,

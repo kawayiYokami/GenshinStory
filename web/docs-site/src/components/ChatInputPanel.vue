@@ -1,17 +1,24 @@
 <template>
   <div class="input-panel">
+    <div v-if="attachedImages.length > 0" class="image-preview-container">
+      <div v-for="(image, index) in attachedImages" :key="index" class="image-preview-item">
+        <img :src="image" alt="Image preview" />
+        <button @click="removeImage(index)" class="remove-image-btn">&times;</button>
+      </div>
+    </div>
     <div class="input-wrapper">
       <textarea
         ref="textareaRef"
         :value="modelValue"
         @input="handleInput"
-        placeholder="请输入您的问题或指令... (Enter 发送)"
+        placeholder="请输入您的问题或指令... (Enter 发送, Ctrl+V 粘贴图片)"
         @keydown.enter.exact.prevent="handleSend"
         :disabled="isLoading"
+        @paste="handlePaste"
       ></textarea>
       <button
         @click="isLoading ? stopAgent() : handleSend()"
-        :disabled="!isLoading && !modelValue.trim()"
+        :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0)"
         :class="['send-button', { 'stop-button': isLoading }]"
         :title="isLoading ? '打断' : '发送'"
       >
@@ -39,6 +46,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'send', 'stop']);
 
 const textareaRef = ref(null);
+const attachedImages = ref([]);
 
 const adjustTextareaHeight = () => {
   const textarea = textareaRef.value;
@@ -53,8 +61,14 @@ const handleInput = (event) => {
 };
 
 const handleSend = () => {
-  if (props.modelValue.trim()) {
-    emit('send', props.modelValue);
+  if (props.modelValue.trim() || attachedImages.value.length > 0) {
+    emit('send', {
+      text: props.modelValue,
+      images: attachedImages.value
+    });
+    // Clear inputs after sending
+    emit('update:modelValue', '');
+    attachedImages.value = [];
   }
 };
 
@@ -70,6 +84,25 @@ onMounted(() => {
   adjustTextareaHeight();
 });
 
+const handlePaste = (event) => {
+  const items = event.clipboardData.items;
+  for (const item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      event.preventDefault();
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachedImages.value.push(e.target.result);
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+};
+
+const removeImage = (index) => {
+  attachedImages.value.splice(index, 1);
+};
+
 // Expose focus method for parent component
 const focus = () => {
   textareaRef.value?.focus();
@@ -83,6 +116,40 @@ defineExpose({
 </script>
 
 <style scoped>
+.image-preview-container {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px 8px;
+  flex-wrap: wrap;
+}
+.image-preview-item {
+  position: relative;
+}
+.image-preview-item img {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--m3-outline);
+}
+.remove-image-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--m3-error);
+  color: var(--m3-on-error);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
 /* --- Input Panel --- */
 .input-panel {
   display: flex;

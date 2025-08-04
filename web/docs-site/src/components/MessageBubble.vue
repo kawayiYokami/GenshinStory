@@ -10,8 +10,18 @@
         
         <!-- Simplified Rendering Pipeline -->
         <template v-else>
-          <!-- User message, renders instantly -->
-          <div v-if="message.role === 'user'">{{ message.content }}</div>
+          <!-- User message, now handles text, images, or both -->
+          <div v-if="message.role === 'user'" class="user-content-wrapper">
+            <template v-if="Array.isArray(message.content)">
+              <div v-for="(item, index) in message.content" :key="index" class="content-part">
+                <p v-if="item.type === 'text'" class="text-part">{{ item.text }}</p>
+                <img v-if="item.type === 'image_url'" :src="item.image_url.url" class="image-part" alt="User uploaded content"/>
+              </div>
+            </template>
+            <template v-else>
+              {{ message.content }}
+            </template>
+          </div>
   
           <!-- Assistant message lifecycle -->
           <template v-if="message.role === 'assistant'">
@@ -145,6 +155,22 @@ watch(
 </script>
 
 <style scoped>
+.user-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.content-part .text-part {
+  margin: 0;
+  white-space: pre-wrap; /* Preserve line breaks in text */
+}
+.content-part .image-part {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
 .message-wrapper {
   position: relative;
   padding: 0 16px;
