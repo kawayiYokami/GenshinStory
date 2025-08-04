@@ -110,24 +110,32 @@ class AgentService {
         if (configStore.activeConfig.stream) {
             assistantMessage = await this._handleStream(response);
         } else {
-            const responseData = await response.json();
+            const responseData = response;
             logger.log("Agent: 收到 API 响应 (非流式):", responseData);
             const message = responseData.choices[0].message;
 
-            if (message.tool_calls) {
-                const parsedTool = toolParserService.parseJsonToolCall(message.tool_calls[0]);
-                if (parsedTool) {
-                    logger.log("Agent: 在非流式响应中发现结构化工具调用。", parsedTool);
-                    this.commandQueue.push({ type: 'EXECUTE_TOOL', payload: { parsedTool } });
-                    agentStore.addMessage({ role: 'assistant', content: null, tool_calls: message.tool_calls });
-                } else {
-                    logger.error("Agent: 无法解析来自 API 的工具调用。", message.tool_calls[0]);
-                }
-                return;
-            }
+            // 1. 创建一个占位符消息，状态为 'streaming' 以触发动画开始
+            const placeholderMessage = agentStore.addMessage({
+                role: 'assistant',
+                content: '', // 初始为空
+                type: 'text',
+                status: 'streaming'
+            });
             
-            assistantMessage = agentStore.addMessage(message);
+            // 2. 立刻用完整内容更新消息，并更新状态为 'done' 以触发动画结束
+            agentStore.updateMessage({
+                messageId: placeholderMessage.id,
+                updates: {
+                    content: message.content,
+                    status: 'done',
+                    streamCompleted: true // 保持与流式传输结束时的一致性
+                }
+            });
+
+            // 将 assistantMessage 指向我们刚刚创建和更新的消息
+            assistantMessage = agentStore.messagesById[placeholderMessage.id];
         }
+
         
         if (!assistantMessage || !assistantMessage.id) {
             throw new Error("AI 未返回任何有效数据。");
@@ -277,12 +285,6 @@ class AgentService {
         
         const apiMessages = history
             .filter(m => m.type !== 'tool_status' && m.type !== 'tool_result')
-            .map(({ role, content, name, tool_calls }) => {
-                const msg = { role, content };
-                if (name) msg.name = name;
-                if (tool_calls) msg.tool_calls = tool_calls;
-                return msg;
-            });
 
         const requestBody = {
             model: activeConfig.value.modelName,

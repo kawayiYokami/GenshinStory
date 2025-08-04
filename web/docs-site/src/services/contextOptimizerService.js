@@ -266,9 +266,7 @@ class ContextOptimizerService {
         if (!history) return 0;
         return history.reduce((acc, msg) => {
             const contentTokens = tokenizer.countTokens(msg.content || '');
-            // 确保也计算工具调用的 Token
-            const toolCallTokens = msg.tool_calls ? tokenizer.countTokens(JSON.stringify(msg.tool_calls)) : 0;
-            return acc + contentTokens + toolCallTokens;
+            return acc + contentTokens;
         }, 0);
     }
 }

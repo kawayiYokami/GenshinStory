@@ -37,7 +37,8 @@ class OpenaiService {
         this.openai = new OpenAI({
             apiKey: apiKey,
             baseURL: apiUrl,
-            dangerouslyAllowBrowser: true // Necessary for client-side usage.
+            dangerouslyAllowBrowser: true, // Necessary for client-side usage.
+            timeout: 300 * 1000, // 5-minute timeout
         });
 
         this.currentConfig = { apiKey, baseURL: apiUrl };

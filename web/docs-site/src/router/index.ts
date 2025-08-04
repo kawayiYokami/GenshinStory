@@ -6,7 +6,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/v2/hsr/agent' // Redirect to a functional page on start
+      redirect: '/v2/gi/agent' // Redirect to Genshin Impact agent page on start
     },
     // --- V2 Three-Pane Layout Routes ---
     {
@@ -66,9 +66,6 @@ const router = createRouter({
 
 // Global navigation guard to update game state based on URL
 router.beforeEach((to, from, next) => {
- console.log('--- Router Navigation ---');
- console.log('From:', { path: from.path, name: from.name });
- console.log('To:', { path: to.path, name: to.name, params: to.params, meta: to.meta });
   const game = to.params.game;
   // It's safe to call useAppStore() here because Pinia is already installed.
   const appStore = useAppStore();

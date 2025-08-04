@@ -17,6 +17,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function* createPacedStream(openaiStream) {
     
     for await (const chunk of openaiStream) {
+        logger.log('[Raw Stream Chunk]', JSON.parse(JSON.stringify(chunk)));
         const delta = chunk.choices[0]?.delta?.content ?? '';
         const finishReason = chunk.choices[0]?.finish_reason;
 
