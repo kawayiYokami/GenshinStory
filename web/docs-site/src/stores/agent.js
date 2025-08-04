@@ -9,6 +9,7 @@ import { useAppStore } from '@/stores/app';
 
 // --- Localforage an d debounce setup ---
 const sessionsStore = localforage.createInstance({ name: 'agentSessions' });
+const lastUsedRolesStore = localforage.createInstance({ name: 'lastUsedRoles' });
 
 function debounce(func, wait) {
   let timeout;
@@ -95,15 +96,23 @@ export const useAgentStore = defineStore('agent', () => {
   }
   
   async function fetchAvailableAgents(game) {
+    // 1. Try to load the last used role from cache first.
+    const cachedRoleId = await lastUsedRolesStore.getItem(game);
+    if (cachedRoleId) {
+      activeRoleId.value[game] = cachedRoleId;
+      logger.log(`[AgentStore] Loaded last used role '${cachedRoleId}' for game '${game}'.`);
+    }
+
     if (availableAgents.value[game]?.length > 0) {
       logger.log(`Agent Store: '${game}' 的 Agent 列表已存在，跳过获取。`);
       return;
     }
     try {
       logger.log(`Agent Store: 正在为游戏 '${game}' 获取可用 Agent 列表...`);
-      // <-- 使用 promptService
       const agents = await promptService.listAvailableAgents(game);
       availableAgents.value[game] = agents;
+
+      // 2. If after fetching, there's still no active role ID (i.e., cache was empty and it's the first run)
       if (agents.length > 0 && !activeRoleId.value[game]) {
         const defaultRoles = {
           gi: 'gi_role',
@@ -112,6 +121,8 @@ export const useAgentStore = defineStore('agent', () => {
         const defaultId = defaultRoles[game] || agents[0]?.id;
         activeRoleId.value[game] = defaultId;
         logger.log(`Agent Store: 已为 '${game}' 设置默认 Agent: ${defaultId}`);
+        // Also save this default to cache for next time
+        await lastUsedRolesStore.setItem(game, defaultId);
       }
     } catch (e) {
       logger.error(`Agent Store: 获取 '${game}' 的 Agent 列表失败:`, e);
@@ -187,9 +198,20 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   async function switchAgent(roleId) {
-    if (!roleId || currentRoleId.value === roleId) return;
-    logger.log(`Agent Store: 正在切换 Agent 至 '${roleId}'...`);
-    await startNewSession(currentGame.value, roleId);
+    const game = currentGame.value;
+    if (!roleId || activeRoleId.value[game] === roleId) return;
+    
+    logger.log(`Agent Store: 正在为游戏 '${game}' 切换 Agent 至 '${roleId}'...`);
+    
+    // Persist the new roleId for the current game
+    try {
+      await lastUsedRolesStore.setItem(game, roleId);
+      logger.log(`[AgentStore] Persisted last used role '${roleId}' for game '${game}'.`);
+    } catch (e) {
+      logger.error(`[AgentStore] Failed to persist last used role for game '${game}':`, e);
+    }
+
+    await startNewSession(game, roleId);
   }
 
   // --- New Atomic Actions ---
@@ -345,6 +367,7 @@ export const useAgentStore = defineStore('agent', () => {
     try {
       await sessionsStore.setItem('sessions', JSON.parse(JSON.stringify(sessions.value)));
       await sessionsStore.setItem('activeSessionIds', JSON.parse(JSON.stringify(activeSessionIds.value)));
+      // Note: activeRoleId is now persisted via lastUsedRolesStore upon change, not here.
       logger.log('[AgentStore] Session state persisted.');
     } catch (e) {
       logger.error('[AgentStore] Failed to persist state:', e);
@@ -356,13 +379,18 @@ export const useAgentStore = defineStore('agent', () => {
       logger.log('[AgentStore] Initializing store from cache...');
       const cachedSessions = await sessionsStore.getItem('sessions');
       const cachedActiveIds = await sessionsStore.getItem('activeSessionIds');
+      
+      // We don't need to load role IDs here because fetchAvailableAgents,
+      // which is called on view mount, now handles loading the cached role ID.
 
       if (cachedSessions) {
         sessions.value = cachedSessions;
         logger.log(`[AgentStore] Restored ${Object.keys(cachedSessions).length} sessions.`);
       }
       if (cachedActiveIds) {
-        activeSessionIds.value = cachedActiveIds;
+        // Ensure activeSessionIds is an object for both games
+        const defaultIds = { gi: null, hsr: null };
+        activeSessionIds.value = { ...defaultIds, ...cachedActiveIds };
         logger.log('[AgentStore] Restored active session IDs.');
       }
       
