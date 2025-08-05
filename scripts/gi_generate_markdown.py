@@ -17,8 +17,8 @@ from game_data_parser.api import GameDataAPI
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 DATA_ROOT_DIR = "AnimeGameData"  # 原始游戏数据根目录
 CACHE_FILE_PATH = "game_data_parser/cache/gi_data.cache.gz" # 和 gi_create_cache.py 中必须完全一致
-MARKDOWN_OUTPUT_DIR = "web/docs-site/public/gi_md" # 前端静态资源目录
-JSON_OUTPUT_DIR = "web/docs-site/public" # JSON索引输出目录
+MARKDOWN_OUTPUT_DIR = "web/docs-site/public/domains/gi/docs" # 前端静态资源目录
+JSON_OUTPUT_DIR = "web/docs-site/public/domains/gi/metadata" # JSON索引输出目录
 
 
 def clean_filename(name: str) -> str:
@@ -223,7 +223,7 @@ def export_catalog_index(api: GameDataAPI, output_dir: str):
                         if not item_id or not item_title: continue
                         
                         # 修正：生成完整的、可直接用于路由的绝对路径
-                        path = f"/v2/gi/category/{service_name.lower()}/{clean_filename(category_name)}/{clean_filename(item_title)}-{item_id}"
+                        path = f"/domain/gi/category/{service_name.lower()}/{clean_filename(category_name)}/{clean_filename(item_title)}-{item_id}"
                         catalog.append({"id": item_id, "name": item_title, "type": service_name, "category": category_name, "path": path})
 
         elif service_name in ["RelicSet", "Book"]:
@@ -232,7 +232,7 @@ def export_catalog_index(api: GameDataAPI, output_dir: str):
                 item_title = item_node.name if hasattr(item_node, 'name') else item_node.get('name') or item_node.get('title')
                 if not item_id or not item_title: continue
 
-                path = f"/v2/gi/category/{service_name.lower()}/{clean_filename(item_title)}-{item_id}"
+                path = f"/domain/gi/category/{service_name.lower()}/{clean_filename(item_title)}-{item_id}"
                 catalog.append({"id": item_id, "name": item_title, "type": service_name, "category": service_name, "path": path})
 
     # --- 2. 特殊处理任务(Quest)服务 ---
@@ -252,7 +252,7 @@ def export_catalog_index(api: GameDataAPI, output_dir: str):
                 item_id = node.get("id")
                 item_title = node.get("title") or node.get("name")
                 if not item_id or not item_title: continue
-                path = f"/v2/gi/category/quest/{clean_filename(category_title)}/{clean_filename(item_title)}-{item_id}"
+                path = f"/domain/gi/category/quest/{clean_filename(category_title)}/{clean_filename(item_title)}-{item_id}"
                 catalog.append({"id": item_id, "name": item_title, "type": "Quest", "category": category_title, "path": path})
         else:
             chapter_nodes = category_node.get("children", [])
@@ -260,7 +260,7 @@ def export_catalog_index(api: GameDataAPI, output_dir: str):
                 item_id = node.get("id")
                 item_title = node.get("title")
                 if not item_id or not item_title: continue
-                path = f"/v2/gi/category/quest/{clean_filename(category_title)}/{clean_filename(item_title)}-{item_id}"
+                path = f"/domain/gi/category/quest/{clean_filename(category_title)}/{clean_filename(item_title)}-{item_id}"
                 # 注意：这里我们用 chapter id 作为 item_id
                 catalog.append({"id": item_id, "name": item_title, "type": "QuestChapter", "category": category_title, "path": path})
 
@@ -270,10 +270,10 @@ def export_catalog_index(api: GameDataAPI, output_dir: str):
         item_id = item.get('id')
         item_name = item.get('name')
         if not item_id or not item_name: continue
-        path = f"/v2/gi/category/world/{clean_filename(item_name)}-{item_id}"
+        path = f"/domain/gi/category/world/{clean_filename(item_name)}-{item_id}"
         catalog.append({"id": item_id, "name": item_name, "type": "Readable", "category": "World", "path": path})
 
-    output_path = Path(output_dir) / "index_gi.json"
+    output_path = Path(output_dir) / "index.json"
     save_file(output_path, json.dumps(catalog, ensure_ascii=False, indent=2))
     logging.info(f"编目索引已保存到: {output_path}")
 

@@ -25,9 +25,9 @@ const error = ref<string | null>(null);
 let markdownWorker: Worker | null = new MarkdownWorker();
 
 async function loadContent() {
-  const { game } = route.params;
-  if (!game) {
-    error.value = '无效的游戏参数。';
+  const { domain } = route.params;
+  if (!domain) {
+    error.value = '无效的领域参数。';
     return;
   }
 
@@ -37,7 +37,8 @@ async function loadContent() {
 
   try {
     const urlPath = route.path;
-    const mdPath = urlPath.replace(`/v2/${game}/category`, `/${game}_md`) + '.md';
+    // Example: /domain/gi/category/Book/some-book -> /domains/gi/docs/Book/some-book.md
+    const mdPath = urlPath.replace(`/domain/${domain}/category`, `/domains/${domain}/docs`) + '.md';
     
     // Fetch markdown from dataStore (which handles caching)
     const markdownText = await dataStore.fetchMarkdownContent(mdPath);

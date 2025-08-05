@@ -52,21 +52,21 @@ const { sessions, activeSessionId, availableAgents } = storeToRefs(agentStore);
 const { switchSession, deleteSession } = agentStore;
 
 const appStore = useAppStore();
-const { currentGame } = storeToRefs(appStore);
+const { currentDomain } = storeToRefs(appStore);
 
-const gameSessions = computed(() => 
-  Object.values(sessions.value).filter(s => s.game === currentGame.value)
+const gameSessions = computed(() =>
+  Object.values(sessions.value).filter(s => s.domain === currentDomain.value)
 );
 
-const sortedSessions = computed(() => 
+const sortedSessions = computed(() =>
   gameSessions.value.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 );
 
 const getSessionAgentName = (session) => {
-  if (!session?.roleId || !availableAgents.value[session.game]) {
+  if (!session?.roleId || !session?.domain || !availableAgents.value[session.domain]) {
     return '未知角色';
   }
-  const agent = availableAgents.value[session.game].find(a => a.id === session.roleId);
+  const agent = availableAgents.value[session.domain].find(a => a.id === session.roleId);
   return agent ? agent.name : '未知角色';
 };
 

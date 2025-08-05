@@ -18,8 +18,8 @@ from hsr_data_parser.services.cache_service import CacheService
 # --- 配置 ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 CACHE_FILE_PATH = "hsr_data_parser/cache/hsr_data.cache.gz"
-MARKDOWN_OUTPUT_DIR = "web/docs-site/public/hsr_md"
-JSON_OUTPUT_DIR = "web/docs-site/public"
+MARKDOWN_OUTPUT_DIR = "web/docs-site/public/domains/hsr/docs"
+JSON_OUTPUT_DIR = "web/docs-site/public/domains/hsr/metadata"
 
 # --- 辅助函数 (从GI脚本移植并验证) ---
 
@@ -140,11 +140,11 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
 
             # 调整路径和key的生成逻辑，以匹配新的文件结构
             if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
-                path = f"/v2/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
+                path = f"/domain/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
                 key = f"{cat_name}-{item_id}"
                 cat_display_name = sub_category # "角色", "光锥", "遗器" 等
             else:
-                path = f"/v2/hsr/category/{cat_name}/{cleaned_sub_cat}/{cleaned_item_name}-{item_id}"
+                path = f"/domain/hsr/category/{cat_name}/{cleaned_sub_cat}/{cleaned_item_name}-{item_id}"
                 key = f"{cat_name}-{cleaned_sub_cat}-{item_id}"
                 cat_display_name = sub_category
             
@@ -157,7 +157,7 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
                 "key": key
             })
     
-    output_path = output_dir / "index_hsr.json"
+    output_path = output_dir / "index.json"
     save_file(output_path, json.dumps(catalog, ensure_ascii=False, indent=2))
     logging.info(f"HSR编目索引已保存到: {output_path}")
 
@@ -180,7 +180,7 @@ def export_search_index_chunked(cache: CacheService, base_output_dir_str: str):
             # result 已经是 {'id': ..., 'name': ..., 'type': ...} 格式
             chunked_index[first_char][keyword].add(item['id'])
 
-    output_chunk_dir = base_output_dir / "search_hsr"
+    output_chunk_dir = base_output_dir / "search"
     if output_chunk_dir.exists():
         shutil.rmtree(output_chunk_dir)
     output_chunk_dir.mkdir(parents=True, exist_ok=True)

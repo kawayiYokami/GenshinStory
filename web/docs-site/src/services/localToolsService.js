@@ -54,9 +54,9 @@ class LocalToolsService {
    */
   _getPhysicalPathFromLogicalPath(logicalPath) {
     const appStore = useAppStore();
-    const currentGame = appStore.currentGame;
-    if (!currentGame) return '';
-    return `/${currentGame}_md/${logicalPath}`;
+    const currentDomain = appStore.currentDomain;
+    if (!currentDomain) return '';
+    return `/domains/${currentDomain}/docs/${logicalPath}`;
   }
 
   /**
@@ -66,10 +66,10 @@ class LocalToolsService {
    */
   _getLogicalPathFromFrontendPath(frontendPath) {
     const appStore = useAppStore();
-    const currentGame = appStore.currentGame;
-    if (!currentGame) return '';
+    const currentDomain = appStore.currentDomain;
+    if (!currentDomain) return '';
     // Removes the prefix and adds the .md extension
-    const logical = frontendPath.replace(`/v2/${currentGame}/category/`, '');
+    const logical = frontendPath.replace(`/v2/${currentDomain}/category/`, '');
     return `${logical}.md`;
   }
 
@@ -82,11 +82,11 @@ class LocalToolsService {
   async listDocs(path = '/') {
     logger.log(`执行目录列表...`, { path });
     const appStore = useAppStore();
-    const currentGame = appStore.currentGame;
+    const currentDomain = appStore.currentDomain;
     
     try {
       await this.ensureCatalogReady();
-      const catalogTree = this._catalogTreeCache[currentGame];
+      const catalogTree = this._catalogTreeCache[currentDomain];
       const pathParts = path.trim().replace(/^\/|\/$/g, '').split('/').filter(p => p);
       
       let currentLevel = catalogTree;
@@ -134,8 +134,8 @@ class LocalToolsService {
     }
 
     const appStore = useAppStore();
-    const currentGame = appStore.currentGame;
-    const catalogTree = this._catalogTreeCache[currentGame];
+    const currentDomain = appStore.currentDomain;
+    const catalogTree = this._catalogTreeCache[currentDomain];
     if (!catalogTree) return null;
 
     const cleanPath = logicalPath.split('#')[0];
@@ -328,12 +328,12 @@ class LocalToolsService {
 
        const dataStore = useDataStore();
        const appStore = useAppStore();
-       const currentGame = appStore.currentGame;
+       const currentDomain = appStore.currentDomain;
 
        const queryBigrams = getBigrams(query);
        if (queryBigrams.length === 0) return [];
 
-       const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(currentGame, bigram[0]));
+       const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(currentDomain, bigram[0]));
        const chunks = await Promise.all(chunkPromises);
        
        const idSets = [];
@@ -416,14 +416,14 @@ class LocalToolsService {
     logger.log(`执行高级搜索...`, { query });
     const dataStore = useDataStore();
     const appStore = useAppStore();
-    const currentGame = appStore.currentGame;
+    const currentDomain = appStore.currentDomain;
 
-    if (!dataStore.indexData || dataStore.indexData.length === 0 || dataStore.gameName !== currentGame) {
-      logger.log(`LocalTools: 索引数据缺失或游戏不匹配，为 '${currentGame}' 重新加载...`);
+    if (!dataStore.indexData || dataStore.indexData.length === 0 || dataStore.gameName !== currentDomain) {
+      logger.log(`LocalTools: 索引数据缺失或域不匹配，为 '${currentDomain}' 重新加载...`);
       try {
-        await dataStore.fetchIndex(currentGame);
+        await dataStore.fetchIndex(currentDomain);
       } catch (e) {
-        logger.error(`错误：为游戏 '${currentGame}' 自动加载知识库索引失败:`, e);
+        logger.error(`错误：为域 '${currentDomain}' 自动加载知识库索引失败:`, e);
         return `错误: 无法加载知识库索引。`;
       }
     }
@@ -536,24 +536,24 @@ class LocalToolsService {
   }
 
   /**
-   * Ensures the catalog tree for the current game is loaded into the cache.
+   * Ensures the catalog tree for the current domain is loaded into the cache.
    * This method is idempotent and handles concurrent calls gracefully.
    * It uses a hybrid memory -> promise -> persistent cache strategy.
    * @private
    */
   async ensureCatalogReady() {
     const appStore = useAppStore();
-    const currentGame = appStore.currentGame;
+    const currentDomain = appStore.currentDomain;
     if (!this._catalogTreeCache) this._catalogTreeCache = {};
 
     // 1. Check memory cache (fastest)
-    if (this._catalogTreeCache[currentGame]) {
+    if (this._catalogTreeCache[currentDomain]) {
       return;
     }
 
     // 2. Check for an in-flight promise to avoid race conditions
-    if (this._catalogLoadingPromise[currentGame]) {
-      await this._catalogLoadingPromise[currentGame];
+    if (this._catalogLoadingPromise[currentDomain]) {
+      await this._catalogLoadingPromise[currentDomain];
       return;
     }
 
@@ -561,35 +561,35 @@ class LocalToolsService {
     const loadPromise = (async () => {
       try {
         // 3a. Check persistent cache (localforage)
-        const cachedTree = await catalogStore.getItem(currentGame);
+        const cachedTree = await catalogStore.getItem(currentDomain);
         if (cachedTree) {
-          logger.log(`目录树 for '${currentGame}' 从持久化缓存中加载成功。`);
-          this._catalogTreeCache[currentGame] = cachedTree;
+          logger.log(`目录树 for '${currentDomain}' 从持久化缓存中加载成功。`);
+          this._catalogTreeCache[currentDomain] = cachedTree;
           return;
         }
 
         // 3b. If all caches miss, fetch from network
-        const mapPath = `/catalog_tree_${currentGame}.json`;
-        logger.log(`目录树缓存未命中，正在为游戏 '${currentGame}' 加载: ${mapPath}`);
+        const mapPath = `/domains/${currentDomain}/metadata/catalog.json`;
+        logger.log(`目录树缓存未命中，正在为域 '${currentDomain}' 加载: ${mapPath}`);
         const response = await fetch(mapPath);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const tree = await response.json();
 
         // Store in both memory and persistent cache
-        this._catalogTreeCache[currentGame] = tree;
-        await catalogStore.setItem(currentGame, tree);
+        this._catalogTreeCache[currentDomain] = tree;
+        await catalogStore.setItem(currentDomain, tree);
 
-        logger.log(`目录树 for '${currentGame}' 加载并缓存成功。`);
+        logger.log(`目录树 for '${currentDomain}' 加载并缓存成功。`);
       } catch (error) {
-        logger.error(`加载目录树失败 for '${currentGame}':`, error);
+        logger.error(`加载目录树失败 for '${currentDomain}':`, error);
         throw error; // Re-throw to let callers handle it
       } finally {
         // 4. Clean up the promise cache once loading is complete (or has failed)
-        delete this._catalogLoadingPromise[currentGame];
+        delete this._catalogLoadingPromise[currentDomain];
       }
     })();
 
-    this._catalogLoadingPromise[currentGame] = loadPromise;
+    this._catalogLoadingPromise[currentDomain] = loadPromise;
     await loadPromise;
   }
 }

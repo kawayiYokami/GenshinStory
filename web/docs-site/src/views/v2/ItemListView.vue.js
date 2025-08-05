@@ -22,12 +22,12 @@ const filteredItems = computed(() => {
     // Use startsWith for broader category matching (e.g., "Weapon" should match "Weapon/Sword")
     return fullIndex.value.filter(item => item.type.toLowerCase().startsWith(category.value.toLowerCase()));
 });
-// Watch for game changes from the store.
-// When the game changes, trigger the fetch action in the data store.
+// Watch for domain changes from the store.
+// When the domain changes, trigger the fetch action in the data store.
 // immediate: true ensures it runs once on component creation.
-watch(() => appStore.currentGame, (newGame) => {
-    if (newGame) {
-        dataStore.fetchIndex(newGame);
+watch(() => appStore.currentDomain, (newDomain) => {
+    if (newDomain) {
+        dataStore.fetchIndex(newDomain);
     }
 }, { immediate: true });
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */

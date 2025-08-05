@@ -1,23 +1,32 @@
 <template>
   <div class="category-nav">
     <div class="game-switcher">
-      <button @click="switchGame('gi')" :class="{ active: appStore.currentGame === 'gi' }">原神</button>
-      <button @click="switchGame('hsr')" :class="{ active: appStore.currentGame === 'hsr' }">星穹铁道</button>
+      <button @click="switchDomain('gi')" :class="{ active: appStore.currentDomain === 'gi' }">原神</button>
+      <button @click="switchDomain('hsr')" :class="{ active: appStore.currentDomain === 'hsr' }">星穹铁道</button>
     </div>
-    <ul class="nav-list">
-      <li><router-link :to="getNavPath('agent')">问答</router-link></li>
-      <li><router-link :to="getNavPath('search')">搜索</router-link></li>
-      <li v-for="cat in categories" :key="cat.path">
-        <router-link :to="getNavPath('category', cat.path)" :class="{ 'router-link-active': isActive(cat.path) }">{{ cat.name }}</router-link>
-      </li>
-    </ul>
+
+    <!-- Guarded Content -->
+    <div v-if="appStore.isCoreDataReady" class="nav-list-wrapper">
+      <ul class="nav-list">
+        <li><router-link :to="getNavPath('agent')">问答</router-link></li>
+        <li><router-link :to="getNavPath('search')">搜索</router-link></li>
+        <li v-for="cat in categories" :key="cat.path">
+          <router-link :to="getNavPath('category', cat.path)" :class="{ 'router-link-active': isActive(cat.path) }">{{ cat.name }}</router-link>
+        </li>
+      </ul>
+    </div>
+    <!-- Loading Indicator -->
+    <div v-else class="loading-indicator">
+      <p>加载中...</p>
+    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch, computed } from 'vue';
+import { watch, computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAppStore, type Game } from '@/stores/app';
+import { useAppStore } from '@/stores/app';
 import { useDataStore } from '@/stores/data';
 import { storeToRefs } from 'pinia';
 
@@ -27,69 +36,72 @@ const appStore = useAppStore();
 const dataStore = useDataStore();
 
 const { indexData: fullIndex } = storeToRefs(dataStore);
-
-const categoryTranslations: { [key: string]: string } = {
-  // HSR
-  books: '书籍',
-  characters: '角色',
-  lightcones: '光锥',
-  relics: '遗器',
-  materials: '材料',
-  miracles: '奇物',
-  messages: '短信',
-  missions: '任务',
-  // GI
-  quest: '任务',
-  questchapter: '任务',
-  character: '角色',
-  weapon: '武器',
-  relicset: '圣遗物',
-  material: '材料',
-  book: '书籍',
-  readable: '读物'
-};
-
+const categoryTranslations = ref<{ [key: string]: string }>({});
 
 const categories = computed(() => {
+  console.log('[CategoryNav] Computed `categories` is running...');
+  console.log(`[CategoryNav] fullIndex length: ${fullIndex.value.length}`);
   if (!fullIndex.value.length) return [];
   
   const categoryNames = new Set<string>();
   fullIndex.value.forEach(item => {
     // Extract top-level category (e.g., "Weapon" from "Weapon/Sword")
-    const topLevelCategory = item.type.split('/')[0];
-    categoryNames.add(topLevelCategory);
+    if (item && typeof item.type === 'string') {
+      const topLevelCategory = item.type.split('/')[0];
+      categoryNames.add(topLevelCategory);
+    }
   });
   
-  return Array.from(categoryNames).map(name => ({
-    name: categoryTranslations[name.toLowerCase()] || name,
+  console.log(`[CategoryNav] Found category names:`, categoryNames);
+
+  const result = Array.from(categoryNames).map(name => ({
+    name: categoryTranslations.value[name.toLowerCase()] || name,
     path: name
   }));
+
+  console.log(`[CategoryNav] Final categories array:`, result);
+  return result;
 });
 
-watch(() => appStore.currentGame, (newGame) => {
-  if (newGame) {
-    dataStore.fetchIndex(newGame);
+async function loadUiConfig(domain: string) {
+    try {
+        const response = await fetch(`/domains/${domain}/metadata/uiconfig.json`);
+        if (!response.ok) {
+            throw new Error(`Failed to load UI config for domain ${domain}`);
+        }
+        const config = await response.json();
+        categoryTranslations.value = config.categoryTranslations || {};
+    } catch (error) {
+        console.error(error);
+        categoryTranslations.value = {}; // Reset on error
+    }
+}
+
+watch(() => appStore.currentDomain, (newDomain) => {
+  if (newDomain) {
+    // dataStore.fetchIndex(newDomain); // This is now handled by the layout orchestrator
+    loadUiConfig(newDomain);
   }
 }, { immediate: true });
 
 function getNavPath(type: 'search' | 'category' | 'agent', payload?: string) {
-  const game = appStore.currentGame;
+  const domain = appStore.currentDomain;
   if (type === 'search') {
-    return `/v2/${game}/search`;
+    return `/domain/${domain}/search`;
   }
   if (type === 'agent') {
-    return `/v2/${game}/agent`;
+    return `/domain/${domain}/agent`;
   }
   if (type === 'category' && payload) {
-    return `/v2/${game}/category/${payload}`;
+    return `/domain/${domain}/category/${payload}`;
   }
-  return `/v2/${game}`;
+  return `/domain/${domain}`;
 }
 
-function switchGame(game: Game) {
-  if (appStore.currentGame !== game) {
-    appStore.setCurrentGame(game);
-    router.push(`/v2/${game}/agent`);
+function switchDomain(domain: string) {
+  if (appStore.currentDomain !== domain) {
+    appStore.setCurrentDomain(domain);
+    router.push(`/domain/${domain}/agent`);
   }
 }
 

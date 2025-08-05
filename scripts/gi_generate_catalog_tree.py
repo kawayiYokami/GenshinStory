@@ -8,21 +8,22 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-JSON_INPUT_PATH = project_root / "web/docs-site/public/index_gi.json"
-JSON_OUTPUT_PATH = project_root / "web/docs-site/public/catalog_tree_gi.json"
-MD_ROOT_PREFIX = "/gi_md"
+JSON_INPUT_PATH = project_root / "web/docs-site/public/domains/gi/metadata/index.json"
+JSON_OUTPUT_PATH = project_root / "web/docs-site/public/domains/gi/metadata/catalog.json"
+MD_ROOT_PREFIX = "/domains/gi/docs"
 
 def get_physical_path(item):
     """从索引条目动态构建物理路径"""
     frontend_path = item.get("path", "")
-    game_name = "gi" # Hardcoded for GI script
+    domain_name = "gi" # Hardcoded for GI script
     
-    # Example frontendPath: /v2/gi/category/characters/三月七-1001
+    # Example frontendPath: /domain/gi/category/characters/三月七-1001
     parts = frontend_path.split('/')
     if len(parts) < 5: return None
 
+    # parts[0] is empty, [1] is 'domain', [2] is 'gi', [3] is 'category'
     relative_path = "/".join(parts[4:])
-    return f"/{game_name}_md/{relative_path}.md"
+    return f"/domains/{domain_name}/docs/{relative_path}.md"
 
 def create_catalog_tree():
     """

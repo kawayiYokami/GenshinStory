@@ -1,4 +1,4 @@
-import { watch, computed } from 'vue';
+import { watch, computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '@/stores/app';
 import { useDataStore } from '@/stores/data';
@@ -8,26 +8,8 @@ const router = useRouter();
 const appStore = useAppStore();
 const dataStore = useDataStore();
 const { indexData: fullIndex } = storeToRefs(dataStore);
-const categoryTranslations = {
-    // HSR
-    books: '书籍',
-    characters: '角色',
-    lightcones: '光锥',
-    relics: '遗器',
-    materials: '材料',
-    miracles: '奇物',
-    messages: '短信',
-    missions: '任务',
-    // GI
-    quest: '任务',
-    questchapter: '任务',
-    character: '角色',
-    weapon: '武器',
-    relicset: '圣遗物',
-    material: '材料',
-    book: '书籍',
-    readable: '读物'
-};
+const categoryTranslations = ref({});
+
 const categories = computed(() => {
     if (!fullIndex.value.length)
         return [];
@@ -38,32 +20,48 @@ const categories = computed(() => {
         categoryNames.add(topLevelCategory);
     });
     return Array.from(categoryNames).map(name => ({
-        name: categoryTranslations[name.toLowerCase()] || name,
+        name: categoryTranslations.value[name.toLowerCase()] || name,
         path: name
     }));
 });
-watch(() => appStore.currentGame, (newGame) => {
-    if (newGame) {
-        dataStore.fetchIndex(newGame);
+
+async function loadUiConfig(domain) {
+    try {
+        const response = await fetch(`/public/domains/${domain}/metadata/uiconfig.json`);
+        if (!response.ok) {
+            throw new Error(`Failed to load UI config for domain ${domain}`);
+        }
+        const config = await response.json();
+        categoryTranslations.value = config.categoryTranslations || {};
+    } catch (error) {
+        console.error(error);
+        categoryTranslations.value = {}; // Reset on error
+    }
+}
+
+watch(() => appStore.currentDomain, (newDomain) => {
+    if (newDomain) {
+        dataStore.fetchIndex(newDomain);
+        loadUiConfig(newDomain);
     }
 }, { immediate: true });
 function getNavPath(type, payload) {
-    const game = appStore.currentGame;
+    const domain = appStore.currentDomain;
     if (type === 'search') {
-        return `/v2/${game}/search`;
+        return `/v2/${domain}/search`;
     }
     if (type === 'agent') {
-        return `/v2/${game}/agent`;
+        return `/v2/${domain}/agent`;
     }
     if (type === 'category' && payload) {
-        return `/v2/${game}/category/${payload}`;
+        return `/v2/${domain}/category/${payload}`;
     }
-    return `/v2/${game}`;
+    return `/v2/${domain}`;
 }
-function switchGame(game) {
-    if (appStore.currentGame !== game) {
-        appStore.setCurrentGame(game);
-        router.push(`/v2/${game}/search`);
+function switchDomain(domain) {
+    if (appStore.currentDomain !== domain) {
+        appStore.setCurrentDomain(domain);
+        router.push(`/v2/${domain}/search`);
     }
 }
 function isActive(categoryPath) {
@@ -86,15 +84,15 @@ __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.d
 });
 __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
     ...{ onClick: (...[$event]) => {
-            __VLS_ctx.switchGame('gi');
+            __VLS_ctx.switchDomain('gi');
         } },
-    ...{ class: ({ active: __VLS_ctx.appStore.currentGame === 'gi' }) },
+    ...{ class: ({ active: __VLS_ctx.appStore.currentDomain === 'gi' }) },
 });
 __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
     ...{ onClick: (...[$event]) => {
-            __VLS_ctx.switchGame('hsr');
+            __VLS_ctx.switchDomain('hsr');
         } },
-    ...{ class: ({ active: __VLS_ctx.appStore.currentGame === 'hsr' }) },
+    ...{ class: ({ active: __VLS_ctx.appStore.currentDomain === 'hsr' }) },
 });
 __VLS_asFunctionalElement(__VLS_intrinsicElements.ul, __VLS_intrinsicElements.ul)({
     ...{ class: "nav-list" },
@@ -155,7 +153,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             appStore: appStore,
             categories: categories,
             getNavPath: getNavPath,
-            switchGame: switchGame,
+            switchDomain: switchDomain,
             isActive: isActive,
         };
     },

@@ -87,18 +87,33 @@ const functionComponent = computed(() => {
 });
 
 // Watch for game changes in the route and update all relevant stores
-watch(() => route.params.game, (newGame) => {
-  if (newGame && typeof newGame === 'string' && (newGame === 'hsr' || newGame === 'gi')) {
-    const game = newGame as Game;
-    appStore.setCurrentGame(game);
-    dataStore.fetchIndex(game);
-    agentStore.switchGameContext(game);
+// --- Application Initialization Orchestrator ---
+async function initializeApplication(domain) {
+  if (!domain) return;
+
+  appStore.isCoreDataReady = false;
+  
+  // The order is critical here
+  await dataStore.fetchIndex(domain);
+  await agentStore.switchDomainContext(domain);
+
+  appStore.isCoreDataReady = true;
+}
+
+watch(() => appStore.currentDomain, (newDomain, oldDomain) => {
+  if (newDomain && newDomain !== oldDomain) {
+    initializeApplication(newDomain);
   }
 }, { immediate: true });
 
-onMounted(() => {
-  // Initialize the agent store from cache when the main layout is mounted
-  agentStore.initializeStoreFromCache();
+
+onMounted(async () => {
+  // 1. Load domain list first
+  await appStore.loadDomains();
+  // 2. Initialize agent store from cache
+  await agentStore.initializeStoreFromCache();
+  // 3. Trigger the initial application setup based on the current domain
+  // The watcher above will handle the first initialization.
 });
 </script>
 

@@ -20,19 +20,20 @@
       />
     </div>
 
+    <!-- Status Indicator: Mutually Exclusive States -->
     <div v-if="error" class="status-panel error">
       发生错误: {{ error.message }}
     </div>
-    
-    <div v-if="isLoading || !error"
-          class="status-panel thinking-indicator">
-      <span v-if="isLoading">{{ activeAgentName }} 正在思考中... ({{ thinkingTime }}s)</span>
-      <span v-else>{{ activeAgentName }} ，期待与您对话。</span>
+    <div v-else-if="isLoading" class="status-panel thinking-indicator">
+      <span>{{ activeAgentName }} 正在思考中... ({{ thinkingTime }}s)</span>
+    </div>
+    <div v-else class="status-panel">
+      <span>{{ activeAgentName }} ，期待与您对话。</span>
     </div>
 
     <AgentSelectorModal
       :visible="isAgentSelectorVisible"
-      :agents="availableAgents[currentGame] || []"
+      :agents="availableAgents[currentDomain] || []"
       :selected-agent-id="currentRoleId"
       @close="toggleAgentSelector"
       @select-agent="handleSelectAgent"
@@ -73,7 +74,7 @@ import SessionHistoryPanel from '@/components/SessionHistoryPanel.vue';
 
 // --- Stores ---
 const appStore = useAppStore();
-const { currentGame } = storeToRefs(appStore);
+const { currentDomain } = storeToRefs(appStore);
 
 const agentStore = useAgentStore();
 const { orderedMessages, isLoading, error, activeAgentName, availableAgents, currentRoleId } = storeToRefs(agentStore);
@@ -192,7 +193,7 @@ const handleHistoryButtonClick = async () => {
 let mutationObserver = null;
 
 onMounted(() => {
-  fetchAvailableAgents(currentGame.value);
+  // fetchAvailableAgents(currentDomain.value); // This is now handled by MainLayoutV2's orchestrator
   historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
   
   const scrollToBottom = () => {
@@ -214,9 +215,11 @@ onMounted(() => {
   }
 });
 
-watch(currentGame, (newGame) => {
-  fetchAvailableAgents(newGame);
-});
+// This watcher is redundant and was causing race conditions.
+// The MainLayoutV2 component is now the single source of truth for orchestrating domain changes.
+// watch(currentDomain, (newDomain) => {
+//   fetchAvailableAgents(newDomain);
+// });
 
 watch(isLoading, (newValue) => {
   if (newValue) {

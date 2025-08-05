@@ -1,81 +1,113 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
-import { useAppStore } from '@/stores/app'
+import { createRouter, createWebHashHistory } from 'vue-router';
+import { useAppStore } from '@/stores/app';
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      redirect: '/v2/gi/agent' // Redirect to Genshin Impact agent page on start
-    },
-    // --- V2 Three-Pane Layout Routes ---
-    {
-      path: '/v2/:game',
-      component: () => import('@/layouts/MainLayoutV2.vue'),
-      children: [
-       {
-         path: 'agent',
-         name: 'v2-agent',
-         meta: { functionPane: 'AgentChatView' },
-         components: {
-           nav: () => import('@/views/v2/CategoryNav.vue'),
-           // Temporarily disabled as per user request.
-           // detail: () => import('@/views/v2/AgentReportView.vue')
-         }
-       },
+    history: createWebHashHistory(import.meta.env.BASE_URL),
+    routes: [
         {
-          path: 'category/:categoryName',
-          name: 'v2-category',
-          meta: { functionPane: 'ItemListView' },
-          components: {
-            nav: () => import('@/views/v2/CategoryNav.vue'),
-            function: () => import('@/views/v2/ItemListView.vue'),
-            detail: () => import('@/views/v2/DetailPlaceholder.vue')
-          }
+            path: '/',
+            // Redirect will be handled by the beforeEach guard
+            name: 'root',
+            component: { template: '<div>Loading...</div>' }
         },
+        // --- V2 Three-Pane Layout Routes ---
         {
-          path: 'category/:categoryName/:pathMatch(.*)*',
-          name: 'v2-detail',
-          meta: { keepFunctionPane: true },
-          components: {
-            nav: () => import('@/views/v2/CategoryNav.vue'),
-            function: () => import('@/views/v2/ItemListView.vue'),
-            detail: () => import('@/views/DetailView.vue')
-          }
+            path: '/domain/:domain',
+            component: () => import('@/layouts/MainLayoutV2.vue'),
+            children: [
+                {
+                    path: 'agent',
+                    name: 'v2-agent',
+                    meta: { functionPane: 'AgentChatView' },
+                    components: {
+                        nav: () => import('@/views/v2/CategoryNav.vue'),
+                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                    }
+                },
+                {
+                    path: 'category/:categoryName',
+                    name: 'v2-category',
+                    meta: { functionPane: 'ItemListView' },
+                    components: {
+                        nav: () => import('@/views/v2/CategoryNav.vue'),
+                        function: () => import('@/views/v2/ItemListView.vue'),
+                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                    }
+                },
+                {
+                    path: 'category/:categoryName/:pathMatch(.*)*',
+                    name: 'v2-detail',
+                    meta: { keepFunctionPane: true },
+                    components: {
+                        nav: () => import('@/views/v2/CategoryNav.vue'),
+                        function: () => import('@/views/v2/ItemListView.vue'),
+                        detail: () => import('@/views/DetailView.vue')
+                    }
+                },
+                {
+                    path: 'search',
+                    name: 'v2-search',
+                    meta: { functionPane: 'SearchViewV2' },
+                    components: {
+                        nav: () => import('@/views/v2/CategoryNav.vue'),
+                        function: () => import('@/views/v2/SearchViewV2.vue'),
+                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                    }
+                }
+            ]
         },
+        // Add a catch-all route for 404 pages
         {
-          path: 'search',
-          name: 'v2-search',
-          meta: { functionPane: 'SearchViewV2' },
-          components: {
-            nav: () => import('@/views/v2/CategoryNav.vue'),
-            function: () => import('@/views/v2/SearchViewV2.vue'),
-            detail: () => import('@/views/v2/DetailPlaceholder.vue')
-          }
+            path: '/:pathMatch(.*)*',
+            name: 'NotFound',
+            component: () => import('@/views/NotFoundView.vue'),
         }
-      ]
-    },
-    // Add a catch-all route for 404 pages
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@/views/NotFoundView.vue'),
-    }
-  ]
-})
-
-// Global navigation guard to update game state based on URL
-router.beforeEach((to, from, next) => {
-  const game = to.params.game;
-  // It's safe to call useAppStore() here because Pinia is already installed.
-  const appStore = useAppStore();
-  
-  // Basic validation for the game parameter
-  if (game && ['hsr', 'gi'].includes(game as string)) {
-    appStore.setCurrentGame(game as 'hsr' | 'gi');
-  }
-
-  next();
+    ]
 });
 
-export default router
+// Global navigation guard to update domain state based on URL
+router.beforeEach(async (to, from, next) => {
+    console.log('--- Router Navigation ---');
+    console.log('From:', { path: from.path, name: from.name });
+    console.log('To:', { path: to.path, name: to.name, params: to.params, meta: to.meta });
+
+    const appStore = useAppStore();
+
+    // Ensure domains are loaded before any route logic
+    if (appStore.availableDomains.length === 0) {
+        await appStore.loadDomains();
+    }
+
+    // Handle root redirect after domains are loaded
+    if (to.name === 'root') {
+        const defaultDomain = appStore.availableDomains[0]?.id;
+        if (defaultDomain) {
+            return next({ path: `/domain/${defaultDomain}/search` });
+        } else {
+            // Handle case where no domains are available
+            return next({ name: 'NotFound' });
+        }
+    }
+
+    const domain = to.params.domain as string;
+    if (domain) {
+        const isValidDomain = appStore.availableDomains.some(d => d.id === domain);
+        if (isValidDomain) {
+            if (appStore.currentDomain !== domain) {
+                appStore.setCurrentDomain(domain);
+            }
+        } else {
+            // If domain in URL is invalid, redirect to a default valid one
+            const defaultDomain = appStore.availableDomains[0]?.id;
+            if (defaultDomain) {
+                return next({ path: `/domain/${defaultDomain}/search` });
+            } else {
+                return next({ name: 'NotFound' });
+            }
+        }
+    }
+    
+    next();
+});
+
+export default router;

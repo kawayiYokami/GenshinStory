@@ -34,14 +34,14 @@ async function performSearch() {
     }
 }
 // --- 生命周期钩子 ---
-watch(() => appStore.currentGame, (newGame) => {
-    if (newGame) {
-        // Clear search results when game changes
+watch(() => appStore.currentDomain, (newDomain) => {
+    if (newDomain) {
+        // Clear search results when domain changes
         results.value = [];
         searchQuery.value = '';
         hasSearched.value = false;
-        // The dataStore now handles clearing its own caches when the game changes.
-        dataStore.fetchIndex(newGame);
+        // The dataStore now handles clearing its own caches when the domain changes.
+        dataStore.fetchIndex(newDomain);
     }
 }, { immediate: true });
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */

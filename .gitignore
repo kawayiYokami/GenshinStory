@@ -14,13 +14,4 @@ test_outputs/
 __pycache__/
 *.pyc
 docs/
-
-# Cache files
-web/docs-site/public/gi_md/
-web/docs-site/public/hsr_md/
-web/docs-site/public/search/
-web/docs-site/public/search_hsr/
-web/docs-site/public/index_gi.json
-web/docs-site/public/index_hsr.json
-web/docs-site/public/catalog_tree_gi.json
-web/docs-site/public/catalog_tree_hsr.json
+metadata/

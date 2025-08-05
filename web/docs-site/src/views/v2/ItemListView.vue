@@ -14,7 +14,7 @@
         >
           <template #default="{ index, style }">
             <div :key="filteredItems[index].id" :style="style">
-              <router-link :to="`${filteredItems[index].path}?from=category`" class="item-link" active-class="router-link-exact-active">
+              <router-link :to="`${filteredItems[index].path.replace('/v2/', '/domain/')}?from=category`" class="item-link" active-class="router-link-exact-active">
                 {{ filteredItems[index].name }}
               </router-link>
             </div>
@@ -57,12 +57,12 @@ const filteredItems = computed(() => {
   );
 });
 
-// Watch for game changes from the store.
-// When the game changes, trigger the fetch action in the data store.
+// Watch for domain changes from the store.
+// When the domain changes, trigger the fetch action in the data store.
 // immediate: true ensures it runs once on component creation.
-watch(() => appStore.currentGame, (newGame) => {
-    if (newGame) {
-        dataStore.fetchIndex(newGame);
+watch(() => appStore.currentDomain, (newDomain) => {
+    if (newDomain) {
+        dataStore.fetchIndex(newDomain);
     }
 }, { immediate: true });
 

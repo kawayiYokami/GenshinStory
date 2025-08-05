@@ -16,7 +16,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
           <ul v-if="isNewChatMenuVisible" class="dropdown-menu">
-            <li v-for="agent in availableAgents[currentGame]" :key="agent.id" @click="handleNewChatWithAgent(agent.id)">
+            <li v-for="agent in availableAgents[currentDomain]" :key="agent.id" @click="handleNewChatWithAgent(agent.id)">
               {{ agent.name }}
             </li>
           </ul>
@@ -144,7 +144,7 @@ const { availableAgents } = storeToRefs(agentStore);
 const { startNewChatWithAgent } = agentStore;
 
 const appStore = useAppStore();
-const { currentGame } = storeToRefs(appStore);
+const { currentDomain } = storeToRefs(appStore);
 
 // --- Emits & Props ---
 const emit = defineEmits(['update:showRawContent', 'history-click']);

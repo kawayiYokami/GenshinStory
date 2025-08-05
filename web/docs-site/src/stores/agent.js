@@ -9,8 +9,22 @@ import { useAppStore } from '@/stores/app';
 import localTools from '@/services/localToolsService'; // Import localTools
 
 // --- Localforage an d debounce setup ---
+const AGENT_CACHE_VERSION = '2.0'; // Define a cache version
 const sessionsStore = localforage.createInstance({ name: 'agentSessions' });
 const lastUsedRolesStore = localforage.createInstance({ name: 'lastUsedRoles' });
+
+// --- Cache Cleaning Tool (for emergency recovery) ---
+export async function forceClearAgentCache() {
+  await sessionsStore.clear();
+  await lastUsedRolesStore.clear();
+  // The reload is removed to allow for diagnostics without a refresh loop.
+  logger.warn('[AgentStore] Cache has been cleared due to outdated or corrupt data.');
+}
+// Expose to window for easy manual access during development
+if (import.meta.env.DEV) {
+  window.forceClearAgentCache = forceClearAgentCache;
+}
+// --- End Cache Cleaning Tool ---
 
 function debounce(func, wait) {
   let timeout;
@@ -25,7 +39,7 @@ function debounce(func, wait) {
 }
 
 export const useAgentStore = defineStore('agent', () => {
-  const MAX_SESSIONS_PER_GAME = 10;
+  const MAX_SESSIONS_PER_DOMAIN = 10;
 
   // --- State ---
 
@@ -54,9 +68,9 @@ export const useAgentStore = defineStore('agent', () => {
   // --- Getters / Computed ---
 
   const appStore = useAppStore();
-  const currentGame = computed(() => appStore.currentGame);
-  const activeSessionId = computed(() => activeSessionIds.value[currentGame.value]);
-  const currentRoleId = computed(() => activeRoleId.value[currentGame.value]);
+  const currentDomain = computed(() => appStore.currentDomain);
+  const activeSessionId = computed(() => activeSessionIds.value[currentDomain.value]);
+  const currentRoleId = computed(() => activeRoleId.value[currentDomain.value]);
   const currentSession = computed(() => sessions.value[activeSessionId.value] || null);
   
   const messagesById = computed(() => currentSession.value?.messagesById || {});
@@ -70,8 +84,8 @@ export const useAgentStore = defineStore('agent', () => {
   // --- Actions ---
 
   async function switchSession(sessionId) {
-    const game = currentGame.value;
-    if (!sessions.value[sessionId] || activeSessionIds.value[game] === sessionId) return;
+    const domain = currentDomain.value;
+    if (!sessions.value[sessionId] || activeSessionIds.value[domain] === sessionId) return;
 
     const targetSession = sessions.value[sessionId];
     const targetRoleId = targetSession.roleId;
@@ -82,14 +96,14 @@ export const useAgentStore = defineStore('agent', () => {
     }
     
     // Switch the active session ID
-    activeSessionIds.value[game] = sessionId;
+    activeSessionIds.value[domain] = sessionId;
 
     // Update the active role to match the session's role
-    activeRoleId.value[game] = targetRoleId;
-    await lastUsedRolesStore.setItem(game, targetRoleId);
+    activeRoleId.value[domain] = targetRoleId;
+    await lastUsedRolesStore.setItem(domain, targetRoleId);
     
     // Update the agent name display
-    const agent = availableAgents.value[game]?.find(a => a.id === targetRoleId);
+    const agent = availableAgents.value[domain]?.find(a => a.id === targetRoleId);
     if (agent) {
       activeAgentName.value = agent.name;
     }
@@ -98,14 +112,14 @@ export const useAgentStore = defineStore('agent', () => {
   }
   
   function deleteSession(sessionId) {
-    const game = currentGame.value;
+    const domain = currentDomain.value;
     if (!sessions.value[sessionId]) return;
 
     // Avoid deleting the last active session, create a new one instead
-    if (activeSessionIds.value[game] === sessionId) {
+    if (activeSessionIds.value[domain] === sessionId) {
       delete sessions.value[sessionId];
       logger.log(`[AgentStore] Deleted active session ${sessionId}. Starting a new one.`);
-      startNewSession(game, currentRoleId.value);
+      startNewSession(domain, currentRoleId.value);
     } else {
       delete sessions.value[sessionId];
       logger.log(`[AgentStore] Deleted session ${sessionId}.`);
@@ -119,60 +133,59 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
   
-  async function fetchAvailableAgents(game) {
+  async function fetchAvailableAgents(domain) {
     // 1. Prevent concurrent executions
-    if (_isFetchingAgents.value[game] || availableAgents.value[game]?.length > 0) {
-      // logger.log(`Agent Store: '${game}' 的 Agent 列表获取已在进行中或已存在，跳过。`);
-      return;
+    if (_isFetchingAgents.value[domain]) return activeRoleId.value[domain];
+    // If agents are already loaded, we can confidently return the active role ID.
+    if (availableAgents.value[domain]?.length > 0) {
+      return activeRoleId.value[domain];
     }
-    _isFetchingAgents.value[game] = true;
+    _isFetchingAgents.value[domain] = true;
 
     try {
       // 2. Try to load the last used role from cache first.
-      const cachedRoleId = await lastUsedRolesStore.getItem(game);
+      const cachedRoleId = await lastUsedRolesStore.getItem(domain);
       if (cachedRoleId) {
-        activeRoleId.value[game] = cachedRoleId;
-        logger.log(`[AgentStore] Loaded last used role '${cachedRoleId}' for game '${game}'.`);
+        activeRoleId.value[domain] = cachedRoleId;
+        logger.log(`[AgentStore] Loaded last used role '${cachedRoleId}' for domain '${domain}'.`);
       }
 
       // 3. Fetch from service
-      logger.log(`Agent Store: 正在为游戏 '${game}' 获取可用 Agent 列表...`);
-      const agents = await promptService.listAvailableAgents(game);
-      availableAgents.value[game] = agents;
+      logger.log(`Agent Store: 正在为域 '${domain}' 获取可用 Agent 列表...`);
+      const agents = await promptService.listAvailableAgents(domain);
+      availableAgents.value[domain] = agents;
 
       // 4. If after fetching, there's still no active role ID, set a default.
-      if (agents.length > 0 && !activeRoleId.value[game]) {
-        const defaultRoles = {
-          gi: 'gi_role',
-          hsr: 'hsr_herta_role'
-        };
-        const defaultId = defaultRoles[game] || agents[0]?.id;
-        activeRoleId.value[game] = defaultId;
-        logger.log(`Agent Store: 已为 '${game}' 设置默认 Agent: ${defaultId}`);
-        await lastUsedRolesStore.setItem(game, defaultId);
+      if (!activeRoleId.value[domain] && agents && agents.length > 0) {
+        const defaultId = agents[0].id;
+        activeRoleId.value[domain] = defaultId;
+        logger.log(`[AgentStore] No cached role for '${domain}'. Set default agent to '${defaultId}'.`);
+        await lastUsedRolesStore.setItem(domain, defaultId);
       }
     } catch (e) {
-      logger.error(`Agent Store: 获取 '${game}' 的 Agent 列表失败:`, e);
+      logger.error(`Agent Store: 获取 '${domain}' 的 Agent 列表失败:`, e);
     } finally {
-      _isFetchingAgents.value[game] = false;
+      _isFetchingAgents.value[domain] = false;
+      // Always return the determined (or pre-existing) active role ID
+      return activeRoleId.value[domain];
     }
   }
 
-  async function startNewSession(game, roleIdToLoad) {
+  async function startNewSession(domain, roleIdToLoad) {
     const roleId = roleIdToLoad || currentRoleId.value;
     if (!roleId) {
       logger.error(`Agent Store: 无法开启新会话，因为没有提供或设置 roleId。`);
       error.value = new Error("无法开启新会话，因为没有选择任何 Agent。");
       return;
     }
-    logger.log(`Agent Store: 为游戏 '${game}' (角色: ${roleId}) 开启新会话...`);
+    logger.log(`Agent Store: 为域 '${domain}' (角色: ${roleId}) 开启新会话...`);
 
     // --- Rolling Cleanup Logic ---
-    const gameSessions = Object.values(sessions.value).filter(s => s.game === game);
-    if (gameSessions.length >= MAX_SESSIONS_PER_GAME) {
-      gameSessions.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-      const oldestSession = gameSessions[0];
-      logger.log(`Agent Store: 会话数量达到上限(${MAX_SESSIONS_PER_GAME})，正在删除最旧的会话: ${oldestSession.id}`);
+    const domainSessions = Object.values(sessions.value).filter(s => s.domain === domain);
+    if (domainSessions.length >= MAX_SESSIONS_PER_DOMAIN) {
+      domainSessions.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      const oldestSession = domainSessions[0];
+      logger.log(`Agent Store: 会话数量达到上限(${MAX_SESSIONS_PER_DOMAIN})，正在删除最旧的会话: ${oldestSession.id}`);
       delete sessions.value[oldestSession.id];
     }
     // --- End Cleanup Logic ---
@@ -181,13 +194,13 @@ export const useAgentStore = defineStore('agent', () => {
     error.value = null;
     try {
       // <-- 使用 promptService
-      const { systemPrompt, agentName } = await promptService.loadSystemPrompt(roleId);
+      const { systemPrompt, agentName } = await promptService.loadSystemPrompt(domain, roleId);
       activeAgentName.value = agentName;
-      activeRoleId.value[game] = roleId;
+      activeRoleId.value[domain] = roleId;
       const newSessionId = `session_${Date.now()}`;
       const newSession = {
         id: newSessionId,
-        game: game,
+        domain: domain,
         roleId: roleId, // <-- BIND THE AGENT TO THE SESSION
         name: `会话 ${new Date().toLocaleString()}`,
         createdAt: new Date().toISOString(),
@@ -196,7 +209,7 @@ export const useAgentStore = defineStore('agent', () => {
       };
       
       sessions.value[newSessionId] = newSession;
-      activeSessionIds.value[game] = newSessionId;
+      activeSessionIds.value[domain] = newSessionId;
 
       addMessage({
         role: 'system',
@@ -213,23 +226,27 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  async function switchGameContext(game) {
-    logger.log(`Agent Store: 切换游戏上下文至 '${game}'...`);
-    await fetchAvailableAgents(game);
-    if (!activeSessionIds.value[game] || !sessions.value[activeSessionIds.value[game]]) {
-      await startNewSession(game, activeRoleId.value[game]);
+  async function switchDomainContext(domain) {
+    logger.log(`Agent Store: 切换域上下文至 '${domain}'...`);
+    // Ensure we get a valid roleId from the fetch function
+    const ensuredRoleId = await fetchAvailableAgents(domain);
+
+    if (!activeSessionIds.value[domain] || !sessions.value[activeSessionIds.value[domain]]) {
+      logger.log(`[AgentStore] No active session for '${domain}'. Starting new session with role '${ensuredRoleId}'.`);
+      await startNewSession(domain, ensuredRoleId);
     } else {
-      const currentRole = availableAgents.value[game]?.find(a => a.id === currentRoleId.value);
+      // If a session exists, ensure its role is still valid and update the agent name.
+      const currentRole = availableAgents.value[domain]?.find(a => a.id === currentRoleId.value);
       if (currentRole) {
         activeAgentName.value = currentRole.name;
       }
-      logger.log(`Agent Store: 已激活 '${game}' 的现有会话 '${activeSessionIds.value[game]}'。`);
+      logger.log(`Agent Store: 已激活 '${domain}' 的现有会话 '${activeSessionIds.value[domain]}'。`);
     }
   }
 
     // This is now for creating a NEW chat with a specific agent
     async function startNewChatWithAgent(roleId) {
-      const game = currentGame.value;
+      const domain = currentDomain.value;
       if (!roleId) return;
   
       logger.log(`[AgentStore] User requested to start a new chat with agent '${roleId}'.`);
@@ -244,7 +261,7 @@ export const useAgentStore = defineStore('agent', () => {
         // 1. Stop any ongoing activity
         stopAgent();
         // 2. Load the new prompt
-        const { systemPrompt, agentName } = await promptService.loadSystemPrompt(roleId);
+        const { systemPrompt, agentName } = await promptService.loadSystemPrompt(domain, roleId);
         // 3. Clear existing messages (should just be the old system prompt)
         session.messagesById = {};
         session.messageIds = [];
@@ -252,14 +269,14 @@ export const useAgentStore = defineStore('agent', () => {
         addMessage({ role: 'system', content: systemPrompt, type: 'system' });
         // 5. Update session and active state
         session.roleId = roleId;
-        activeRoleId.value[game] = roleId;
+        activeRoleId.value[domain] = roleId;
         activeAgentName.value = agentName;
-        await lastUsedRolesStore.setItem(game, roleId);
+        await lastUsedRolesStore.setItem(domain, roleId);
         logger.log(`[AgentStore] Session ${session.id} transformed for agent ${roleId}.`);
         isLoading.value = false;
       } else {
         logger.log(`[AgentStore] Current session is not empty. Starting a new session.`);
-        await startNewSession(game, roleId);
+        await startNewSession(domain, roleId);
       }
     }
   
@@ -429,7 +446,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   async function resetAgent() {
     logger.log("Agent Store: 重置 Agent... (将开启新会话)");
-    await startNewSession(currentGame.value);
+    await startNewSession(currentDomain.value);
   }
 
   // --- Safety Net Actions ---
@@ -506,10 +523,15 @@ export const useAgentStore = defineStore('agent', () => {
   // --- Persistence ---
   const persistState = debounce(async () => {
     try {
-      await sessionsStore.setItem('sessions', JSON.parse(JSON.stringify(sessions.value)));
-      await sessionsStore.setItem('activeSessionIds', JSON.parse(JSON.stringify(activeSessionIds.value)));
-      // Note: activeRoleId is now persisted via lastUsedRolesStore upon change, not here.
-      logger.log('[AgentStore] Session state persisted.');
+      const stateToPersist = {
+        version: AGENT_CACHE_VERSION,
+        data: {
+          sessions: JSON.parse(JSON.stringify(sessions.value)),
+          activeSessionIds: JSON.parse(JSON.stringify(activeSessionIds.value)),
+        }
+      };
+      await sessionsStore.setItem('state', stateToPersist);
+      logger.log(`[AgentStore] Session state persisted (v${AGENT_CACHE_VERSION}).`);
     } catch (e) {
       logger.error('[AgentStore] Failed to persist state:', e);
     }
@@ -518,29 +540,46 @@ export const useAgentStore = defineStore('agent', () => {
   async function initializeStoreFromCache() {
     try {
       logger.log('[AgentStore] Initializing store from cache...');
-      const cachedSessions = await sessionsStore.getItem('sessions');
-      const cachedActiveIds = await sessionsStore.getItem('activeSessionIds');
+      const cachedState = await sessionsStore.getItem('state');
       
-      // We don't need to load role IDs here because fetchAvailableAgents,
-      // which is called on view mount, now handles loading the cached role ID.
+      // --- Diagnostic & Auto-Healing ---
+      if (!cachedState || cachedState.version !== AGENT_CACHE_VERSION) {
+        logger.error(`[AgentStore] Outdated or corrupt cache detected. Clearing cache and starting fresh.`, {
+            foundVersion: cachedState?.version,
+            expectedVersion: AGENT_CACHE_VERSION,
+            invalidData: cachedState
+        });
+        await forceClearAgentCache();
+        
+        // Gracefully degrade: initialize with clean state and continue
+        sessions.value = {};
+        activeSessionIds.value = { gi: null, hsr: null };
 
-      if (cachedSessions) {
-        sessions.value = cachedSessions;
-        logger.log(`[AgentStore] Restored ${Object.keys(cachedSessions).length} sessions.`);
-      }
-      if (cachedActiveIds) {
-        // Ensure activeSessionIds is an object for both games
+      } else {
+        // --- Cache is valid, proceed with loading ---
+        const { sessions: cachedSessions, activeSessionIds: cachedActiveIds } = cachedState.data;
+
+        // Add extra validation for restored data
+        sessions.value = (typeof cachedSessions === 'object' && cachedSessions !== null) ? cachedSessions : {};
+        logger.log(`[AgentStore] Restored ${Object.keys(sessions.value).length} sessions.`);
+        
         const defaultIds = { gi: null, hsr: null };
-        activeSessionIds.value = { ...defaultIds, ...cachedActiveIds };
+        activeSessionIds.value = (typeof cachedActiveIds === 'object' && cachedActiveIds !== null)
+                                 ? { ...defaultIds, ...cachedActiveIds }
+                                 : defaultIds;
         logger.log('[AgentStore] Restored active session IDs.');
       }
       
-      // Set up watchers to persist state after initial load
+      // Set up watchers to persist state AFTER initialization is complete
       watch(sessions, persistState, { deep: true });
       watch(activeSessionIds, persistState, { deep: true });
 
     } catch (e) {
-      logger.error('[AgentStore] Failed to initialize from cache:', e);
+      logger.error('[AgentStore] Critical error during cache initialization. Clearing cache and starting fresh.', e);
+      await forceClearAgentCache();
+      // Ensure state is clean after a critical failure
+      sessions.value = {};
+      activeSessionIds.value = { gi: null, hsr: null };
     }
   }
 
@@ -559,7 +598,7 @@ export const useAgentStore = defineStore('agent', () => {
     orderedMessages,
     consecutiveToolErrors,
     consecutiveAiTurns,
-    switchGameContext,
+    switchDomainContext,
     fetchAvailableAgents,
     switchAgent,
     startNewSession,

@@ -193,16 +193,6 @@ async function executeTool(parsedTool) {
             toolResult = `${linkPrompt}\n\n---\n\n${toolResult}`;
         }
     }
-    
-    // --- Result Post-processing ---
-
-    // Add reference prompt for specific tools
-    if (['search_docs', 'list_docs'].includes(name) && toolResult && !toolResult.startsWith("错误：")) {
-        const linkPrompt = await _getLinkPrompt();
-        if (linkPrompt) {
-            toolResult = `${linkPrompt}\n\n---\n\n${toolResult}`;
-        }
-    }
 
     return toolResult;
 }

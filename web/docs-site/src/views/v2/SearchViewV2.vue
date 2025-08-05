@@ -110,7 +110,7 @@ async function performSearch() {
     const queryBigrams = getBigrams(searchQuery.value);
     
     // 1. 并行从 dataStore 获取所有需要的分片
-    const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentGame, bigram[0]));
+    const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentDomain, bigram[0]));
     const chunks = await Promise.all(chunkPromises);
 
     // 2. 获取每个二元组对应的ID列表
@@ -153,14 +153,14 @@ async function performSearch() {
 }
 
 // --- 生命周期钩子 ---
-watch(() => appStore.currentGame, (newGame) => {
-  if (newGame) {
-    // Clear search results when game changes
+watch(() => appStore.currentDomain, (newDomain) => {
+  if (newDomain) {
+    // Clear search results when domain changes
     results.value = [];
     searchQuery.value = '';
     hasSearched.value = false;
-    // The dataStore now handles clearing its own caches when the game changes.
-    dataStore.fetchIndex(newGame);
+    // The dataStore now handles clearing its own caches when the domain changes.
+    dataStore.fetchIndex(newDomain);
   }
 }, { immediate: true });
 </script>
