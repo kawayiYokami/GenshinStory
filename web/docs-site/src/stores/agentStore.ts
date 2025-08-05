@@ -440,7 +440,6 @@ export const useAgentStore = defineStore('agent', () => {
                 }
             }
             if (messageId && chunk.value) {
-                logger.log(`[LOG] _handleStream: Appending chunk to ${messageId}`, { chunk: chunk.value });
                 await appendMessageContent({ messageId, chunk: chunk.value });
             }
         }
