@@ -62,7 +62,8 @@ class LocalToolsService {
     const appStore = useAppStore();
     const currentDomain = appStore.currentDomain;
     if (!currentDomain) return '';
-    return `/domains/${currentDomain}/docs/${logicalPath}`;
+    const cleanLogicalPath = logicalPath.startsWith('/') ? logicalPath.substring(1) : logicalPath;
+    return `/domains/${currentDomain}/docs/${cleanLogicalPath}`;
   }
 
   private _getLogicalPathFromFrontendPath(frontendPath: string): string {
