@@ -6,72 +6,104 @@ import agentService from '@/services/agentService';
 import promptService from '@/services/promptService';
 import logger, { logs } from '@/services/loggerService';
 import { useAppStore } from '@/stores/app';
-import localTools from '@/services/localToolsService'; // Import localTools
+import localTools from '@/services/localToolsService';
+import type { Ref } from 'vue';
+import type { LogEntry } from '@/services/loggerService';
 
-// --- Localforage an d debounce setup ---
-const AGENT_CACHE_VERSION = '2.0'; // Define a cache version
+// --- 类型定义 ---
+export interface MessageContentPart {
+    type: 'text' | 'image_url' | 'doc';
+    text?: string;
+    image_url?: { url: string };
+    content?: string; // for doc
+    name?: string; // for doc
+    path?: string; // for doc
+    error?: boolean; // for doc
+}
+
+export interface Message {
+    id: string;
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content: string | MessageContentPart[];
+    type?: 'text' | 'error' | 'tool_status' | 'tool_result' | 'system';
+    status?: 'streaming' | 'done' | 'error';
+    streamCompleted?: boolean;
+    is_hidden?: boolean;
+    name?: string; // for tool role
+    tool_calls?: any[];
+    question?: {
+        text: string;
+        suggestions: string[];
+    };
+}
+
+export interface Session {
+    id: string;
+    domain: string;
+    roleId: string;
+    name: string;
+    createdAt: string;
+    messagesById: { [key: string]: Message };
+    messageIds: string[];
+}
+
+export interface AgentInfo {
+    id: string;
+    name: string;
+    description: string;
+}
+
+// --- Localforage 和 debounce 设置 ---
+const AGENT_CACHE_VERSION = '2.0';
 const sessionsStore = localforage.createInstance({ name: 'agentSessions' });
 const lastUsedRolesStore = localforage.createInstance({ name: 'lastUsedRoles' });
 
-// --- Cache Cleaning Tool (for emergency recovery) ---
-export async function forceClearAgentCache() {
+export async function forceClearAgentCache(): Promise<void> {
   await sessionsStore.clear();
   await lastUsedRolesStore.clear();
-  // The reload is removed to allow for diagnostics without a refresh loop.
-  logger.warn('[AgentStore] Cache has been cleared due to outdated or corrupt data.');
+  logger.warn('[AgentStore] 缓存因数据过时或损坏已被清除。');
 }
-// Expose to window for easy manual access during development
 if (import.meta.env.DEV) {
-  window.forceClearAgentCache = forceClearAgentCache;
+  (window as any).forceClearAgentCache = forceClearAgentCache;
 }
-// --- End Cache Cleaning Tool ---
 
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
+function debounce(func: (...args: any[]) => void, wait: number) {
+  let timeout: number;
+  return function executedFunction(...args: any[]) {
     const later = () => {
       clearTimeout(timeout);
       func(...args);
     };
     clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    timeout = window.setTimeout(later, wait);
   };
 }
 
 export const useAgentStore = defineStore('agent', () => {
   const MAX_SESSIONS_PER_DOMAIN = 10;
 
-  // --- State ---
-
-  const sessions = ref({});
-  const activeSessionIds = ref({ gi: null, hsr: null });
-  const availableAgents = ref({ gi: [], hsr: [] });
-  const activeRoleId = ref({ gi: null, hsr: null });
+  // --- 状态 ---
+  const sessions = ref<{ [key: string]: Session }>({});
+  const activeSessionIds = ref<{ [key: string]: string | null }>({ gi: null, hsr: null });
+  const availableAgents = ref<{ [key: string]: AgentInfo[] }>({ gi: [], hsr: [] });
+  const activeRoleId = ref<{ [key: string]: string | null }>({ gi: null, hsr: null });
 
   const isLoading = ref(false);
-  const error = ref(null);
-  const logMessages = ref(logs);
+  const error = ref<Error | string | null>(null);
+  const logMessages: Ref<LogEntry[]> = ref(logs);
   const activeAgentName = ref('AI');
 
-  // --- Internal State ---
-  const _isFetchingAgents = ref({ gi: false, hsr: false });
+  const _isFetchingAgents = ref<{ [key: string]: boolean }>({ gi: false, hsr: false });
 
-  // --- Safety Net State ---
   const consecutiveToolErrors = ref(0);
   const consecutiveAiTurns = ref(0);
 
-  watch(isLoading, () => {
-    // Watcher for reactivity safeguards
-  });
-
-
-  // --- Getters / Computed ---
-
+  // --- Getters / 计算属性 ---
   const appStore = useAppStore();
   const currentDomain = computed(() => appStore.currentDomain);
-  const activeSessionId = computed(() => activeSessionIds.value[currentDomain.value]);
-  const currentRoleId = computed(() => activeRoleId.value[currentDomain.value]);
-  const currentSession = computed(() => sessions.value[activeSessionId.value] || null);
+  const activeSessionId = computed(() => currentDomain.value ? activeSessionIds.value[currentDomain.value] : null);
+  const currentRoleId = computed(() => currentDomain.value ? activeRoleId.value[currentDomain.value] : null);
+  const currentSession = computed(() => activeSessionId.value ? sessions.value[activeSessionId.value] : null);
   
   const messagesById = computed(() => currentSession.value?.messagesById || {});
   const messageIds = computed(() => currentSession.value?.messageIds || []);
@@ -80,98 +112,84 @@ export const useAgentStore = defineStore('agent', () => {
     return messageIds.value.map(id => messagesById.value[id]);
   });
 
-
   // --- Actions ---
-
-  async function switchSession(sessionId) {
+  async function switchSession(sessionId: string): Promise<void> {
     const domain = currentDomain.value;
-    if (!sessions.value[sessionId] || activeSessionIds.value[domain] === sessionId) return;
+    if (!domain || !sessions.value[sessionId] || activeSessionIds.value[domain] === sessionId) return;
 
     const targetSession = sessions.value[sessionId];
     const targetRoleId = targetSession.roleId;
 
     if (!targetRoleId) {
-      logger.warn(`[AgentStore] Session ${sessionId} has no roleId. Cannot switch.`);
+      logger.warn(`[AgentStore] 会话 ${sessionId} 没有 roleId。无法切换。`);
       return;
     }
     
-    // Switch the active session ID
     activeSessionIds.value[domain] = sessionId;
-
-    // Update the active role to match the session's role
     activeRoleId.value[domain] = targetRoleId;
     await lastUsedRolesStore.setItem(domain, targetRoleId);
     
-    // Update the agent name display
     const agent = availableAgents.value[domain]?.find(a => a.id === targetRoleId);
     if (agent) {
       activeAgentName.value = agent.name;
     }
 
-    logger.log(`[AgentStore] Switched to session ${sessionId} (Agent: ${targetRoleId}).`);
+    logger.log(`[AgentStore] 已切换到会话 ${sessionId} (Agent: ${targetRoleId})。`);
   }
   
-  function deleteSession(sessionId) {
+  function deleteSession(sessionId: string): void {
     const domain = currentDomain.value;
-    if (!sessions.value[sessionId]) return;
+    if (!domain || !sessions.value[sessionId]) return;
 
-    // Avoid deleting the last active session, create a new one instead
     if (activeSessionIds.value[domain] === sessionId) {
       delete sessions.value[sessionId];
-      logger.log(`[AgentStore] Deleted active session ${sessionId}. Starting a new one.`);
+      logger.log(`[AgentStore] 已删除活动会话 ${sessionId}。正在开启一个新会话。`);
       startNewSession(domain, currentRoleId.value);
     } else {
       delete sessions.value[sessionId];
-      logger.log(`[AgentStore] Deleted session ${sessionId}.`);
+      logger.log(`[AgentStore] 已删除会话 ${sessionId}。`);
     }
   }
 
-  function renameSession(sessionId, newName) {
+  function renameSession(sessionId: string, newName: string): void {
     if (sessions.value[sessionId]) {
       sessions.value[sessionId].name = newName;
-      logger.log(`[AgentStore] Renamed session ${sessionId} to "${newName}"`);
+      logger.log(`[AgentStore] 已将会话 ${sessionId} 重命名为 "${newName}"`);
     }
   }
   
-  async function fetchAvailableAgents(domain) {
-    // 1. Prevent concurrent executions
-    if (_isFetchingAgents.value[domain]) return activeRoleId.value[domain];
-    // If agents are already loaded, we can confidently return the active role ID.
-    if (availableAgents.value[domain]?.length > 0) {
+  async function fetchAvailableAgents(domain: string): Promise<string | null> {
+    if (_isFetchingAgents.value[domain] || availableAgents.value[domain]?.length > 0) {
       return activeRoleId.value[domain];
     }
     _isFetchingAgents.value[domain] = true;
 
     try {
-      // 2. Try to load the last used role from cache first.
-      const cachedRoleId = await lastUsedRolesStore.getItem(domain);
+      const cachedRoleId = await lastUsedRolesStore.getItem<string>(domain);
       if (cachedRoleId) {
         activeRoleId.value[domain] = cachedRoleId;
-        logger.log(`[AgentStore] Loaded last used role '${cachedRoleId}' for domain '${domain}'.`);
+        logger.log(`[AgentStore] 已加载域 '${domain}' 的上次使用角色 '${cachedRoleId}'。`);
       }
 
-      // 3. Fetch from service
       logger.log(`Agent Store: 正在为域 '${domain}' 获取可用 Agent 列表...`);
       const agents = await promptService.listAvailableAgents(domain);
       availableAgents.value[domain] = agents;
 
-      // 4. If after fetching, there's still no active role ID, set a default.
       if (!activeRoleId.value[domain] && agents && agents.length > 0) {
         const defaultId = agents[0].id;
         activeRoleId.value[domain] = defaultId;
-        logger.log(`[AgentStore] No cached role for '${domain}'. Set default agent to '${defaultId}'.`);
+        logger.log(`[AgentStore] '${domain}' 无缓存角色。已设置默认 agent 为 '${defaultId}'。`);
         await lastUsedRolesStore.setItem(domain, defaultId);
       }
     } catch (e) {
       logger.error(`Agent Store: 获取 '${domain}' 的 Agent 列表失败:`, e);
     } finally {
       _isFetchingAgents.value[domain] = false;
-      // Always return the determined (or pre-existing) active role ID
       return activeRoleId.value[domain];
     }
   }
 
-  async function startNewSession(domain, roleIdToLoad) {
+  async function startNewSession(domain: string, roleIdToLoad: string | null): Promise<void> {
     const roleId = roleIdToLoad || currentRoleId.value;
     if (!roleId) {
       logger.error(`Agent Store: 无法开启新会话，因为没有提供或设置 roleId。`);
@@ -180,28 +198,25 @@ export const useAgentStore = defineStore('agent', () => {
     }
     logger.log(`Agent Store: 为域 '${domain}' (角色: ${roleId}) 开启新会话...`);
 
-    // --- Rolling Cleanup Logic ---
     const domainSessions = Object.values(sessions.value).filter(s => s.domain === domain);
     if (domainSessions.length >= MAX_SESSIONS_PER_DOMAIN) {
-      domainSessions.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      domainSessions.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       const oldestSession = domainSessions[0];
       logger.log(`Agent Store: 会话数量达到上限(${MAX_SESSIONS_PER_DOMAIN})，正在删除最旧的会话: ${oldestSession.id}`);
       delete sessions.value[oldestSession.id];
     }
-    // --- End Cleanup Logic ---
 
     isLoading.value = true;
     error.value = null;
     try {
-      // <-- 使用 promptService
       const { systemPrompt, agentName } = await promptService.loadSystemPrompt(domain, roleId);
       activeAgentName.value = agentName;
       activeRoleId.value[domain] = roleId;
       const newSessionId = `session_${Date.now()}`;
-      const newSession = {
+      const newSession: Session = {
         id: newSessionId,
         domain: domain,
-        roleId: roleId, // <-- BIND THE AGENT TO THE SESSION
+        roleId: roleId,
         name: `会话 ${new Date().toLocaleString()}`,
         createdAt: new Date().toISOString(),
         messagesById: {},
@@ -218,7 +233,7 @@ export const useAgentStore = defineStore('agent', () => {
       });
       logger.log(`Agent Store: 新会话 '${newSessionId}' 已创建并激活。`);
 
-    } catch (e) {
+    } catch (e: any) {
       error.value = e;
       logger.error("Agent Store: 开启新会话失败:", e);
     } finally {
@@ -226,16 +241,14 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  async function switchDomainContext(domain) {
+  async function switchDomainContext(domain: string): Promise<void> {
     logger.log(`Agent Store: 切换域上下文至 '${domain}'...`);
-    // Ensure we get a valid roleId from the fetch function
     const ensuredRoleId = await fetchAvailableAgents(domain);
 
     if (!activeSessionIds.value[domain] || !sessions.value[activeSessionIds.value[domain]]) {
-      logger.log(`[AgentStore] No active session for '${domain}'. Starting new session with role '${ensuredRoleId}'.`);
+      logger.log(`[AgentStore] '${domain}' 无活动会话。正在以角色 '${ensuredRoleId}' 开启新会话。`);
       await startNewSession(domain, ensuredRoleId);
     } else {
-      // If a session exists, ensure its role is still valid and update the agent name.
       const currentRole = availableAgents.value[domain]?.find(a => a.id === currentRoleId.value);
       if (currentRole) {
         activeAgentName.value = currentRole.name;
@@ -244,71 +257,63 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-    // This is now for creating a NEW chat with a specific agent
-    async function startNewChatWithAgent(roleId) {
-      const domain = currentDomain.value;
-      if (!roleId) return;
+  async function startNewChatWithAgent(roleId: string): Promise<void> {
+    const domain = currentDomain.value;
+    if (!domain || !roleId) return;
   
-      logger.log(`[AgentStore] User requested to start a new chat with agent '${roleId}'.`);
-      
-      // Logic: If the current session is empty, just transform it. Otherwise, create a new one.
-      const session = currentSession.value;
-      const isSessionEmpty = !session || session.messageIds.length <= 1; // (only system message)
+    logger.log(`[AgentStore] 用户请求以 agent '${roleId}' 开始新聊天。`);
+    
+    const session = currentSession.value;
+    const isSessionEmpty = !session || session.messageIds.length <= 1;
   
-      if (isSessionEmpty && session) {
-        logger.log(`[AgentStore] Current session is empty. Transforming it for new agent.`);
-        isLoading.value = true;
-        // 1. Stop any ongoing activity
-        stopAgent();
-        // 2. Load the new prompt
-        const { systemPrompt, agentName } = await promptService.loadSystemPrompt(domain, roleId);
-        // 3. Clear existing messages (should just be the old system prompt)
-        session.messagesById = {};
-        session.messageIds = [];
-        // 4. Add the new system message
-        addMessage({ role: 'system', content: systemPrompt, type: 'system' });
-        // 5. Update session and active state
-        session.roleId = roleId;
-        activeRoleId.value[domain] = roleId;
-        activeAgentName.value = agentName;
-        await lastUsedRolesStore.setItem(domain, roleId);
-        logger.log(`[AgentStore] Session ${session.id} transformed for agent ${roleId}.`);
-        isLoading.value = false;
-      } else {
-        logger.log(`[AgentStore] Current session is not empty. Starting a new session.`);
-        await startNewSession(domain, roleId);
-      }
+    if (isSessionEmpty && session) {
+      logger.log(`[AgentStore] 当前会话为空。正在为新 agent 转换它。`);
+      isLoading.value = true;
+      stopAgent();
+      const { systemPrompt, agentName } = await promptService.loadSystemPrompt(domain, roleId);
+      session.messagesById = {};
+      session.messageIds = [];
+      addMessage({ role: 'system', content: systemPrompt, type: 'system' });
+      session.roleId = roleId;
+      activeRoleId.value[domain] = roleId;
+      activeAgentName.value = agentName;
+      await lastUsedRolesStore.setItem(domain, roleId);
+      logger.log(`[AgentStore] 会话 ${session.id} 已为 agent ${roleId} 转换。`);
+      isLoading.value = false;
+    } else {
+      logger.log(`[AgentStore] 当前会话不为空。正在开启一个新会话。`);
+      await startNewSession(domain, roleId);
     }
+  }
   
-    // Legacy function, now just an alias for clarity.
-    async function switchAgent(roleId) {
-      await startNewChatWithAgent(roleId);
-    }
+  async function switchAgent(roleId: string): Promise<void> {
+    await startNewChatWithAgent(roleId);
+  }
 
-  // --- New Atomic Actions ---
-  function addMessage(messageData) {
+  function addMessage(messageData: Partial<Message>): Message | null {
     if (!currentSession.value) return null;
     
     const id = messageData.id || nanoid();
-    const message = {
+    const message: Message = {
       id,
       type: 'text',
+      role: 'user', // default role
       ...messageData,
-    };
+    } as Message;
 
     currentSession.value.messagesById[id] = message;
     currentSession.value.messageIds.push(id);
     return message;
   }
 
-  function updateMessage({ messageId, updates }) {
+  function updateMessage({ messageId, updates }: { messageId: string, updates: Partial<Message> }): void {
     const message = currentSession.value?.messagesById?.[messageId];
     if (message) {
       Object.assign(message, updates);
     }
   }
 
-  function removeMessage(messageId) {
+  function removeMessage(messageId: string): void {
     const session = currentSession.value;
     if (!session || !session.messagesById[messageId]) return;
 
@@ -316,11 +321,10 @@ export const useAgentStore = defineStore('agent', () => {
     if (index > -1) {
       session.messageIds.splice(index, 1);
     }
-
     delete session.messagesById[messageId];
   }
 
-  function replaceMessage(oldId, newMessageData) {
+  function replaceMessage(oldId: string, newMessageData: Partial<Message>): void {
     const session = currentSession.value;
     if (!session || !session.messagesById[oldId]) return;
 
@@ -328,7 +332,7 @@ export const useAgentStore = defineStore('agent', () => {
     if (index === -1) return;
 
     const newId = newMessageData.id || nanoid();
-    const message = { ...newMessageData, id: newId };
+    const message = { ...newMessageData, id: newId } as Message;
 
     delete session.messagesById[oldId];
     session.messagesById[newId] = message;
@@ -336,27 +340,29 @@ export const useAgentStore = defineStore('agent', () => {
     session.messageIds.splice(index, 1, newId);
   }
 
-  function appendMessageContent({ messageId, chunk }) {
+  function appendMessageContent({ messageId, chunk }: { messageId: string, chunk: string }): void {
     const session = currentSession.value;
     if (!session) return;
 
     const message = session.messagesById[messageId];
     if (message) {
-      session.messagesById[messageId] = {
-        ...message,
-        content: (message.content || '') + chunk,
-      };
+        const oldContent = message.content;
+        const newContent = (Array.isArray(oldContent) ? oldContent.map(c=>c.text).join('') : (oldContent || '')) + chunk;
+        session.messagesById[messageId] = {
+            ...message,
+            content: newContent,
+        };
     }
   }
 
-  function markStreamAsCompleted({ messageId }) {
+  function markStreamAsCompleted({ messageId }: { messageId: string }): void {
     const message = currentSession.value?.messagesById?.[messageId];
     if (message) {
       message.streamCompleted = true;
     }
   }
 
-  async function sendMessage(payload) {
+  async function sendMessage(payload: string | { text: string; images?: string[]; references?: any[] }): Promise<void> {
     if (!currentSession.value) {
       const initError = "没有激活的会话。";
       logger.error(initError);
@@ -364,163 +370,138 @@ export const useAgentStore = defineStore('agent', () => {
       return;
     }
 
-    // Adapt to handle both rich content object {text, ...} and simple strings
     const isRichContent = typeof payload === 'object' && payload !== null;
-    const text = isRichContent ? payload.text : payload; // Handles both cases
+    const text = isRichContent ? payload.text : payload;
     const images = isRichContent ? payload.images : [];
     const references = isRichContent ? payload.references : [];
 
-    const contentPayload = [];
+    const contentPayload: MessageContentPart[] = [];
 
-    // 1. Add text part if it exists
     if (text && text.trim()) {
-      contentPayload.push({
-        type: 'text',
-        text: text
-      });
+      contentPayload.push({ type: 'text', text: text });
     }
 
-    // 2. Fetch and add references as structured 'doc' parts
     if (references && references.length > 0) {
-      logger.log(`[AgentStore] Fetching content for ${references.length} references...`);
+      logger.log(`[AgentStore] 正在为 ${references.length} 个引用获取内容...`);
       for (const ref of references) {
         try {
-          const logicalPath = localTools._getLogicalPathFromFrontendPath(ref.path);
-          const content = await localTools.readDoc([{ path: logicalPath }]); // readDoc expects an array
+          const logicalPath = (localTools as any)._getLogicalPathFromFrontendPath(ref.path);
+          const content = await localTools.readDoc([{ path: logicalPath }]);
           
           contentPayload.push({
             type: 'doc',
             content: `--- 参考文档: ${logicalPath} ---\n${content}\n--- 文档结束 ---`,
             name: ref.name,
-            path: ref.path // Keep original path for UI linking
+            path: ref.path
           });
 
         } catch (e) {
-            logger.error(`[AgentStore] Failed to fetch content for reference: ${ref.path}`, e);
-            // Add a placeholder to the UI to show that it failed
+            logger.error(`[AgentStore] 获取引用内容失败: ${ref.path}`, e);
             contentPayload.push({
                 type: 'doc',
-                content: `Error: Failed to load document ${ref.path}`,
+                content: `错误: 加载文档 ${ref.path} 失败`,
                 name: ref.name,
                 path: ref.path,
                 error: true
             });
         }
       }
-      logger.log(`[AgentStore] Added ${references.length} doc parts to payload.`);
+      logger.log(`[AgentStore] 已向负载添加 ${references.length} 个文档部分。`);
     }
 
-    // 3. Add image parts if they exist
     if (images && images.length > 0) {
       for (const imageUrl of images) {
         contentPayload.push({
           type: 'image_url',
-          image_url: {
-            url: imageUrl
-          }
+          image_url: { url: imageUrl }
         });
       }
     }
     
     if (contentPayload.length === 0) {
-      logger.warn("sendMessage called with empty payload.");
+      logger.warn("调用 sendMessage 但负载为空。");
       return;
     }
 
     addMessage({
       role: 'user',
-      // If there's only a single text part, keep content as a simple string for backward compatibility.
-      // Otherwise, use the array payload for multimodal content.
       content: contentPayload.length === 1 && contentPayload[0].type === 'text'
-               ? contentPayload[0].text
+               ? contentPayload[0].text!
                : contentPayload,
     });
     
     agentService.startTurn();
   }
 
-  function stopAgent() {
+  function stopAgent(): void {
       agentService.stop();
       logger.log("Agent Store: 已触发停止。");
   }
 
-  async function resetAgent() {
+  async function resetAgent(): Promise<void> {
     logger.log("Agent Store: 重置 Agent... (将开启新会话)");
-    await startNewSession(currentDomain.value);
+    if(currentDomain.value) {
+        await startNewSession(currentDomain.value, activeRoleId.value[currentDomain.value]);
+    }
   }
 
-  // --- Safety Net Actions ---
-  function incrementToolErrors() {
+  function incrementToolErrors(): void {
     consecutiveToolErrors.value++;
   }
-  function resetToolErrors() {
+  function resetToolErrors(): void {
     consecutiveToolErrors.value = 0;
   }
-  function incrementAiTurns() {
+  function incrementAiTurns(): void {
     consecutiveAiTurns.value++;
   }
-  function resetCounters() {
+  function resetCounters(): void {
     consecutiveToolErrors.value = 0;
     consecutiveAiTurns.value = 0;
   }
 
-  function markAllAsSent() {
+  function markAllAsSent(): void {
     if (!currentSession.value) return;
-    
-    logger.log(`Agent Store: Marking all messages as sent.`);
+    logger.log(`Agent Store: 正在标记所有消息为已发送。`);
     messageIds.value.forEach(id => {
       const message = messagesById.value[id];
       if (message) {
-        message.isSent = true;
+        (message as any).isSent = true;
       }
     });
   }
 
-  function deleteMessagesFrom(messageId) {
-    // 1. Stop any ongoing AI activity immediately.
+  function deleteMessagesFrom(messageId: string): void {
     stopAgent();
-
     const session = currentSession.value;
     if (!session) return;
     
     const index = session.messageIds.indexOf(messageId);
     if (index === -1) {
-      logger.warn(`[AgentStore] Tried to delete from a non-existent message ID: ${messageId}`);
+      logger.warn(`[AgentStore] 尝试从一个不存在的消息 ID 删除: ${messageId}`);
       return;
     }
 
-    // 2. Truncate the history
     const idsToRemove = session.messageIds.splice(index);
     
-    // 3. Clean up the lookup map
-    logger.log(`[AgentStore] Deleting ${idsToRemove.length} messages starting from ${messageId}.`);
+    logger.log(`[AgentStore] 正在从 ${messageId} 开始删除 ${idsToRemove.length} 条消息。`);
     for (const id of idsToRemove) {
       delete session.messagesById[id];
     }
   }
 
-  function retryLastTurn() {
+  function retryLastTurn(): void {
     if (!currentSession.value) return;
-
-    // 1. Get the last message
     const lastMessage = orderedMessages.value[orderedMessages.value.length - 1];
 
-    // 2. Validate it's a retryable error message
     if (lastMessage && lastMessage.type === 'error') {
-      logger.log(`[AgentStore] Retrying from error message ${lastMessage.id}`);
-      
-      // 3. Remove the error message
+      logger.log(`[AgentStore] 正在从错误消息 ${lastMessage.id} 重试`);
       removeMessage(lastMessage.id);
-      
-      // 4. Restart the agent's turn. The service will pick up the history.
       agentService.startTurn();
-
     } else {
-      logger.warn(`[AgentStore] Retry called, but the last message was not a retryable error.`);
+      logger.warn(`[AgentStore] 调用重试，但最后一条消息不是可重试的错误。`);
     }
   }
 
-  // --- Persistence ---
   const persistState = debounce(async () => {
     try {
       const stateToPersist = {
@@ -531,98 +512,59 @@ export const useAgentStore = defineStore('agent', () => {
         }
       };
       await sessionsStore.setItem('state', stateToPersist);
-      logger.log(`[AgentStore] Session state persisted (v${AGENT_CACHE_VERSION}).`);
+      logger.log(`[AgentStore] 会话状态已持久化 (v${AGENT_CACHE_VERSION})。`);
     } catch (e) {
-      logger.error('[AgentStore] Failed to persist state:', e);
+      logger.error('[AgentStore] 持久化状态失败:', e);
     }
   }, 1000);
 
-  async function initializeStoreFromCache() {
+  async function initializeStoreFromCache(): Promise<void> {
     try {
-      logger.log('[AgentStore] Initializing store from cache...');
-      const cachedState = await sessionsStore.getItem('state');
+      logger.log('[AgentStore] 正在从缓存初始化 store...');
+      const cachedState = await sessionsStore.getItem<any>('state');
       
-      // --- Diagnostic & Auto-Healing ---
       if (!cachedState || cachedState.version !== AGENT_CACHE_VERSION) {
-        logger.error(`[AgentStore] Outdated or corrupt cache detected. Clearing cache and starting fresh.`, {
+        logger.error(`[AgentStore] 检测到过时或损坏的缓存。正在清除缓存并重新开始。`, {
             foundVersion: cachedState?.version,
             expectedVersion: AGENT_CACHE_VERSION,
-            invalidData: cachedState
         });
         await forceClearAgentCache();
         
-        // Gracefully degrade: initialize with clean state and continue
         sessions.value = {};
         activeSessionIds.value = { gi: null, hsr: null };
 
       } else {
-        // --- Cache is valid, proceed with loading ---
         const { sessions: cachedSessions, activeSessionIds: cachedActiveIds } = cachedState.data;
-
-        // Add extra validation for restored data
         sessions.value = (typeof cachedSessions === 'object' && cachedSessions !== null) ? cachedSessions : {};
-        logger.log(`[AgentStore] Restored ${Object.keys(sessions.value).length} sessions.`);
+        logger.log(`[AgentStore] 已恢复 ${Object.keys(sessions.value).length} 个会话。`);
         
         const defaultIds = { gi: null, hsr: null };
         activeSessionIds.value = (typeof cachedActiveIds === 'object' && cachedActiveIds !== null)
                                  ? { ...defaultIds, ...cachedActiveIds }
                                  : defaultIds;
-        logger.log('[AgentStore] Restored active session IDs.');
+        logger.log('[AgentStore] 已恢复活动会话 ID。');
       }
       
-      // Set up watchers to persist state AFTER initialization is complete
       watch(sessions, persistState, { deep: true });
       watch(activeSessionIds, persistState, { deep: true });
 
     } catch (e) {
-      logger.error('[AgentStore] Critical error during cache initialization. Clearing cache and starting fresh.', e);
+      logger.error('[AgentStore] 缓存初始化期间发生严重错误。正在清除缓存并重新开始。', e);
       await forceClearAgentCache();
-      // Ensure state is clean after a critical failure
       sessions.value = {};
       activeSessionIds.value = { gi: null, hsr: null };
     }
   }
 
   return {
-    sessions,
-    activeSessionIds,
-    isLoading,
-    error,
-    logMessages,
-    activeSessionId,
-    currentSession,
-    activeAgentName,
-    availableAgents,
-    currentRoleId,
-    messagesById,
-    orderedMessages,
-    consecutiveToolErrors,
-    consecutiveAiTurns,
-    switchDomainContext,
-    fetchAvailableAgents,
-    switchAgent,
-    startNewSession,
-    sendMessage,
-    stopAgent,
-    resetAgent,
-    addMessage,
-    updateMessage,
-    removeMessage,
-    replaceMessage,
-    appendMessageContent,
-    markStreamAsCompleted,
-    incrementToolErrors,
-    resetToolErrors,
-    incrementAiTurns,
-    resetCounters,
-    markAllAsSent,
-    deleteMessagesFrom,
-    // New actions
-    initializeStoreFromCache,
-    switchSession,
-    deleteSession,
-    renameSession,
-    startNewChatWithAgent,
+    sessions, activeSessionIds, isLoading, error, logMessages, activeSessionId,
+    currentSession, activeAgentName, availableAgents, currentRoleId, messagesById,
+    orderedMessages, consecutiveToolErrors, consecutiveAiTurns,
+    switchDomainContext, fetchAvailableAgents, switchAgent, startNewSession,
+    sendMessage, stopAgent, resetAgent, addMessage, updateMessage, removeMessage,
+    replaceMessage, appendMessageContent, markStreamAsCompleted, incrementToolErrors,
+    resetToolErrors, incrementAiTurns, resetCounters, markAllAsSent, deleteMessagesFrom,
+    initializeStoreFromCache, switchSession, deleteSession, renameSession, startNewChatWithAgent,
     retryLastTurn,
   };
 });

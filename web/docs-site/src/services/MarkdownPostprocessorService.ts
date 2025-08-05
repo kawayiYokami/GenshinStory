@@ -3,16 +3,16 @@ import logger from './loggerService';
 
 class MarkdownPostprocessorService {
   /**
-   * Processes internal links with robust parsing for different formats.
-   * @param {string} text - The raw text containing potential custom links.
-   * @returns {Promise<string>} A promise that resolves to the processed text.
+   * 为不同格式的内部链接提供健壮的解析。
+   * @param text 包含潜在自定义链接的原始文本。
+   * @returns 一个解析为已处理文本的 Promise。
    */
-  async process(text) {
+  public async process(text: string): Promise<string> {
     if (!text || !text.includes('[[')) {
       return text;
     }
 
-    // Regex to handle both formats: [[text|path]] and [[path]]
+    // 正则表达式处理两种格式: [[text|path]] 和 [[path]]
     const linkRegex = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
     const matches = [...text.matchAll(linkRegex)];
 
@@ -26,11 +26,9 @@ class MarkdownPostprocessorService {
         const group1 = match[1];
         const group2 = match[2];
 
-        // Determine the base text and path from the regex groups.
         const baseText = group2 !== undefined ? group1 : group1;
         const basePath = group2 !== undefined ? group2 : group1;
 
-        // Extract anchor and clean the path for validation.
         let pathForValidation = basePath;
         let anchor = '';
         const anchorMatch = basePath.match(/^(.*?)#(.+)$/);
@@ -39,13 +37,8 @@ class MarkdownPostprocessorService {
             anchor = anchorMatch[2];
         }
 
-        // The text for validation should also be clean of any anchor.
         const textForValidation = baseText.replace(/#.*$/, '');
-
-        // The final display text should include the anchor if it exists.
         const finalDisplayText = anchor ? `${textForValidation} #${anchor}` : textForValidation;
-
-        // Construct the link in the official format for the validation service.
         const linkToProcess = `[[${textForValidation}|path:${pathForValidation}]]`;
 
         try {
@@ -53,25 +46,22 @@ class MarkdownPostprocessorService {
             const isValid = result.isValid;
             const validityClass = isValid ? '' : 'invalid-link';
             
-            // The final template uses the processed display text.
             const template = `<a href="#" class="internal-doc-link ${validityClass}" data-is-valid="${isValid}" data-raw-link="${rawLink}" data-path="${pathForValidation}" data-anchor="${anchor}">${finalDisplayText}</a>`;
-            // logger.log(`[MarkdownPostprocessor] 生成链接模板`, { rawLink, finalDisplayText, pathForValidation, isValid });
-          return template;
+            return template;
 
         } catch (error) {
-          logger.error(`Error processing link: ${rawLink}`, error);
-          return rawLink; // Fallback to raw text on error
+          logger.error(`处理链接时出错: ${rawLink}`, error);
+          return rawLink; // 出错时回退到原始文本
         }
       })
     );
 
-    // Replace all matches in the original text
     let lastIndex = 0;
-    const parts = [];
+    const parts: string[] = [];
     matches.forEach((match, index) => {
       parts.push(text.substring(lastIndex, match.index));
       parts.push(replacements[index]);
-      lastIndex = match.index + match[0].length;
+      lastIndex = (match.index ?? 0) + match[0].length;
     });
     parts.push(text.substring(lastIndex));
 

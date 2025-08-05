@@ -1,32 +1,42 @@
 import yaml from 'js-yaml';
-import logger from './loggerService.js';
+import logger from './loggerService';
 
-const _agentNameCache = new Map();
+// --- 类型定义 ---
+interface RoleInfo {
+    id: string;
+    description: string;
+    [key: string]: any;
+}
+
+interface AgentInfo extends RoleInfo {
+    name: string;
+}
+
+interface SystemPromptResult {
+    systemPrompt: string;
+    agentName: string;
+}
+
+const _agentNameCache = new Map<string, string>();
 
 /**
- * Resolves a relative path against a base path.
- * Handles '.' and '..' segments.
- * @param {string} basePath - The base path (should be a file path).
- * @param {string} relativePath - The relative path to resolve.
- * @returns {string} The resolved absolute path.
+ * 根据基本路径解析相对路径。
+ * @param basePath 基本路径（应为文件路径）
+ * @param relativePath 要解析的相对路径
+ * @returns 解析后的绝对路径
  */
-function resolvePath(basePath, relativePath) {
-    // If relativePath is absolute, return it directly
+function resolvePath(basePath: string, relativePath: string): string {
     if (relativePath.startsWith('/')) {
         return relativePath;
     }
     
-    const baseParts = basePath.split('/').slice(0, -1); // remove filename
+    const baseParts = basePath.split('/').slice(0, -1);
     const relativeParts = relativePath.split('/');
     
     for (const part of relativeParts) {
-        if (part === '.') {
-            continue;
-        }
+        if (part === '.') continue;
         if (part === '..') {
-            if (baseParts.length > 0) {
-                baseParts.pop();
-            }
+            if (baseParts.length > 0) baseParts.pop();
         } else {
             baseParts.push(part);
         }
@@ -34,10 +44,10 @@ function resolvePath(basePath, relativePath) {
     return baseParts.join('/');
 }
 
-async function _fetchAgentName(domain, roleId) {
+async function _fetchAgentName(domain: string, roleId: string): Promise<string> {
     const cacheKey = `${domain}-${roleId}`;
     if (_agentNameCache.has(cacheKey)) {
-        return _agentNameCache.get(cacheKey);
+        return _agentNameCache.get(cacheKey) as string;
     }
 
     try {
@@ -46,38 +56,38 @@ async function _fetchAgentName(domain, roleId) {
         const roleConfigResponse = await fetch(`${roleConfigPath}?v=${v}`);
         if (!roleConfigResponse.ok) return '未知角色';
 
-        const roleConfig = yaml.load(await roleConfigResponse.text());
+        const roleConfig = yaml.load(await roleConfigResponse.text()) as any;
         const personaPath = roleConfig?.customModes?.[0]?.persona;
         if (!personaPath) return '配置错误';
 
         const finalPersonaPath = resolvePath(roleConfigPath, personaPath);
-        logger.log(`[PromptService] Fetching persona from: ${finalPersonaPath}`);
+        logger.log(`[PromptService] 正在从以下位置获取角色信息: ${finalPersonaPath}`);
         const personaResponse = await fetch(`${finalPersonaPath}?v=${v}`);
         if (!personaResponse.ok) return '无名氏';
 
-        const personaConfig = yaml.load(await personaResponse.text());
+        const personaConfig = yaml.load(await personaResponse.text()) as any;
         const agentName = personaConfig?.name || 'AI';
         
         _agentNameCache.set(cacheKey, agentName);
         return agentName;
     } catch (error) {
-        logger.error(`[PromptService] _fetchAgentName for '${roleId}' failed:`, error);
+        logger.error(`[PromptService] _fetchAgentName for '${roleId}' 失败:`, error);
         return '加载失败';
     }
 }
 
-async function listAvailableAgents(domain) {
+async function listAvailableAgents(domain: string): Promise<AgentInfo[]> {
     try {
         const v = Date.now();
         const manifestPath = `/domains/${domain}/core/roles.json?v=${v}`;
-        logger.log(`[PromptService] Listing available agents from: ${manifestPath}`);
+        logger.log(`[PromptService] 正在从以下位置列出可用 agent: ${manifestPath}`);
         const response = await fetch(manifestPath);
         
-        logger.log(`[PromptService] Manifest fetch response status: ${response.status}`);
+        logger.log(`[PromptService] 清单获取响应状态: ${response.status}`);
         if (!response.ok) throw new Error(`无法加载 agent 清单: ${response.statusText}`);
         
-        const roleInfos = await response.json();
-        logger.log(`[PromptService] Loaded role infos:`, roleInfos);
+        const roleInfos: RoleInfo[] = await response.json();
+        logger.log(`[PromptService] 已加载的角色信息:`, roleInfos);
 
         const agentsWithNames = await Promise.all(
             roleInfos.map(async (info) => {
@@ -88,14 +98,14 @@ async function listAvailableAgents(domain) {
         
         return agentsWithNames;
     } catch (error) {
-        logger.error(`[PromptService] 获取可用 agent 列表失败 for domain ${domain}:`, error);
+        logger.error(`[PromptService] 获取域 ${domain} 的可用 agent 列表失败:`, error);
         return [];
     }
 }
 
-async function loadSystemPrompt(domain, roleId) {
+async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemPromptResult> {
     try {
-        logger.log(`[PromptService] 开始为角色ID '${roleId}' 在域 '${domain}' 中加载模块化系统提示词...`);
+        logger.log(`[PromptService] 开始为域 '${domain}' 中的角色ID '${roleId}' 加载模块化系统提示词...`);
         const v = Date.now();
         const roleConfigPath = `/domains/${domain}/core/roles/${roleId}.yaml`;
 
@@ -104,7 +114,7 @@ async function loadSystemPrompt(domain, roleId) {
             throw new Error(`无法加载角色配置文件: ${roleConfigResponse.statusText}`);
         }
         const roleConfigText = await roleConfigResponse.text();
-        const roleConfig = yaml.load(roleConfigText);
+        const roleConfig = yaml.load(roleConfigText) as any;
 
         const activeMode = roleConfig?.customModes?.[0];
         if (!activeMode) {
@@ -118,12 +128,12 @@ async function loadSystemPrompt(domain, roleId) {
 
         const finalPersonaPath = resolvePath(roleConfigPath, personaPath);
         const finalInstructionsPath = resolvePath(roleConfigPath, instructionsPath);
-        const globalToolsPath = `/prompts/tools_prompt.md`; // Global tools prompt path
+        const globalToolsPath = `/prompts/tools_prompt.md`;
 
         const [personaResponse, instructionsResponse, toolsResponse] = await Promise.all([
             fetch(`${finalPersonaPath}?v=${v}`),
             fetch(`${finalInstructionsPath}?v=${v}`),
-            fetch(`${globalToolsPath}?v=${v}`) // Fetch from the global path
+            fetch(`${globalToolsPath}?v=${v}`)
         ]);
 
         if (!personaResponse.ok) throw new Error(`无法加载 Persona 模块: ${personaResponse.statusText}`);
@@ -134,7 +144,7 @@ async function loadSystemPrompt(domain, roleId) {
         const instructionsPrompt = await instructionsResponse.text();
         const toolsPrompt = await toolsResponse.text();
         
-        const personaConfig = yaml.load(personaText);
+        const personaConfig = yaml.load(personaText) as any;
         const personaDefinition = personaConfig?.definition;
         const agentName = personaConfig?.name || 'AI';
 

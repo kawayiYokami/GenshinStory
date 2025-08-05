@@ -1,6 +1,17 @@
 import { useAgentStore } from '@/stores/agent';
+import type { AgentStore } from '@/stores/agent';
 
 class CharacterAnimationService {
+  private renderWindow: number;
+  private textQueue: string[];
+  private isAnimating: boolean;
+  private currentMessageId: string | null;
+  private agentStore: AgentStore | null;
+  private animationFrameId: number | null;
+  private deadline: number;
+  private onComplete: (() => void) | null;
+  private isStreamEnded: boolean;
+
   constructor(renderWindow = 1000) {
     this.renderWindow = renderWindow;
     this.textQueue = [];
@@ -9,18 +20,18 @@ class CharacterAnimationService {
     this.agentStore = null;
     this.animationFrameId = null;
     this.deadline = 0;
-    this.onComplete = null; // 新增：用于在动画完成时调用的回调
-    this.isStreamEnded = false; // 新增：标记网络流是否已结束
+    this.onComplete = null;
+    this.isStreamEnded = false;
   }
 
-  _getStore() {
+  private _getStore(): AgentStore {
     if (!this.agentStore) {
       this.agentStore = useAgentStore();
     }
     return this.agentStore;
   }
 
-  enqueue(text) {
+  public enqueue(text: string): void {
     if (text) {
       this.textQueue.push(...text.split(''));
       this.deadline = Date.now() + this.renderWindow;
@@ -31,16 +42,14 @@ class CharacterAnimationService {
     }
   }
 
-  // 新增：由外部调用，通知服务网络流已结束
-  streamEnded() {
+  public streamEnded(): void {
     this.isStreamEnded = true;
-    // 如果此时没有在动画（意味着队列已空），则直接完成
     if (!this.isAnimating) {
       this._complete();
     }
   }
 
-  start(messageId) {
+  public start(messageId?: string): void {
     if (messageId) {
       this.currentMessageId = messageId;
     }
@@ -51,21 +60,19 @@ class CharacterAnimationService {
     this._animate();
   }
 
-  _animate() {
+  private _animate(): void {
     if (this.textQueue.length === 0) {
-      // 只有当队列为空 **且** 网络流已结束时，才算真正完成
       if (this.isStreamEnded) {
         this._stop();
         this._complete();
       } else {
-        // 队列暂时为空，但网络流可能还未结束，仅停止当前动画循环
         this._stop();
       }
       return;
     }
 
     const char = this.textQueue.shift();
-    if (char) {
+    if (char && this.currentMessageId) {
       this._getStore().appendMessageContent({
         messageId: this.currentMessageId,
         chunk: char,
@@ -76,14 +83,13 @@ class CharacterAnimationService {
     const charsRemaining = this.textQueue.length;
 
     if (timeRemaining <= 0 || charsRemaining === 0) {
-      if (charsRemaining > 0) {
+      if (charsRemaining > 0 && this.currentMessageId) {
         this._getStore().appendMessageContent({
           messageId: this.currentMessageId,
           chunk: this.textQueue.join(''),
         });
         this.textQueue = [];
       }
-      // 同样，检查网络流是否结束
       if (this.isStreamEnded) {
         this._stop();
         this._complete();
@@ -94,10 +100,10 @@ class CharacterAnimationService {
     }
 
     const nextDelay = timeRemaining / charsRemaining;
-    this.animationFrameId = setTimeout(this._animate.bind(this), nextDelay);
+    this.animationFrameId = window.setTimeout(this._animate.bind(this), nextDelay);
   }
 
-  _stop() {
+  private _stop(): void {
     if (this.animationFrameId) {
       clearTimeout(this.animationFrameId);
       this.animationFrameId = null;
@@ -105,15 +111,14 @@ class CharacterAnimationService {
     this.isAnimating = false;
   }
 
-  // 新增：执行完成回调
-  _complete() {
+  private _complete(): void {
     if (this.onComplete) {
       this.onComplete();
-      this.onComplete = null; // 防止重复调用
+      this.onComplete = null;
     }
   }
 
-  reset() {
+  public reset(): void {
     this._stop();
     this.textQueue = [];
     this.currentMessageId = null;

@@ -2,41 +2,41 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import localToolsService from '@/services/localToolsService';
 import logger from '@/services/loggerService';
+import type { Ref } from 'vue';
 
 export const useDocumentViewerStore = defineStore('documentViewer', () => {
   const isVisible = ref(false);
   const isLoading = ref(false);
-  const documentPath = ref('');
-  const documentContent = ref('');
-  const errorMessage = ref('');
+  const documentPath: Ref<string> = ref('');
+  const documentContent: Ref<string> = ref('');
+  const errorMessage: Ref<string> = ref('');
 
   /**
-   * Opens the viewer and loads a document.
-   * @param {string} path - The logical path to the document to open.
+   * 打开查看器并加载文档。
+   * @param path 要打开的文档的逻辑路径。
    */
-  async function open(path) {
-    logger.log(`[DocViewer] Opening document: ${path}`);
+  async function open(path: string): Promise<void> {
+    logger.log(`[DocViewer] 正在打开文档: ${path}`);
     isVisible.value = true;
     isLoading.value = true;
     documentPath.value = path;
     errorMessage.value = '';
-    documentContent.value = ''; // Clear previous content
+    documentContent.value = ''; // 清除先前的内容
 
     try {
       const result = await localToolsService.readDoc(path);
-      // The result from readDoc is a formatted string, we need to extract the raw content.
-      // Example: "--- DOC START: path ---\n\nCONTENT\n\n--- DOC END: path ---"
+      // readDoc 返回的结果是格式化的字符串，我们需要提取原始内容。
       const contentMatch = result.match(/--- DOC START:.*? ---\n\n([\s\S]*)\n\n--- DOC END:.*? ---/);
       
       if (contentMatch && contentMatch[1]) {
         documentContent.value = contentMatch[1];
       } else {
-        // Handle cases where readDoc returns an error message string
-        throw new Error(`Failed to parse document content from tool result: ${result}`);
+        // 处理 readDoc 返回错误消息字符串的情况
+        throw new Error(`从工具结果解析文档内容失败: ${result}`);
       }
 
-    } catch (error) {
-      logger.error(`[DocViewer] Failed to load document ${path}:`, error);
+    } catch (error: any) {
+      logger.error(`[DocViewer] 加载文档 ${path} 失败:`, error);
       errorMessage.value = `无法加载文档: ${error.message}`;
     } finally {
       isLoading.value = false;
@@ -44,9 +44,9 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
   }
 
   /**
-   * Closes the document viewer.
+   * 关闭文档查看器。
    */
-  function close() {
+  function close(): void {
     isVisible.value = false;
     documentPath.value = '';
     documentContent.value = '';

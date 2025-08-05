@@ -1,15 +1,24 @@
-import logger from './loggerService.js';
-import localTools from './localToolsService.js';
+import logger from './loggerService';
+import localTools from './localToolsService';
+
+// --- 类型定义 ---
+interface LinkResolutionResult {
+  isValid: boolean;
+  displayText: string;
+  originalPath: string;
+  resolvedPath: string | null;
+  rawLink: string;
+}
 
 class LinkProcessorService {
   /**
-   * Parses a raw wiki-style link, resolves its path, and returns a structured object.
-   * This is the single source of truth for handling inline links.
-   * @param {string} rawLinkText - The raw link text, e.g., "[[Display Text|path:some/path.md]]".
-   * @returns {Promise<{isValid: boolean, displayText: string, originalPath: string, resolvedPath: string|null, rawLink: string}>}
+   * 解析原始的 wiki 风格链接，解析其路径，并返回一个结构化对象。
+   * 这是处理内联链接的唯一真实来源。
+   * @param rawLinkText 原始链接文本, 例如 "[[显示文本|path:some/path.md]]"。
+   * @returns 一个包含解析结果的对象。
    */
-  async resolveLink(rawLinkText) {
-    const baseResult = {
+  public async resolveLink(rawLinkText: string): Promise<LinkResolutionResult> {
+    const baseResult: LinkResolutionResult = {
       isValid: false,
       displayText: rawLinkText,
       originalPath: rawLinkText,
@@ -21,7 +30,7 @@ class LinkProcessorService {
       return baseResult;
     }
 
-    // Enhanced Regex to handle both official and raw formats
+    // 增强的正则表达式以处理官方和原始格式
     const genericLinkRegex = /\[\[([^|\]]+)(?:\|path:([^\]]+))?(?:\|([^\]]+))?\]\]/;
     const match = rawLinkText.match(genericLinkRegex);
 
@@ -29,12 +38,12 @@ class LinkProcessorService {
         return baseResult;
     }
 
-    const group1 = match[1]; // Always display text or the full path
-    const group2 = match[2]; // Path from "path:" syntax
-    const group3 = match[3]; // Path from raw syntax
+    const group1 = match[1]; // 始终是显示文本或完整路径
+    const group2 = match[2]; // 来自 "path:" 语法的路径
+    const group3 = match[3]; // 来自原始语法的路径
 
     const displayText = group1.trim();
-    // The path could be in group2 (official format) or group3 (raw format) or group1 (path-only format)
+    // 路径可能在 group2 (官方格式), group3 (原始格式), 或 group1 (仅路径格式)
     const originalPath = (group2 || group3 || group1).trim();
 
     baseResult.displayText = displayText;

@@ -1,22 +1,35 @@
-import logger from './loggerService.js';
+import logger from './loggerService';
 import { useConfigStore } from '@/stores/config';
 import { useAgentStore } from '@/stores/agent';
 import { storeToRefs } from 'pinia';
-import openaiService from './openaiService.js';
-import { createPacedStream } from './streamingService.js';
-import contextOptimizerService from './contextOptimizerService.js';
-import toolParserService from './toolParserService.js';
-import localTools from './localToolsService.js';
+import openaiService from './openaiService';
+import { createPacedStream } from './streamingService';
+import contextOptimizerService from './contextOptimizerService';
+import toolParserService from './toolParserService';
+import type { Message, ToolCall } from '@/stores/agent';
+import type { Config } from '@/stores/config';
 
-// Agent 核心逻辑
+// --- 类型定义 ---
+
+interface Command {
+    type: 'CALL_AI' | 'EXECUTE_TOOL';
+    payload?: any;
+}
+
+// --- Agent 核心逻辑 ---
+
 class AgentService {
+    private commandQueue: Command[];
+    private isProcessing: boolean;
+    private abortController: AbortController | null;
+
     constructor() {
         this.commandQueue = [];
         this.isProcessing = false;
         this.abortController = null;
     }
     
-    stop() {
+    public stop(): void {
         if (this.abortController) {
             this.abortController.abort();
             logger.log("Agent: 请求被用户中止。");
@@ -25,27 +38,26 @@ class AgentService {
 
     /**
      * 统一的用户消息入口点。
-     * @param {string} userContent - The text content from the user.
+     * @param userContent 用户的文本内容。
      */
-    async sendMessage(userContent) {
+    public async sendMessage(userContent: string): Promise<void> {
         const agentStore = useAgentStore();
         
-        // 1. Add user message to the store
+        // 1. 将用户消息添加到 store
         agentStore.addMessage({ role: 'user', content: userContent, id: `msg_${Date.now()}` });
         
-        // 2. Proactively check context and compress if needed
+        // 2. 主动检查并根据需要压缩上下文
         await this._checkAndCompressContextIfNeeded();
 
-        // 3. Start the AI processing turn
+        // 3. 启动 AI 处理回合
         this._initiateAiTurn();
     }
     
-    // This is a placeholder now, the new entry point is sendMessage
-    startTurn() {
+    public startTurn(): void {
         this._initiateAiTurn();
     }
 
-    _initiateAiTurn() {
+    private _initiateAiTurn(): void {
         this.abortController = new AbortController();
         this.commandQueue.push({ type: 'CALL_AI' });
         if (!this.isProcessing) {
@@ -53,26 +65,28 @@ class AgentService {
         }
     }
 
-    async processQueue() {
+    private async processQueue(): Promise<void> {
         const agentStore = useAgentStore();
         this.isProcessing = true;
         agentStore.isLoading = true;
         agentStore.resetCounters();
 
         while (this.commandQueue.length > 0) {
-            if (this.abortController.signal.aborted) {
-                logger.log("Command queue processing was aborted.");
+            if (this.abortController?.signal.aborted) {
+                logger.log("命令队列处理被中止。");
                 this.commandQueue = [];
                 break;
             }
             
             const command = this.commandQueue.shift();
-            logger.log("Processing command:", command);
+            if (!command) continue;
+
+            logger.log("正在处理命令:", command);
 
             try {
                 if (command.type === 'CALL_AI') {
                     if (agentStore.consecutiveAiTurns >= 10) {
-                        logger.error("AI turn limit reached. Aborting.");
+                        logger.error("已达到 AI 回合上限。正在中止。");
                         agentStore.addMessage({ role: 'assistant', type: 'error', content: "AI已连续迭代10次，为防止失控，已自动中断。" });
                         break;
                     }
@@ -80,12 +94,12 @@ class AgentService {
                 } else if (command.type === 'EXECUTE_TOOL') {
                     await this._handleToolExecution(command.payload);
                 }
-            } catch (error) {
+            } catch (error: any) {
                  if (error.name !== 'AbortError') {
-                    logger.error("Error processing command:", { command, error });
+                    logger.error("处理命令时出错:", { command, error });
                     agentStore.addMessage({ role: 'assistant', type: 'error', content: `处理命令'${command.type}'时出错: ${error.message}` });
                 } else {
-                    logger.log("Command processing was aborted during execution.");
+                    logger.log("命令处理在执行期间被中止。");
                 }
                 this.commandQueue = [];
                 break;
@@ -95,86 +109,67 @@ class AgentService {
         this.isProcessing = false;
         agentStore.isLoading = false;
         this.abortController = null;
-        logger.log("Command queue processing finished.");
+        logger.log("命令队列处理完成。");
     }
 
-    async _handleApiCall() {
+    private async _handleApiCall(): Promise<void> {
         const agentStore = useAgentStore();
         const configStore = useConfigStore();
 
-        let assistantMessage = null;
-        let finalContent = '';
-
+        let assistantMessage: Message | null = null;
+        
         const { response } = await this._callApi(agentStore.orderedMessages);
 
-        if (configStore.activeConfig.stream) {
+        if (configStore.activeConfig?.stream) {
             assistantMessage = await this._handleStream(response);
         } else {
             const responseData = response;
             logger.log("Agent: 收到 API 响应 (非流式):", responseData);
             const message = responseData.choices[0].message;
 
-            // 1. 创建一个占位符消息，状态为 'streaming' 以触发动画开始
             const placeholderMessage = agentStore.addMessage({
                 role: 'assistant',
-                content: '', // 初始为空
+                content: '', 
                 type: 'text',
                 status: 'streaming'
             });
             
-            // 2. 立刻用完整内容更新消息，并更新状态为 'done' 以触发动画结束
-            agentStore.updateMessage({
-                messageId: placeholderMessage.id,
-                updates: {
-                    content: message.content,
-                    status: 'done',
-                    streamCompleted: true // 保持与流式传输结束时的一致性
-                }
-            });
-
-            // 将 assistantMessage 指向我们刚刚创建和更新的消息
-            assistantMessage = agentStore.messagesById[placeholderMessage.id];
+            if (placeholderMessage) {
+                agentStore.updateMessage({
+                    messageId: placeholderMessage.id,
+                    updates: {
+                        content: message.content,
+                        status: 'done',
+                        streamCompleted: true
+                    }
+                });
+                assistantMessage = agentStore.messagesById[placeholderMessage.id];
+            }
         }
-
         
         if (!assistantMessage || !assistantMessage.id) {
             throw new Error("AI 未返回任何有效数据。");
         }
 
         const updatedMessage = agentStore.messagesById[assistantMessage.id];
-        finalContent = this._removePartialXmlTags(updatedMessage.content || '');
+        const finalContent = this._removePartialXmlTags(updatedMessage.content || '');
         
         agentStore.updateMessage({
             messageId: assistantMessage.id,
-            updates: {
-                status: 'done'
-            }
+            updates: { status: 'done' }
         });
 
-        // 优先检查 <ask_question> 指令
         const parsedQuestion = toolParserService.parseAskQuestionCall(finalContent);
         if (parsedQuestion) {
             logger.log("Agent: 在流结束后发现 <ask_question> 指令。", parsedQuestion);
-            
-            // 从消息气泡中移除XML原文
             const cleanContent = finalContent.replace(parsedQuestion.xml, '').trim();
             agentStore.updateMessage({
                 messageId: assistantMessage.id,
-                updates: { content: cleanContent }
+                updates: { content: cleanContent, question: {
+                    text: parsedQuestion.question,
+                    suggestions: parsedQuestion.suggestions
+                }}
             });
-
-            // 将解析出的问题和选项附加到消息对象上，供UI使用
-            agentStore.updateMessage({
-                messageId: assistantMessage.id,
-                updates: {
-                    question: {
-                        text: parsedQuestion.question,
-                        suggestions: parsedQuestion.suggestions
-                    }
-                }
-            });
-            
-            // 回合结束，不需要进一步操作
             logger.log("Agent: 问题指令处理完毕，回合结束。");
             return;
         }
@@ -195,7 +190,7 @@ class AgentService {
         logger.log("Agent: V3: 在流结束后未发现工具调用。回合结束。", { content: finalContent });
     }
     
-    async _handleToolExecution(payload) {
+    private async _handleToolExecution(payload: any): Promise<void> {
         const { parsedTool } = payload;
         const agentStore = useAgentStore();
         const configStore = useConfigStore();
@@ -207,16 +202,18 @@ class AgentService {
             content: toolParserService.createStatusMessage(parsedTool),
         });
 
+        if (!statusMessage) return;
+
         const toolResult = await toolParserService.executeTool(parsedTool);
         
-        // --- Smart Guard: Pre-flight Check ---
+        // --- 智能守卫: 执行前检查 ---
         const currentHistory = agentStore.orderedMessages;
         const currentHistoryTokens = contextOptimizerService.calculateHistoryTokens(currentHistory);
         
-        const toolMessage = { role: "tool", name: parsedTool.name, content: toolResult };
+        const toolMessage: Message = { role: "tool", name: parsedTool.name, content: toolResult, id: '' };
         const toolMessageTokens = contextOptimizerService.calculateHistoryTokens([toolMessage]);
 
-        const maxTokens = activeConfig.value.maxTokens;
+        const maxTokens = activeConfig.value?.maxTokens || 128000;
         const threshold = maxTokens * 0.9;
         const futureTotalTokens = currentHistoryTokens + toolMessageTokens;
 
@@ -226,26 +223,16 @@ class AgentService {
 
             let feedback = `错误：工具返回结果过大 (${toolMessageTokens} tokens)，超过了当前可用的空间 (${availableSpace} tokens)。为避免对话崩溃，该结果已被丢弃。`;
             
-            if (parsedTool.name === 'read_doc' && parsedTool.params.args) {
-                const docRequests = toolParserService.parseReadDocRequests(parsedTool.params.args);
-                const metadataPromises = docRequests.map(req => localTools.getDocMetadata(req.path));
-                const metadataResults = await Promise.all(metadataPromises);
-                const fileSizes = metadataResults
-                    .map((meta, index) => meta ? `${docRequests[index].path}: ${meta.totalTokens} tokens` : `${docRequests[index].path}: 未知大小`)
-                    .join(', ');
-                feedback += ` 各文件大小如下: [${fileSizes}]。请减少请求文件数量，或对大文件使用 \`line_range\` 参数。`;
-            }
-
             agentStore.replaceMessage(statusMessage.id, {
                 id: `msg_${Date.now()}`,
                 role: 'assistant', type: 'error',
                 content: feedback, status: 'done'
             });
 
-            return; // Abort the AI turn.
+            return; // 中止 AI 回合
         }
 
-        // --- Check Passed: Add to store and continue ---
+        // --- 检查通过: 添加到 store 并继续 ---
         agentStore.replaceMessage(statusMessage.id, {
             id: statusMessage.id,
             role: 'assistant', type: 'tool_result',
@@ -257,23 +244,23 @@ class AgentService {
         if (toolResult.startsWith("错误：")) {
             agentStore.incrementToolErrors();
             if (agentStore.consecutiveToolErrors >= 3) {
-                 logger.error("AI has failed 3 consecutive tool calls. Aborting.");
+                 logger.error("AI 已连续3次工具调用失败。正在中止。");
                  agentStore.addMessage({ role: 'assistant', type: 'error', content: "AI可能遇到了困难，它连续3次工具调用失败或返回了错误的结果。" });
-                 return; // Abort the queue
+                 return; // 中止队列
             }
         } else {
             agentStore.resetToolErrors();
         }
 
-        // --- Proactive Compression Check ---
+        // --- 主动压缩检查 ---
         await this._checkAndCompressContextIfNeeded();
 
-        // --- Continue the turn ---
+        // --- 继续回合 ---
         agentStore.incrementAiTurns();
         this._initiateAiTurn();
     }
 
-    async _callApi(history) {
+    private async _callApi(history: Message[]): Promise<{ response: any }> {
         const configStore = useConfigStore();
         const { activeConfig } = storeToRefs(configStore);
 
@@ -286,53 +273,41 @@ class AgentService {
         const apiMessages = history
             .filter(m => m.type !== 'tool_status' && m.type !== 'tool_result' && !m.is_hidden)
             .map(m => {
-                // Ensure we only pass the properties the API expects
-                const messageForApi = {
+                const messageForApi: any = {
                     role: m.role,
                     content: m.content,
                     name: m.name,
                 };
                 
-                // OpenAI API expects 'content' to be a string for text-only messages,
-                // or an array for multimodal messages. This block handles the conversion.
                 if (m.role === 'user') {
                     if (Array.isArray(m.content)) {
-                        // Process multi-part content
                         messageForApi.content = m.content.map(part => {
                             if (part.type === 'doc') {
-                                // Convert our custom 'doc' type to the API's 'text' type
                                 return { type: 'text', text: part.content };
                             }
-                            return part; // Keep 'text' and 'image_url' parts as they are
+                            return part;
                         });
                     } else {
-                        // Handle simple string content
                         messageForApi.content = [{ type: 'text', text: m.content }];
                     }
                 }
                 
-                // For tool calls, the 'name' property is actually the tool_call_id.
                 if (m.role === 'tool') {
                     messageForApi.tool_call_id = m.name;
-                    delete messageForApi.name; // remove original name property
-                    // Ensure tool content is always a string for the API.
+                    delete messageForApi.name;
                     messageForApi.content = String(m.content);
                 }
 
-                // The 'assistant' role sometimes has a 'name' property if it's a tool call.
                 if (m.role === 'assistant' && m.tool_calls) {
                     messageForApi.tool_calls = m.tool_calls;
                 }
                 
-                // Clean up properties that are not part of the standard API message format,
-                // unless they are specifically needed (like tool_calls for assistant).
                 if (m.role !== 'assistant' || !m.tool_calls) {
                     delete messageForApi.name;
                 }
                 if(m.role !== 'tool'){
                     delete messageForApi.tool_call_id;
                 }
-
 
                 return messageForApi;
             });
@@ -348,16 +323,15 @@ class AgentService {
         logger.setLastRequest(requestBody);
 
         try {
-            // The new service handles client initialization and rate limiting internally.
             const response = await openaiService.createChatCompletion(requestBody, activeConfig.value);
-            return { response }; // Context is no longer passed from here
+            return { response };
         } catch (error) {
             logger.error("Agent: 调用 API 失败:", error);
-            throw error; // Re-throw for the caller to handle.
+            throw error;
         }
     }
 
-    _removePartialXmlTags(content) {
+    private _removePartialXmlTags(content: string): string {
         const lastOpenBracketIndex = content.lastIndexOf('<');
         if (lastOpenBracketIndex > -1) {
             const possibleTag = content.substring(lastOpenBracketIndex);
@@ -370,19 +344,19 @@ class AgentService {
         return content;
     }
 
-    async _handleStream(openaiStream) {
+    private async _handleStream(openaiStream: any): Promise<Message | null> {
         const agentStore = useAgentStore();
-        let assistantMessage = null;
-        let messageId = null;
+        let assistantMessage: Message | null = null;
+        let messageId: string | null = null;
         
         const pacedStream = createPacedStream(openaiStream);
 
-        logger.log('[AgentService] > _handleStream: Starting to consume paced stream...');
+        logger.log('[AgentService] > _handleStream: 开始消费 paced stream...');
 
         try {
             for await (const chunk of pacedStream) {
-                if (this.abortController.signal.aborted) {
-                    logger.warn('[AgentService] > _handleStream: Stream consumption was aborted.');
+                if (this.abortController?.signal.aborted) {
+                    logger.warn('[AgentService] > _handleStream: Stream 消费被中止。');
                     break;
                 }
 
@@ -390,16 +364,18 @@ class AgentService {
                     break;
                 }
                 
-                // Create the message object on the first valid text chunk.
                 if (!assistantMessage && chunk.value) {
-                    assistantMessage = agentStore.addMessage({
+                    const newMsg = agentStore.addMessage({
                         role: 'assistant',
                         content: '',
                         type: 'text',
                         status: 'streaming',
                     });
-                    messageId = assistantMessage.id;
-                    logger.log(`[AgentService] > _handleStream: Created new message (ID: ${messageId}).`);
+                    if (newMsg) {
+                        assistantMessage = newMsg;
+                        messageId = newMsg.id;
+                        logger.log(`[AgentService] > _handleStream: 已创建新消息 (ID: ${messageId})。`);
+                    }
                 }
                 
                 if (messageId && chunk.value) {
@@ -407,42 +383,40 @@ class AgentService {
                 }
             }
             
-            logger.log('[AgentService] > _handleStream: Paced stream finished.');
+            logger.log('[AgentService] > _handleStream: Paced stream 完成。');
 
-        } catch (error) {
-           // AbortError is now handled by the check inside the loop, so we only need to catch unexpected errors.
-           logger.error('[AgentService] > _handleStream: Unexpected error while consuming stream:', error);
+        } catch (error: any) {
+           logger.error('[AgentService] > _handleStream: 消费 stream 时发生意外错误:', error);
            if (messageId) {
                agentStore.updateMessage({
                    messageId,
                    updates: { status: 'error' }
                });
            }
-           throw new Error(`Stream consumption failed: ${error.message}`);
+           throw new Error(`Stream 消费失败: ${error.message}`);
         }
         
         if (messageId) {
-            // Mark the stream as fully completed in the store. This is the final, crucial step.
             agentStore.updateMessage({
                 messageId,
                 updates: { streamCompleted: true, status: 'done' }
             });
-            logger.log(`[AgentService] > _handleStream: Message (ID: ${messageId}) marked as streamCompleted and status done.`);
+            logger.log(`[AgentService] > _handleStream: 消息 (ID: ${messageId}) 已标记为 streamCompleted 和 status done。`);
         } else {
-            logger.log('[AgentService] > _handleStream: Stream ended without any content, no message created.');
+            logger.log('[AgentService] > _handleStream: Stream 结束但没有任何内容，未创建消息。');
         }
         
         return assistantMessage;
     }
 
-    async _checkAndCompressContextIfNeeded() {
+    private async _checkAndCompressContextIfNeeded(): Promise<void> {
         const agentStore = useAgentStore();
         const configStore = useConfigStore();
         const { activeConfig } = storeToRefs(configStore);
         
         const currentHistory = agentStore.orderedMessages;
         const currentTokens = contextOptimizerService.calculateHistoryTokens(currentHistory);
-        const maxTokens = activeConfig.value.maxTokens;
+        const maxTokens = activeConfig.value?.maxTokens || 128000;
         const threshold = maxTokens * 0.9;
 
         if (currentTokens > threshold) {
@@ -450,9 +424,8 @@ class AgentService {
             const optimizationResult = await contextOptimizerService.processContext(currentHistory, maxTokens);
 
             if (optimizationResult.status === 'SUCCESS' && optimizationResult.history) {
-                // Replace the entire history state with the compressed version.
-                const newMessagesById = {};
-                const newMessageIds = [];
+                const newMessagesById: { [key: string]: Message } = {};
+                const newMessageIds: string[] = [];
                 for (const message of optimizationResult.history) {
                     if (!message.id) {
                         logger.error("压缩后的消息缺少ID:", message);
@@ -476,5 +449,5 @@ class AgentService {
 }
 
 const agentService = new AgentService();
-window.agentService = agentService;
+(window as any).agentService = agentService;
 export default agentService;

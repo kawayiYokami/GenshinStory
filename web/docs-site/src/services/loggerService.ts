@@ -1,14 +1,22 @@
 import { reactive, ref } from 'vue';
+import type { Ref } from 'vue';
 
-// 创建一个响应式的日志存储
-export const logs = reactive([]);
-// 创建一个 ref 来存储最近的 API 请求
-export const lastRequest = ref(null);
+// --- 类型定义 ---
+interface LogEntry {
+  type: 'log' | 'error' | 'warn';
+  timestamp: string;
+  message: string;
+  details: any[] | null;
+}
+
+// --- 响应式日志存储 ---
+export const logs = reactive<LogEntry[]>([]);
+export const lastRequest: Ref<any | null> = ref(null);
 
 const logger = {
-  log(message, ...details) {
+  log(message: string, ...details: any[]): void {
     const timestamp = new Date().toLocaleTimeString();
-    const logEntry = {
+    const logEntry: LogEntry = {
       type: 'log',
       timestamp,
       message,
@@ -20,23 +28,23 @@ const logger = {
     }
   },
 
-  warn(message, ...details) {
+  warn(message: string, ...details: any[]): void {
     const timestamp = new Date().toLocaleTimeString();
-    const logEntry = {
-      type: '.warn',
+    const logEntry: LogEntry = {
+      type: 'warn',
       timestamp,
       message,
       details: details.length > 0 ? details : null,
     };
     logs.push(logEntry);
     if (import.meta.env.DEV) {
-      console.error(message, ...details);
+      console.warn(message, ...details);
     }
   },
 
-  error(message, ...details) {
+  error(message: string, ...details: any[]): void {
     const timestamp = new Date().toLocaleTimeString();
-    const logEntry = {
+    const logEntry: LogEntry = {
       type: 'error',
       timestamp,
       message,
@@ -48,13 +56,13 @@ const logger = {
     }
   },
 
-  clear() {
+  clear(): void {
     logs.length = 0;
-    lastRequest.value = null; // Also clear the request on reset
+    lastRequest.value = null; // 同时清除请求
   },
 
-  setLastRequest(requestBody) {
-    // Deep copy to avoid reactivity issues with the original object
+  setLastRequest(requestBody: any): void {
+    // 深拷贝以避免原始对象的响应性问题
     lastRequest.value = JSON.parse(JSON.stringify(requestBody));
   }
 };

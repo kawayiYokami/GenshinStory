@@ -1,11 +1,28 @@
-import logger from './loggerService.js';
-import localTools from './localToolsService.js';
-import tokenizer from './tokenizerService.js';
+import logger from './loggerService';
+import localTools from './localToolsService';
+import type { DocRequest } from './localToolsService';
+
+// --- 类型定义 ---
+interface ToolCallParams {
+    [key: string]: string;
+}
+
+interface ParsedToolCall {
+    name: string;
+    params: ToolCallParams;
+    xml: string;
+}
+
+interface ParsedQuestion {
+    xml: string;
+    question: string;
+    suggestions: string[];
+}
 
 const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs'];
-let linkPromptContent = null;
+let linkPromptContent: string | null = null;
 
-async function _getLinkPrompt() {
+async function _getLinkPrompt(): Promise<string> {
     if (linkPromptContent) {
         return linkPromptContent;
     }
@@ -14,7 +31,7 @@ async function _getLinkPrompt() {
         const response = await fetch(`/prompts/link_prompt.md?v=${v}`);
         if (!response.ok) {
             logger.error("无法加载 link_prompt.md");
-            return ""; // 失败时返回空字符串
+            return "";
         }
         linkPromptContent = await response.text();
         return linkPromptContent;
@@ -25,17 +42,15 @@ async function _getLinkPrompt() {
 }
 
 /**
- * Parses a tool call from the API's structured JSON format.
- * @param {object} toolCall - The tool_call object from the API response.
- * @returns {{name: string, params: object, xml: string}|null} The parsed tool call or null.
+ * 从 API 的结构化 JSON 格式解析工具调用。
  */
-function parseJsonToolCall(toolCall) {
+function parseJsonToolCall(toolCall: any): ParsedToolCall | null {
     if (!toolCall || !toolCall.function) return null;
     
     const { name, arguments: args } = toolCall.function;
 
     if (!VALID_TOOLS.includes(name)) {
-        logger.log(`[ToolParser] Parsed a JSON tool call for "<${name}>", but it's not in the VALID_TOOLS whitelist. Ignoring.`);
+        logger.log(`[ToolParser] 解析到 JSON 工具调用 "<${name}>"，但它不在 VALID_TOOLS 白名单中。已忽略。`);
         return null;
     }
 
@@ -44,22 +59,18 @@ function parseJsonToolCall(toolCall) {
         return {
             name,
             params,
-            // We don't have a raw XML string here, but we can create a representative one for logging/consistency.
             xml: `<${name}>${JSON.stringify(params)}</${name}>`
         };
     } catch (error) {
-        logger.error(`[ToolParser] Error parsing JSON arguments for tool '${name}':`, error);
+        logger.error(`[ToolParser] 解析工具 '${name}' 的 JSON 参数时出错:`, error);
         return null;
     }
 }
 
-
 /**
- * Parses an XML-like string to find a tool call.
- * @param {string} xmlString The string to parse.
- * @returns {{name: string, params: object, xml: string}|null} The parsed tool call or null.
+ * 解析类 XML 字符串以查找工具调用。
  */
-function parseXmlToolCall(xmlString) {
+function parseXmlToolCall(xmlString: string): ParsedToolCall | null {
     if (typeof xmlString !== 'string') return null;
 
     const toolCallRegex = /<([a-zA-Z0-9_]+)>([\s\S]*?)<\/\1>/;
@@ -70,22 +81,21 @@ function parseXmlToolCall(xmlString) {
     const toolName = match[1];
 
     if (!VALID_TOOLS.includes(toolName)) {
-        logger.log(`[ToolParser] Parsed an XML tag "<${toolName}>", but it's not in the VALID_TOOLS whitelist. Ignoring.`);
+        logger.log(`[ToolParser] 解析到 XML 标签 "<${toolName}>"，但它不在 VALID_TOOLS 白名单中。已忽略。`);
         return null;
     }
 
     const fullXml = match[0];
     const innerContent = match[2].trim();
     
-    const params = {};
-    const paramRegex = /<([a-zA-Z0-9_]+)>([\s\S]*?)<\/(\1)>/g;
+    const params: ToolCallParams = {};
+    const paramRegex = /<([a-zA-Z0-9_]+)>([\s\S]*?)<\/\1>/g;
     let paramMatch;
     
     while ((paramMatch = paramRegex.exec(innerContent)) !== null) {
         params[paramMatch[1]] = paramMatch[2].trim();
     }
 
-    // If no <param> tags found, assume the whole inner content is the 'args'
     if (Object.keys(params).length === 0 && innerContent) {
         params.args = innerContent;
     }
@@ -94,12 +104,10 @@ function parseXmlToolCall(xmlString) {
 }
 
 /**
- * Parses the arguments for a read_doc tool call.
- * @param {string} argsContent The content of the <args> tag.
- * @returns {Array<{path: string, lineRanges: Array<string>}>} An array of document requests.
+ * 解析 read_doc 工具调用的参数。
  */
-function parseReadDocRequests(argsContent) {
-    const docRequests = [];
+function parseReadDocRequests(argsContent: string): DocRequest[] {
+    const docRequests: DocRequest[] = [];
     if (argsContent && typeof argsContent === 'string') {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(`<root>${argsContent}</root>`, "text/xml");
@@ -109,18 +117,17 @@ function parseReadDocRequests(argsContent) {
             docNodes.forEach(docNode => {
                 const pathNode = docNode.querySelector("path");
                 if (pathNode && pathNode.textContent) {
-                    const request = { path: pathNode.textContent.trim(), lineRanges: [] };
+                    const request: DocRequest = { path: pathNode.textContent.trim(), lineRanges: [] };
                     const rangeNodes = docNode.querySelectorAll("line_range");
                     rangeNodes.forEach(rangeNode => {
                         if (rangeNode.textContent) {
-                            request.lineRanges.push(rangeNode.textContent.trim());
+                            request.lineRanges?.push(rangeNode.textContent.trim());
                         }
                     });
                     docRequests.push(request);
                 }
             });
         } else {
-            // Fallback for simple <path> without <doc> wrapper
             const pathNodes = xmlDoc.querySelectorAll("path");
             pathNodes.forEach(node => {
                 if (node.textContent) {
@@ -133,11 +140,9 @@ function parseReadDocRequests(argsContent) {
 }
 
 /**
- * Creates a user-facing status message for a tool call.
- * @param {object} parsedTool - The parsed tool object.
- * @returns {string} The status message.
+ * 为工具调用创建面向用户的状态消息。
  */
-function createStatusMessage(parsedTool) {
+function createStatusMessage(parsedTool: ParsedToolCall): string {
     const { name, params } = parsedTool;
     switch (name) {
         case 'search_docs':
@@ -152,15 +157,13 @@ function createStatusMessage(parsedTool) {
 }
 
 /**
- * Executes a tool and handles all related logic like result processing and error handling.
- * @param {object} parsedTool - The parsed tool object.
- * @returns {string} The final, processed tool result string.
+ * 执行工具并处理所有相关逻辑，如结果处理和错误处理。
  */
-async function executeTool(parsedTool) {
+async function executeTool(parsedTool: ParsedToolCall): Promise<string> {
     const { name, params } = parsedTool;
     logger.log(`[ToolCoordinator] 准备执行工具: ${name}`, params);
     
-    let toolResult;
+    let toolResult: string;
     try {
         if (name === 'search_docs') {
             let query = params.query || params.regex || params.args;
@@ -179,14 +182,11 @@ async function executeTool(parsedTool) {
             toolResult = `错误：未知的工具 '${name}'`;
             logger.error(`[ToolCoordinator] 尝试调用一个未知的工具: ${name}`);
         }
-    } catch (e) {
+    } catch (e: any) {
         toolResult = `错误：执行工具 '${name}' 时发生异常: ${e.message}`;
         logger.error(`[ToolCoordinator] 执行工具 '${name}' 异常:`, e);
     }
 
-    // --- Result Post-processing ---
-
-    // Add reference prompt for specific tools
     if (['search_docs', 'list_docs'].includes(name) && toolResult && !toolResult.startsWith("错误：")) {
         const linkPrompt = await _getLinkPrompt();
         if (linkPrompt) {
@@ -198,14 +198,11 @@ async function executeTool(parsedTool) {
 }
 
 /**
- * Parses an <ask_question> UI instruction from a string.
- * @param {string} xmlString The string to parse.
- * @returns {{xml: string, question: string, suggestions: Array<string>}|null}
+ * 从字符串中解析 <ask_question> UI 指令。
  */
-function parseAskQuestionCall(xmlString) {
+function parseAskQuestionCall(xmlString: string): ParsedQuestion | null {
     if (typeof xmlString !== 'string') return null;
 
-    // 更新正则表达式以匹配 <ask_question>
     const askQuestionRegex = /<ask_question>([\s\S]*?)<\/ask_question>/;
     const match = xmlString.match(askQuestionRegex);
 
@@ -220,17 +217,15 @@ function parseAskQuestionCall(xmlString) {
     const questionNode = xmlDoc.querySelector("question");
     const suggestNodes = xmlDoc.querySelectorAll("suggest");
 
-    // 严格校验：必须有 question 标签且内容不为空
     if (!questionNode || !questionNode.textContent) {
-        logger.warn('[ToolParser] Parsed <ask_question> but found no valid <question> tag inside. Ignoring.');
+        logger.warn('[ToolParser] 解析到 <ask_question> 但内部没有找到有效的 <question> 标签。已忽略。');
         return null;
     }
 
-    const suggestions = Array.from(suggestNodes).map(node => node.textContent.trim());
+    const suggestions = Array.from(suggestNodes).map(node => (node.textContent || '').trim());
 
-    // 严格校验：建议数量必须在 2 到 4 个之间，否则忽略
     if (suggestions.length < 2 || suggestions.length > 4) {
-        logger.warn(`[ToolParser] Parsed <ask_question> but found ${suggestions.length} suggestions (expected 2-4). Ignoring.`);
+        logger.warn(`[ToolParser] 解析到 <ask_question> 但找到了 ${suggestions.length} 个建议 (应为 2-4个)。已忽略。`);
         return null;
     }
 
