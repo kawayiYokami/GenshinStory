@@ -140,11 +140,11 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
 
             # 调整路径和key的生成逻辑，以匹配新的文件结构
             if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
-                path = f"/domain/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
+                path = f"/v2/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
                 key = f"{cat_name}-{item_id}"
                 cat_display_name = sub_category # "角色", "光锥", "遗器" 等
             else:
-                path = f"/domain/hsr/category/{cat_name}/{cleaned_sub_cat}/{cleaned_item_name}-{item_id}"
+                path = f"/v2/hsr/category/{cat_name}/{cleaned_sub_cat}/{cleaned_item_name}-{item_id}"
                 key = f"{cat_name}-{cleaned_sub_cat}-{item_id}"
                 cat_display_name = sub_category
             
