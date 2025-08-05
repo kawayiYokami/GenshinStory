@@ -1,24 +1,41 @@
 <template>
   <div class="input-panel">
-    <div v-if="attachedImages.length > 0" class="image-preview-container">
-      <div v-for="(image, index) in attachedImages" :key="index" class="image-preview-item">
+    <div v-if="attachedReferences.length > 0" class="attachment-container">
+      <div v-for="(ref, index) in attachedReferences" :key="ref.path" class="attachment-item reference-item">
+        <span class="icon">📄</span>
+        <span class="name">{{ ref.name }}</span>
+        <button @click="removeReference(index)" class="remove-btn">&times;</button>
+      </div>
+    </div>
+    <div v-if="attachedImages.length > 0" class="attachment-container image-preview-container">
+      <div v-for="(image, index) in attachedImages" :key="index" class="attachment-item image-preview-item">
         <img :src="image" alt="Image preview" />
-        <button @click="removeImage(index)" class="remove-image-btn">&times;</button>
+        <button @click="removeImage(index)" class="remove-btn">&times;</button>
       </div>
     </div>
     <div class="input-wrapper">
+      <ReferenceDropdown
+        ref="dropdownRef"
+        :items="referenceItems"
+        :visible="showDropdown"
+        @select="handleReferenceSelect"
+      />
       <textarea
         ref="textareaRef"
         :value="modelValue"
         @input="handleInput"
-        placeholder="请输入您的问题或指令... (Enter 发送, Ctrl+V 粘贴图片)"
-        @keydown.enter.exact.prevent="handleSend"
+        placeholder="请输入您的问题或指令... (@ 引用, Ctrl+V 粘贴图片)"
+        @keydown.enter.exact.prevent="handleKeyDown"
+        @keydown.up.prevent="handleKeyDown"
+        @keydown.down.prevent="handleKeyDown"
+        @keydown.esc.prevent="handleKeyDown"
+        @keydown.backspace="handleKeyDown"
         :disabled="isLoading"
         @paste="handlePaste"
       ></textarea>
       <button
         @click="isLoading ? stopAgent() : handleSend()"
-        :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0)"
+        :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0 && attachedReferences.length === 0)"
         :class="['send-button', { 'stop-button': isLoading }]"
         :title="isLoading ? '打断' : '发送'"
       >
@@ -31,6 +48,11 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue';
+import { useDataStore } from '@/stores/data';
+import ReferenceDropdown from './ReferenceDropdown.vue';
+import debounce from 'lodash.debounce';
+
+const dataStore = useDataStore();
 
 const props = defineProps({
   modelValue: {
@@ -47,6 +69,16 @@ const emit = defineEmits(['update:modelValue', 'send', 'stop']);
 
 const textareaRef = ref(null);
 const attachedImages = ref([]);
+const attachedReferences = ref([]);
+
+// --- Reference / Mention states ---
+const dropdownRef = ref(null);
+const showDropdown = ref(false);
+const referenceItems = ref([]);
+const isProcessingReference = ref(false);
+let referenceQuery = '';
+let referenceStartPos = -1;
+
 
 const adjustTextareaHeight = () => {
   const textarea = textareaRef.value;
@@ -61,14 +93,16 @@ const handleInput = (event) => {
 };
 
 const handleSend = () => {
-  if (props.modelValue.trim() || attachedImages.value.length > 0) {
+  if (props.modelValue.trim() || attachedImages.value.length > 0 || attachedReferences.value.length > 0) {
     emit('send', {
       text: props.modelValue,
-      images: attachedImages.value
+      images: attachedImages.value,
+      references: attachedReferences.value,
     });
     // Clear inputs after sending
     emit('update:modelValue', '');
     attachedImages.value = [];
+    attachedReferences.value = [];
   }
 };
 
@@ -76,8 +110,121 @@ const stopAgent = () => {
   emit('stop');
 };
 
-watch(() => props.modelValue, () => {
+const searchReferences = debounce(async (query) => {
+  console.log(`[Debug] Debounced search triggered for query: "${query}"`);
+  if (query) {
+    referenceItems.value = await dataStore.searchCatalog(query);
+    console.log(`[Debug] Search results for "${query}":`, referenceItems.value);
+    showDropdown.value = referenceItems.value.length > 0;
+  } else {
+    showDropdown.value = false;
+  }
+}, 300);
+
+const handleReferenceSelect = (item) => {
+  // Add to attachments instead of inserting text
+  if (!attachedReferences.value.some(ref => ref.path === item.path)) {
+    attachedReferences.value.push(item);
+  }
+
+  // Clear the @-query from the textarea
+  const text = props.modelValue;
+  const newText = text.substring(0, referenceStartPos);
+  emit('update:modelValue', newText);
+
+  // Hide dropdown and reset state
+  showDropdown.value = false;
+  isProcessingReference.value = false;
+  referenceItems.value = [];
+
+  nextTick(() => {
+    textareaRef.value.focus();
+  });
+};
+
+const handleKeyDown = (event) => {
+    if (showDropdown.value) {
+        switch (event.key) {
+            case 'ArrowUp':
+                dropdownRef.value?.moveUp();
+                break;
+            case 'ArrowDown':
+                dropdownRef.value?.moveDown();
+                break;
+            case 'Enter':
+                event.preventDefault(); // prevent form submission
+                dropdownRef.value?.selectActiveItem();
+                break;
+            case 'Escape':
+                showDropdown.value = false;
+                isProcessingReference.value = false;
+                break;
+            default:
+                return; // let other keys pass through
+        }
+    } else if (event.key === 'Enter') {
+        handleSend();
+    } else if (event.key === 'Backspace') {
+        const textarea = event.target;
+        const cursorPos = textarea.selectionStart;
+
+        // Only proceed if the cursor is at the end of the selection
+        if (textarea.selectionEnd !== cursorPos) return;
+
+        const textBefore = props.modelValue.substring(0, cursorPos);
+
+        if (textBefore.endsWith(']]')) {
+            const linkStart = textBefore.lastIndexOf('[[');
+            // Ensure we found a matching start and there's no nested [[
+            if (linkStart !== -1 && textBefore.substring(linkStart).indexOf(']]') === -1) {
+                event.preventDefault();
+                
+                const textAfter = props.modelValue.substring(cursorPos);
+                const newText = textBefore.substring(0, linkStart) + textAfter;
+                
+                emit('update:modelValue', newText);
+                
+                nextTick(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(linkStart, linkStart);
+                });
+            }
+        }
+    }
+};
+
+
+watch(() => props.modelValue, (newValue) => {
   nextTick(adjustTextareaHeight);
+
+  const cursorPos = textareaRef.value.selectionStart;
+  const textBeforeCursor = newValue.substring(0, cursorPos);
+  
+  const lastAt = textBeforeCursor.lastIndexOf('@');
+
+  if (lastAt !== -1) {
+    const query = textBeforeCursor.substring(lastAt + 1);
+    
+    // Check for invalid characters (like whitespace) between @ and cursor
+    if (/[\s\p{P}\p{S}]/u.test(query)) {
+        if (isProcessingReference.value) {
+            console.log('[Debug] Invalid characters in query. Hiding dropdown.');
+            showDropdown.value = false;
+            isProcessingReference.value = false;
+        }
+    } else {
+        // Valid query
+        console.log('[Debug] @ pattern matched. Query:', query);
+        isProcessingReference.value = true;
+        referenceStartPos = lastAt;
+        referenceQuery = query;
+        searchReferences(referenceQuery);
+    }
+  } else if (isProcessingReference.value) {
+    console.log('[Debug] @ pattern lost. Hiding dropdown.');
+    showDropdown.value = false;
+    isProcessingReference.value = false;
+  }
 });
 
 onMounted(() => {
@@ -103,6 +250,10 @@ const removeImage = (index) => {
   attachedImages.value.splice(index, 1);
 };
 
+const removeReference = (index) => {
+  attachedReferences.value.splice(index, 1);
+};
+
 // Expose focus method for parent component
 const focus = () => {
   textareaRef.value?.focus();
@@ -116,26 +267,35 @@ defineExpose({
 </script>
 
 <style scoped>
-.image-preview-container {
+.attachment-container {
   display: flex;
   gap: 8px;
   padding: 0 8px 8px;
   flex-wrap: wrap;
 }
-.image-preview-item {
+.attachment-item {
   position: relative;
+  display: flex;
+  align-items: center;
+  background-color: var(--m3-surface-variant);
+  color: var(--m3-on-surface-variant);
+  border-radius: 16px;
+  padding: 4px 8px;
+  font-size: 0.9em;
+}
+.reference-item .icon {
+  margin-right: 6px;
 }
 .image-preview-item img {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 8px;
   object-fit: cover;
-  border: 1px solid var(--m3-outline);
 }
-.remove-image-btn {
+.remove-btn {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -148,6 +308,7 @@ defineExpose({
   align-items: center;
   font-size: 14px;
   line-height: 1;
+  padding: 0;
 }
 
 /* --- Input Panel --- */

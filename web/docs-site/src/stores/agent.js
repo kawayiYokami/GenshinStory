@@ -6,6 +6,7 @@ import agentService from '@/services/agentService';
 import promptService from '@/services/promptService';
 import logger, { logs } from '@/services/loggerService';
 import { useAppStore } from '@/stores/app';
+import localTools from '@/services/localToolsService'; // Import localTools
 
 // --- Localforage an d debounce setup ---
 const sessionsStore = localforage.createInstance({ name: 'agentSessions' });
@@ -346,14 +347,15 @@ export const useAgentStore = defineStore('agent', () => {
       return;
     }
 
-    // Adapt to handle both simple text and rich content {text, images}
-    const isRichContent = typeof payload === 'object' && (payload.text || payload.images);
-    const text = isRichContent ? payload.text : payload;
+    // Adapt to handle rich content object {text, images, references}
+    const isRichContent = typeof payload === 'object';
+    const text = isRichContent ? payload.text : null;
     const images = isRichContent ? payload.images : [];
+    const references = isRichContent ? payload.references : [];
 
     const contentPayload = [];
 
-    // Add text part if it exists
+    // 1. Add text part if it exists
     if (text && text.trim()) {
       contentPayload.push({
         type: 'text',
@@ -361,7 +363,37 @@ export const useAgentStore = defineStore('agent', () => {
       });
     }
 
-    // Add image parts if they exist
+    // 2. Fetch and add references as structured 'doc' parts
+    if (references && references.length > 0) {
+      logger.log(`[AgentStore] Fetching content for ${references.length} references...`);
+      for (const ref of references) {
+        try {
+          const logicalPath = localTools._getLogicalPathFromFrontendPath(ref.path);
+          const content = await localTools.readDoc([{ path: logicalPath }]); // readDoc expects an array
+          
+          contentPayload.push({
+            type: 'doc',
+            content: `--- 参考文档: ${logicalPath} ---\n${content}\n--- 文档结束 ---`,
+            name: ref.name,
+            path: ref.path // Keep original path for UI linking
+          });
+
+        } catch (e) {
+            logger.error(`[AgentStore] Failed to fetch content for reference: ${ref.path}`, e);
+            // Add a placeholder to the UI to show that it failed
+            contentPayload.push({
+                type: 'doc',
+                content: `Error: Failed to load document ${ref.path}`,
+                name: ref.name,
+                path: ref.path,
+                error: true
+            });
+        }
+      }
+      logger.log(`[AgentStore] Added ${references.length} doc parts to payload.`);
+    }
+
+    // 3. Add image parts if they exist
     if (images && images.length > 0) {
       for (const imageUrl of images) {
         contentPayload.push({
@@ -373,7 +405,6 @@ export const useAgentStore = defineStore('agent', () => {
       }
     }
     
-    // Do not add an empty message
     if (contentPayload.length === 0) {
       logger.warn("sendMessage called with empty payload.");
       return;
@@ -381,7 +412,7 @@ export const useAgentStore = defineStore('agent', () => {
 
     addMessage({
       role: 'user',
-      // If there's only text, keep content as a simple string for backward compatibility
+      // If there's only a single text part, keep content as a simple string for backward compatibility.
       // Otherwise, use the array payload for multimodal content.
       content: contentPayload.length === 1 && contentPayload[0].type === 'text'
                ? contentPayload[0].text

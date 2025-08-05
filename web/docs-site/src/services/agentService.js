@@ -282,16 +282,59 @@ class AgentService {
             logger.error(`Agent: ${errorMsg}`);
             throw new Error(errorMsg);
         }
-        
+
         const apiMessages = history
-            .filter(m => m.type !== 'tool_status' && m.type !== 'tool_result')
+            .filter(m => m.type !== 'tool_status' && m.type !== 'tool_result' && !m.is_hidden)
             .map(m => {
+                // Ensure we only pass the properties the API expects
+                const messageForApi = {
+                    role: m.role,
+                    content: m.content,
+                    name: m.name,
+                };
+                
                 // OpenAI API expects 'content' to be a string for text-only messages,
-                // or an array for multimodal messages. This ensures compatibility.
-                if (m.role === 'user' && !Array.isArray(m.content)) {
-                    return { ...m, content: [{ type: 'text', text: m.content }] };
+                // or an array for multimodal messages. This block handles the conversion.
+                if (m.role === 'user') {
+                    if (Array.isArray(m.content)) {
+                        // Process multi-part content
+                        messageForApi.content = m.content.map(part => {
+                            if (part.type === 'doc') {
+                                // Convert our custom 'doc' type to the API's 'text' type
+                                return { type: 'text', text: part.content };
+                            }
+                            return part; // Keep 'text' and 'image_url' parts as they are
+                        });
+                    } else {
+                        // Handle simple string content
+                        messageForApi.content = [{ type: 'text', text: m.content }];
+                    }
                 }
-                return m;
+                
+                // For tool calls, the 'name' property is actually the tool_call_id.
+                if (m.role === 'tool') {
+                    messageForApi.tool_call_id = m.name;
+                    delete messageForApi.name; // remove original name property
+                    // Ensure tool content is always a string for the API.
+                    messageForApi.content = String(m.content);
+                }
+
+                // The 'assistant' role sometimes has a 'name' property if it's a tool call.
+                if (m.role === 'assistant' && m.tool_calls) {
+                    messageForApi.tool_calls = m.tool_calls;
+                }
+                
+                // Clean up properties that are not part of the standard API message format,
+                // unless they are specifically needed (like tool_calls for assistant).
+                if (m.role !== 'assistant' || !m.tool_calls) {
+                    delete messageForApi.name;
+                }
+                if(m.role !== 'tool'){
+                    delete messageForApi.tool_call_id;
+                }
+
+
+                return messageForApi;
             });
 
         const requestBody = {

@@ -1,7 +1,30 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useAppStore } from './app'; // Import app store
+
+// --- Private Helpers ---
+/**
+ * 将字符串切分为二字词组 (bigrams)
+ * @param {string} text - The input text.
+ * @returns {string[]} An array of bigrams.
+ */
+function getBigrams(text) {
+    const cleanedText = text.replace(/\s+/g, '').toLowerCase();
+    if (cleanedText.length <= 1) {
+        return [cleanedText];
+    }
+    const bigrams = new Set();
+    for (let i = 0; i < cleanedText.length - 1; i++) {
+        bigrams.add(cleanedText.substring(i, i + 2));
+    }
+    return Array.from(bigrams);
+}
+
+
 // --- Store Definition ---
 export const useDataStore = defineStore('data', () => {
+    const appStore = useAppStore();
+
     // --- State ---
     const isLoadingIndex = ref(false);
     const error = ref(null);
@@ -9,7 +32,65 @@ export const useDataStore = defineStore('data', () => {
     const lastFetchedGame = ref(null);
     const searchChunkCache = ref({});
     const contentCache = ref({}); // path -> markdown content
+
+    const catalogMap = computed(() => {
+        return new Map(indexData.value.map(item => [item.id, item]));
+    });
+
     // --- Actions ---
+    /**
+     * Searches the catalog index based on a query.
+     * This is the centralized search logic for the entire app.
+     * @param {string} query - The search query.
+     * @returns {Promise<Array>} A promise that resolves to an array of result items.
+     */
+    async function searchCatalog(query) {
+        if (!query.trim() || indexData.value.length === 0) {
+            return [];
+        }
+
+        try {
+            const queryBigrams = getBigrams(query);
+            if (queryBigrams.length === 0) return [];
+
+            // 1. Fetch all needed chunks in parallel
+            const chunkPromises = queryBigrams.map(bigram => fetchSearchChunk(appStore.currentGame, bigram[0]));
+            const chunks = await Promise.all(chunkPromises);
+
+            // 2. Get ID sets for each bigram
+            const idSets = [];
+            queryBigrams.forEach((bigram, index) => {
+                const chunk = chunks[index];
+                if (chunk && chunk[bigram]) {
+                    idSets.push(new Set(chunk[bigram]));
+                }
+            });
+
+            if (idSets.length === 0) {
+                return [];
+            }
+
+            // 3. Find the intersection of all ID sets (AND logic)
+            const intersection = idSets.reduce((acc, set) => new Set([...acc].filter(id => set.has(id))));
+
+            // 4. Map IDs to full catalog items
+            const finalResults = [];
+            intersection.forEach(id => {
+                const item = catalogMap.value.get(id);
+                if (item) {
+                    finalResults.push(item);
+                }
+            });
+            return finalResults;
+
+        } catch (e) {
+            error.value = e instanceof Error ? e.message : '搜索时发生未知错误';
+            console.error("Search catalog error:", e);
+            return []; // Return empty array on error
+        }
+    }
+
+
     /**
      * Fetches the index data for a specific game.
      * This action is idempotent: it only fetches data if it's not already loaded
@@ -101,6 +182,7 @@ export const useDataStore = defineStore('data', () => {
         fetchIndex,
         fetchSearchChunk,
         fetchMarkdownContent,
+        searchCatalog, // Expose the new search action
     };
 });
 //# sourceMappingURL=data.js.map

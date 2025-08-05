@@ -74,12 +74,38 @@ const getSessionDisplayName = (session) => {
   if (!session || !session.messageIds || !session.messagesById) {
     return session.name || '未命名会话';
   }
+  
   const firstUserMessage = session.messageIds
     .map(id => session.messagesById[id])
     .find(msg => msg && msg.role === 'user' && msg.content);
     
-  if (firstUserMessage && firstUserMessage.content.trim()) {
-    return firstUserMessage.content.trim().substring(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '');
+  if (!firstUserMessage) {
+    return '新会话';
+  }
+
+  let previewText = '';
+  const { content } = firstUserMessage;
+
+  if (typeof content === 'string') {
+    previewText = content;
+  } else if (Array.isArray(content)) {
+    // Find the first text part in the content array
+    const textPart = content.find(part => part.type === 'text');
+    if (textPart) {
+      previewText = textPart.text;
+    } else {
+      // If no text, show a placeholder for attachments
+      const docPart = content.find(part => part.type === 'doc');
+      const imagePart = content.find(part => part.type === 'image_url');
+      if (docPart) previewText = `[文档] ${docPart.name}`;
+      else if (imagePart) previewText = `[图片]`;
+      else previewText = '[附件]';
+    }
+  }
+  
+  const trimmedText = previewText.trim();
+  if (trimmedText) {
+    return trimmedText.substring(0, 30) + (trimmedText.length > 30 ? '...' : '');
   }
   
   return '新会话';

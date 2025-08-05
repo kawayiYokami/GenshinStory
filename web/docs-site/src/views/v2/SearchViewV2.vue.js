@@ -1,84 +1,35 @@
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { useAppStore } from '@/stores/app';
 import { useDataStore } from '@/stores/data';
 import { storeToRefs } from 'pinia';
+
 // --- 响应式状态 ---
 const appStore = useAppStore();
 const dataStore = useDataStore();
-const { isLoading, error, indexData: catalogIndex } = storeToRefs(dataStore);
+const { isLoading, error } = storeToRefs(dataStore); // Removed unused catalogIndex
 const searchQuery = ref('');
-const isSearching = ref(false); // 搜索过程状态
-const results = ref([]); // 结果现在是完整的目录条目
+const isSearching = ref(false);
+const results = ref([]);
 const hasSearched = ref(false);
-// --- 索引数据存储 ---
-// 搜索分片缓存现在由 dataStore 管理
-// 将目录索引转换为以ID为键的Map，以便快速查找
-const catalogMap = computed(() => {
-    return new Map(catalogIndex.value.map(item => [item.id, item]));
-});
-// --- 搜索逻辑 ---
-/**
- * 将字符串切分为二字词组 (bigrams)
- */
-function getBigrams(text) {
-    const cleanedText = text.replace(/\s+/g, '').toLowerCase();
-    if (cleanedText.length <= 1) {
-        return [cleanedText];
-    }
-    const bigrams = new Set();
-    for (let i = 0; i < cleanedText.length - 1; i++) {
-        bigrams.add(cleanedText.substring(i, i + 2));
-    }
-    return Array.from(bigrams);
-}
-// fetchSearchChunks 逻辑已移至 dataStore
+
+// --- 搜索逻辑 (现在代理到 dataStore) ---
 async function performSearch() {
     hasSearched.value = true;
-    if (!searchQuery.value.trim() || catalogIndex.value.length === 0) {
+    if (!searchQuery.value.trim()) {
         results.value = [];
         return;
     }
+
     isSearching.value = true;
-    results.value = [];
-    error.value = null;
+    error.value = null; // Clear previous errors
+    
     try {
-        const queryBigrams = getBigrams(searchQuery.value);
-        // 1. 并行从 dataStore 获取所有需要的分片
-        const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentGame, bigram[0]));
-        const chunks = await Promise.all(chunkPromises);
-        // 2. 获取每个二元组对应的ID列表
-        const idSets = [];
-        queryBigrams.forEach((bigram, index) => {
-            const chunk = chunks[index];
-            if (chunk && chunk[bigram]) {
-                idSets.push(new Set(chunk[bigram]));
-            }
-        });
-        if (idSets.length === 0) {
-            results.value = [];
-            return;
-        }
-        // 3. 计算所有查询词组都匹配的ID交集 (AND logic)
-        if (idSets.length === 0) {
-            results.value = [];
-            isSearching.value = false;
-            return;
-        }
-        const intersection = idSets.reduce((acc, set) => new Set([...acc].filter(id => set.has(id))));
-        // 4. 从目录索引中查找详细信息并构建最终结果
-        const finalResults = [];
-        intersection.forEach(id => {
-            const item = catalogMap.value.get(id);
-            if (item) {
-                finalResults.push(item);
-            }
-        });
-        results.value = finalResults;
-    }
-    catch (e) {
-        error.value = e instanceof Error ? e.message : '搜索时发生未知错误';
-    }
-    finally {
+        results.value = await dataStore.searchCatalog(searchQuery.value);
+    } catch (e) {
+        // The error is already set inside the store, but we can log it here if needed
+        console.error("Search failed in view:", e);
+        results.value = [];
+    } finally {
         isSearching.value = false;
     }
 }

@@ -16,6 +16,16 @@
               <div v-for="(item, index) in message.content" :key="index" class="content-part">
                 <p v-if="item.type === 'text'" class="text-part">{{ item.text }}</p>
                 <img v-if="item.type === 'image_url'" :src="item.image_url.url" class="image-part" alt="User uploaded content"/>
+                <!-- Render 'doc' as a standard internal link, mimicking the postprocessor -->
+                <a v-if="item.type === 'doc'"
+                   :href="item.path"
+                   @click.prevent="handleDocClick(item.path)"
+                   class="internal-doc-link"
+                   :data-is-valid="!item.error"
+                   :data-raw-link="`[[${item.name}|path:${item.path}]]`"
+                >
+                  {{ item.name }}
+                </a>
               </div>
             </template>
             <template v-else>
@@ -140,6 +150,13 @@ const handleContentClick = (event) => {
   }
 };
 
+const handleDocClick = (path) => {
+  // Here you can implement the preview logic, for now, we'll just log it
+  // and maybe navigate using the router if it's set up for it.
+  toast.info(`Clicked on doc: ${path}. Preview functionality to be implemented.`);
+  // Example: router.push(path);
+};
+
 // This watcher is now the single source of truth for transitioning
 // from a streaming view to the final, post-processed Markdown view.
 watch(
@@ -170,6 +187,7 @@ watch(
   border-radius: 8px;
   object-fit: contain;
 }
+/* No more custom doc-part style needed, it will use the global .internal-doc-link styles */
 
 .message-wrapper {
   position: relative;
@@ -319,6 +337,18 @@ watch(
   color: var(--m3-error);
   text-decoration: underline dashed;
   text-underline-offset: 2px;
+}
+
+/* Ensure our manually created link shares the same style as post-processed ones */
+:deep(.internal-doc-link) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  color: var(--m3-primary);
+}
+
+:deep(.internal-doc-link:hover) {
+    text-decoration: none;
 }
 
 .question-container {
