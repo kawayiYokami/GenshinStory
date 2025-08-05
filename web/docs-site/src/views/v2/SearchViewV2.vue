@@ -110,7 +110,7 @@ async function performSearch() {
     const queryBigrams = getBigrams(searchQuery.value);
     
     // 1. 并行从 dataStore 获取所有需要的分片
-    const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentDomain, bigram[0]));
+    const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentDomain || '', bigram[0]));
     const chunks = await Promise.all(chunkPromises);
 
     // 2. 获取每个二元组对应的ID列表

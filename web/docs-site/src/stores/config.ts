@@ -144,7 +144,6 @@ export const useConfigStore = defineStore('config', () => {
 
     const newConfig: Config = {
       id: nanoid(),
-      name: newName,
       apiUrl: '',
       apiKey: '',
       modelName: 'gpt-4-turbo',

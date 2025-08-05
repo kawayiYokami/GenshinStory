@@ -3,7 +3,7 @@ import yaml from 'js-yaml';
 import logger from './loggerService';
 import { useConfigStore } from '@/stores/config';
 import { storeToRefs } from 'pinia';
-import type { Message } from '@/stores/agent';
+import type { Message, MessageContentPart } from '@/stores/agentStore';
 
 // --- 类型定义 ---
 
@@ -241,7 +241,7 @@ class ContextOptimizerService {
     private _calculateTotalTokens(history: Message[]): number {
         if (!history) return 0;
         return history.reduce((acc, msg) => {
-            const content = Array.isArray(msg.content) ? msg.content.map(c => c.text || '').join(' ') : msg.content;
+            const content = Array.isArray(msg.content) ? msg.content.map((c: MessageContentPart) => c.text || '').join(' ') : msg.content;
             const contentTokens = tokenizer.countTokens(content || '');
             return acc + contentTokens;
         }, 0);

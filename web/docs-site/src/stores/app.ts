@@ -8,6 +8,12 @@ export interface Domain {
     version: string;
 }
 
+export interface Game {
+    id: string;
+    name: string;
+    description?: string;
+}
+
 export const useAppStore = defineStore('app', () => {
     // --- State ---
     const currentDomain = ref<string | null>(null);

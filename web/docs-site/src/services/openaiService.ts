@@ -11,7 +11,7 @@ import type { Config } from '@/stores/config';
 class OpenaiService {
     private openai: OpenAI | null = null;
     private currentConfig: Partial<ClientOptions> & { baseURL?: string | null } = {
-        apiKey: null,
+        apiKey: undefined,
         baseURL: null,
     };
 

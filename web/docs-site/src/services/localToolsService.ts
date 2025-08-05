@@ -1,11 +1,11 @@
 import logger from './loggerService';
 import { useDataStore } from '@/stores/data';
 import { useAppStore } from '@/stores/app';
-import localforage from 'localforage';
 import type { IndexItem } from '@/stores/data';
+import pathService from './pathService';
 
 // --- 类型定义 ---
-interface DocRequest {
+export interface DocRequest {
     path: string;
     lineRanges?: string[];
 }
@@ -16,19 +16,10 @@ interface SearchResult {
     snippet: string;
 }
 
-interface CatalogTree {
-    [key: string]: CatalogTree | null;
-}
-
 interface DocMetadata {
     totalTokens: number;
     totalLines: number;
 }
-
-
-const catalogStore = localforage.createInstance({
-  name: "catalogTreeCache"
-});
 
 /**
  * 将字符串切分为二字词组 (bigrams)
@@ -65,9 +56,6 @@ function _normalizeQuery(query: string): string {
 }
 
 class LocalToolsService {
-  private _catalogLoadingPromise: { [domain: string]: Promise<void> } = {};
-  private _catalogTreeCache: { [domain: string]: CatalogTree } = {};
-
   // --- 路径助手函数 ---
 
   private _getPhysicalPathFromLogicalPath(logicalPath: string): string {
@@ -88,104 +76,8 @@ class LocalToolsService {
   // --- 工具函数 ---
 
   public async listDocs(path: string = '/'): Promise<string> {
-    logger.log(`执行目录列表...`, { path });
-    const appStore = useAppStore();
-    const currentDomain = appStore.currentDomain;
-    
-    if (!currentDomain) {
-        return "错误：当前域未设置。";
-    }
-
-    try {
-      await this.ensureCatalogReady();
-      const catalogTree = this._catalogTreeCache[currentDomain];
-      const pathParts = path.trim().replace(/^\/|\/$/g, '').split('/').filter(p => p);
-      
-      let currentLevel: any = catalogTree;
-      for (const part of pathParts) {
-        if (currentLevel && typeof currentLevel === 'object' && part in currentLevel) {
-          currentLevel = currentLevel[part];
-        } else {
-          return `错误：路径 '${path}' 不存在。`;
-        }
-      }
-
-      if (typeof currentLevel !== 'object' || currentLevel === null) {
-        return `错误：路径 '${path}' 不是一个目录。`;
-      }
-      
-      const normalizedBasePath = path.trim().replace(/\/$/, '');
-      const finalPath = normalizedBasePath === '/' ? '' : normalizedBasePath;
-
-      const results = Object.keys(currentLevel).map(key => {
-        const fullPath = [finalPath, key].filter(Boolean).join('/');
-        const type = currentLevel[key] === null ? 'file' : 'directory';
-        return { path: fullPath, type: type };
-      });
-
-      logger.log(`目录列表成功: ${path}`, { count: results.length });
-      return JSON.stringify(results, null, 2);
-
-    } catch (error: any) {
-      logger.error(`列出目录时失败: ${path}`, error);
-      return `错误：无法列出目录 '${path}': ${error.message}`;
-    }
+    return pathService.listDocs(path);
   }
-
-   public async resolveLogicalPath(logicalPath: string): Promise<string | null> {
-    try {
-        await this.ensureCatalogReady();
-    } catch (error) {
-        logger.error(`[resolveLogicalPath] 无法加载目录树，路径解析中止:`, error);
-        return null;
-    }
-
-    const appStore = useAppStore();
-    const currentDomain = appStore.currentDomain;
-    if (!currentDomain) return null;
-
-    const catalogTree = this._catalogTreeCache[currentDomain];
-    if (!catalogTree) return null;
-
-    const cleanPath = logicalPath.split('#')[0];
-    const normalizedPath = cleanPath.trim().replace(/\\/g, '/');
-    const pathParts = normalizedPath.split('/').filter(p => p);
-
-    let currentNode: any = catalogTree;
-    let isValid = true;
-    for (const part of pathParts) {
-        if (currentNode && typeof currentNode === 'object' && part in currentNode) {
-            currentNode = currentNode[part];
-        } else {
-            isValid = false;
-            break;
-        }
-    }
-    if (isValid && currentNode === null) {
-        return normalizedPath;
-    }
-
-    const justTheFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1].toLowerCase() : null;
-    if (!justTheFileName) return null;
-
-    const traverse = (node: CatalogTree, currentPath: string): string | null => {
-        for (const key in node) {
-            const newPath = currentPath ? `${currentPath}/${key}` : key;
-            if (node[key] === null) {
-                if (key.toLowerCase() === justTheFileName || key.toLowerCase() === `${justTheFileName}.md`) {
-                    return newPath;
-                }
-            } else if (typeof node[key] === 'object') {
-                const found = traverse(node[key] as CatalogTree, newPath);
-                if (found) return found;
-            }
-        }
-        return null;
-    };
-
-    const foundPath = traverse(catalogTree, '');
-    return foundPath;
-}
 
   private _applyLineRanges(content: string, lineRanges?: string[]): string {
     if (!lineRanges || lineRanges.length === 0) {
@@ -252,7 +144,7 @@ class LocalToolsService {
                 const justTheFileName = path.split('/').pop()?.split('\\').pop();
                 if (!justTheFileName) throw initialError;
 
-                const resolvedPath = await this.resolveLogicalPath(justTheFileName);
+                const resolvedPath = await pathService.resolveLogicalPath(justTheFileName);
 
                 if (resolvedPath && resolvedPath !== path) {
                     logger.log(`路径解析成功: '${path}' -> '${resolvedPath}'。正在重试...`);
@@ -283,8 +175,8 @@ class LocalToolsService {
       if (result.status === 'fulfilled') {
           if (typeof result.value === 'string') {
               successfulContents.push(result.value);
-          } else if (result.value && result.value.error) {
-              const { path: failedPath, error: errorMessage } = result.value;
+          } else if (result.value && (result.value as any).error) {
+              const { path: failedPath, error: errorMessage } = result.value as any;
               logger.error(`读取文档失败 (settled): ${failedPath}`, { reason: errorMessage });
               successfulContents.push(`--- DOC START: ${failedPath} ---\n\n${errorMessage}\n\n--- DOC END: ${failedPath} ---`);
           }
@@ -495,53 +387,6 @@ class LocalToolsService {
        logger.error(`获取元数据失败: ${logicalPath}`, error);
        return null;
      }
-   }
-
-   public async ensureCatalogReady(): Promise<void> {
-     const appStore = useAppStore();
-     const currentDomain = appStore.currentDomain;
-     if (!currentDomain) {
-         throw new Error("当前域未设置，无法确保目录已就绪。");
-     }
-
-     if (this._catalogTreeCache[currentDomain]) {
-       return;
-     }
-
-     if (this._catalogLoadingPromise[currentDomain]) {
-       await this._catalogLoadingPromise[currentDomain];
-       return;
-     }
-
-     const loadPromise = (async () => {
-       try {
-         const cachedTree = await catalogStore.getItem<CatalogTree>(currentDomain);
-         if (cachedTree) {
-           logger.log(`目录树 for '${currentDomain}' 从持久化缓存中加载成功。`);
-           this._catalogTreeCache[currentDomain] = cachedTree;
-           return;
-         }
-
-         const mapPath = `/domains/${currentDomain}/metadata/catalog.json`;
-         logger.log(`目录树缓存未命中，正在为域 '${currentDomain}' 加载: ${mapPath}`);
-         const response = await fetch(mapPath);
-         if (!response.ok) throw new Error(`HTTP 错误! status: ${response.status}`);
-         const tree = await response.json();
-
-         this._catalogTreeCache[currentDomain] = tree;
-         await catalogStore.setItem(currentDomain, tree);
-
-         logger.log(`目录树 for '${currentDomain}' 加载并缓存成功。`);
-       } catch (error) {
-         logger.error(`加载目录树失败 for '${currentDomain}':`, error);
-         throw error;
-       } finally {
-         delete this._catalogLoadingPromise[currentDomain];
-       }
-     })();
-
-     this._catalogLoadingPromise[currentDomain] = loadPromise;
-     await loadPromise;
    }
 }
 

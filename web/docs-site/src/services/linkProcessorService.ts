@@ -1,5 +1,5 @@
 import logger from './loggerService';
-import localTools from './localToolsService';
+import pathService from './pathService';
 
 // --- 类型定义 ---
 interface LinkResolutionResult {
@@ -50,7 +50,7 @@ class LinkProcessorService {
     baseResult.originalPath = originalPath;
 
     try {
-      const resolvedPath = await localTools.resolveLogicalPath(originalPath);
+      const resolvedPath = await pathService.resolveLogicalPath(originalPath);
       
       if (resolvedPath) {
         return {

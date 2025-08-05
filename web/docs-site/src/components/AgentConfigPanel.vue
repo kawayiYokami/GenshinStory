@@ -128,7 +128,7 @@
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useConfigStore } from '@/stores/config';
-import { useAgentStore } from '@/stores/agent';
+import { useAgentStore } from '@/stores/agentStore';
 import { useAppStore } from '@/stores/app';
 import logger from '@/services/loggerService';
 

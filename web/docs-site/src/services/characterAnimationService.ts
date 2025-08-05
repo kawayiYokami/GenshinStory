@@ -1,5 +1,7 @@
-import { useAgentStore } from '@/stores/agent';
-import type { AgentStore } from '@/stores/agent';
+import { useAgentStore } from '@/stores/agentStore';
+
+// 定义 AgentStore 类型作为 useAgentStore 的返回类型
+type AgentStore = ReturnType<typeof useAgentStore>;
 
 class CharacterAnimationService {
   private renderWindow: number;

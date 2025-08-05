@@ -57,7 +57,7 @@
 <script setup>
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useAgentStore } from '@/stores/agent';
+import { useAgentStore } from '@/stores/agentStore';
 import { useConfigStore } from '@/stores/config';
 import { useDocumentViewerStore } from '@/stores/documentViewer';
 import { useAppStore } from '@/stores/app';

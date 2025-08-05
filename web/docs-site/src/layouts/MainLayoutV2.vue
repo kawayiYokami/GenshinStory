@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAgentStore } from '@/stores/agent';
+import { useAgentStore } from '@/stores/agentStore';
 import { useAppStore, Game } from '@/stores/app';
 import { useDataStore } from '@/stores/data';
 import { useDocumentViewerStore } from '@/stores/documentViewer';
@@ -88,7 +88,7 @@ const functionComponent = computed(() => {
 
 // Watch for game changes in the route and update all relevant stores
 // --- Application Initialization Orchestrator ---
-async function initializeApplication(domain) {
+async function initializeApplication(domain: string) {
   if (!domain) return;
 
   appStore.isCoreDataReady = false;

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import wasm from "vite-plugin-wasm";
+import topLevelAwait from "vite-plugin-top-level-await";
 import path from 'path'
 import fs from 'fs' // Import Node.js fs module
 import { fileURLToPath } from 'url'; // Helper to convert URL to path
@@ -42,6 +43,7 @@ const handleMdFilesAsUtf8 = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    topLevelAwait(),
     wasm(),
     vue(),
     handleMdFilesAsUtf8() // Add our custom plugin
@@ -54,5 +56,15 @@ export default defineConfig({
   },
   server: {
     // middlewares array is removed as we now use a plugin
+  },
+  worker: {
+    format: 'es',
+    plugins: () => [
+      topLevelAwait(),
+      wasm()
+    ]
+  },
+  optimizeDeps: {
+    exclude: ['@dqbd/tiktoken']
   }
 })

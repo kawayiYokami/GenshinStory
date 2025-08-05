@@ -35,7 +35,7 @@
 <script setup>
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useAgentStore } from '@/stores/agent';
+import { useAgentStore } from '@/stores/agentStore';
 import { useAppStore } from '@/stores/app';
 
 defineProps({

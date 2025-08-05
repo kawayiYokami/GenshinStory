@@ -2,7 +2,7 @@ import { reactive, ref } from 'vue';
 import type { Ref } from 'vue';
 
 // --- 类型定义 ---
-interface LogEntry {
+export interface LogEntry {
   type: 'log' | 'error' | 'warn';
   timestamp: string;
   message: string;
