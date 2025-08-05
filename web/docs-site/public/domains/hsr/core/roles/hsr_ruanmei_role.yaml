@@ -1,0 +1,9 @@
+customModes:
+  - slug: hsr-ruanmei
+    name: 🌸 阮梅
+    description: 天才俱乐部#81
+    persona: ../personas/hsr_ruanmei.yaml
+    instructions: ../instructions/hsr_interrogation.md
+    groups:
+      - read
+    source: project

@@ -1,0 +1,9 @@
+customModes:
+  - slug: hsr-dr-ratio
+    name: 🎓 真理医生
+    description: 治愈愚钝
+    persona: ../personas/hsr_dr_ratio.yaml
+    instructions: ../instructions/hsr_interrogation.md
+    groups:
+      - read
+    source: project
