@@ -347,9 +347,9 @@ export const useAgentStore = defineStore('agent', () => {
       return;
     }
 
-    // Adapt to handle rich content object {text, images, references}
-    const isRichContent = typeof payload === 'object';
-    const text = isRichContent ? payload.text : null;
+    // Adapt to handle both rich content object {text, ...} and simple strings
+    const isRichContent = typeof payload === 'object' && payload !== null;
+    const text = isRichContent ? payload.text : payload; // Handles both cases
     const images = isRichContent ? payload.images : [];
     const references = isRichContent ? payload.references : [];
 
