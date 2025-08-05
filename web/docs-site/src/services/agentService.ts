@@ -6,7 +6,7 @@ import openaiService from './openaiService';
 import { createPacedStream } from './streamingService';
 import contextOptimizerService from './contextOptimizerService';
 import toolParserService from './toolParserService';
-import type { Message, ToolCall } from '@/stores/agent';
+import type { Message } from '@/stores/agent';
 import type { Config } from '@/stores/config';
 
 // --- 类型定义 ---
@@ -44,7 +44,7 @@ class AgentService {
         const agentStore = useAgentStore();
         
         // 1. 将用户消息添加到 store
-        agentStore.addMessage({ role: 'user', content: userContent, id: `msg_${Date.now()}` });
+        await agentStore.addMessage({ role: 'user', content: userContent, id: `msg_${Date.now()}` });
         
         // 2. 主动检查并根据需要压缩上下文
         await this._checkAndCompressContextIfNeeded();
@@ -87,7 +87,7 @@ class AgentService {
                 if (command.type === 'CALL_AI') {
                     if (agentStore.consecutiveAiTurns >= 10) {
                         logger.error("已达到 AI 回合上限。正在中止。");
-                        agentStore.addMessage({ role: 'assistant', type: 'error', content: "AI已连续迭代10次，为防止失控，已自动中断。" });
+                        await agentStore.addMessage({ role: 'assistant', type: 'error', content: "AI已连续迭代10次，为防止失控，已自动中断。" });
                         break;
                     }
                     await this._handleApiCall();
@@ -97,7 +97,7 @@ class AgentService {
             } catch (error: any) {
                  if (error.name !== 'AbortError') {
                     logger.error("处理命令时出错:", { command, error });
-                    agentStore.addMessage({ role: 'assistant', type: 'error', content: `处理命令'${command.type}'时出错: ${error.message}` });
+                    await agentStore.addMessage({ role: 'assistant', type: 'error', content: `处理命令'${command.type}'时出错: ${error.message}` });
                 } else {
                     logger.log("命令处理在执行期间被中止。");
                 }
@@ -127,15 +127,15 @@ class AgentService {
             logger.log("Agent: 收到 API 响应 (非流式):", responseData);
             const message = responseData.choices[0].message;
 
-            const placeholderMessage = agentStore.addMessage({
+            const placeholderMessage = await agentStore.addMessage({
                 role: 'assistant',
-                content: '', 
+                content: '',
                 type: 'text',
                 status: 'streaming'
             });
             
             if (placeholderMessage) {
-                agentStore.updateMessage({
+                await agentStore.updateMessage({
                     messageId: placeholderMessage.id,
                     updates: {
                         content: message.content,
@@ -153,8 +153,9 @@ class AgentService {
 
         const updatedMessage = agentStore.messagesById[assistantMessage.id];
         const finalContent = this._removePartialXmlTags(updatedMessage.content || '');
+        logger.log(`[LOG] _handleApiCall: Final stream content for message ${assistantMessage.id}`, { finalContent });
         
-        agentStore.updateMessage({
+        await agentStore.updateMessage({
             messageId: assistantMessage.id,
             updates: { status: 'done' }
         });
@@ -163,7 +164,7 @@ class AgentService {
         if (parsedQuestion) {
             logger.log("Agent: 在流结束后发现 <ask_question> 指令。", parsedQuestion);
             const cleanContent = finalContent.replace(parsedQuestion.xml, '').trim();
-            agentStore.updateMessage({
+            await agentStore.updateMessage({
                 messageId: assistantMessage.id,
                 updates: { content: cleanContent, question: {
                     text: parsedQuestion.question,
@@ -178,7 +179,7 @@ class AgentService {
         if (parsedTool) {
             logger.log("Agent: V3: 在流结束后发现工具调用。", parsedTool);
             const cleanContent = finalContent.replace(parsedTool.xml, '').trim();
-            agentStore.updateMessage({
+            await agentStore.updateMessage({
                 messageId: assistantMessage.id,
                 updates: { content: cleanContent }
             });
@@ -196,8 +197,7 @@ class AgentService {
         const configStore = useConfigStore();
         const { activeConfig } = storeToRefs(configStore);
         
-        const statusMessage = agentStore.addMessage({
-            id: `msg_${Date.now()}`,
+        const statusMessage = await agentStore.addMessage({
             role: 'assistant', type: 'tool_status',
             content: toolParserService.createStatusMessage(parsedTool),
         });
@@ -205,6 +205,7 @@ class AgentService {
         if (!statusMessage) return;
 
         const toolResult = await toolParserService.executeTool(parsedTool);
+        logger.log(`[LOG] _handleToolExecution: Raw toolResult for tool "${parsedTool.name}"`, { toolResult });
         
         // --- 智能守卫: 执行前检查 ---
         const currentHistory = agentStore.orderedMessages;
@@ -223,29 +224,37 @@ class AgentService {
 
             let feedback = `错误：工具返回结果过大 (${toolMessageTokens} tokens)，超过了当前可用的空间 (${availableSpace} tokens)。为避免对话崩溃，该结果已被丢弃。`;
             
-            agentStore.replaceMessage(statusMessage.id, {
-                id: `msg_${Date.now()}`,
-                role: 'assistant', type: 'error',
-                content: feedback, status: 'done'
-            });
+            if (statusMessage) {
+                await agentStore.replaceMessage(statusMessage.id, {
+                    id: statusMessage.id,
+                    role: 'assistant', type: 'error',
+                    content: feedback, status: 'done'
+                });
+            }
 
             return; // 中止 AI 回合
         }
 
         // --- 检查通过: 添加到 store 并继续 ---
-        agentStore.replaceMessage(statusMessage.id, {
-            id: statusMessage.id,
-            role: 'assistant', type: 'tool_result',
-            content: toolResult, status: 'done'
-        });
+        if (statusMessage) {
+            const toolResultMessage = {
+                id: statusMessage.id,
+                role: 'assistant' as const, type: 'tool_result' as const,
+                content: toolResult, status: 'done' as const
+            };
+            logger.log(`[LOG] _handleToolExecution: Replacing status message with tool_result`, { toolResultMessage });
+            await agentStore.replaceMessage(statusMessage.id, toolResultMessage);
+        }
         
-        agentStore.addMessage({ ...toolMessage, id: `msg_${Date.now()}`, is_hidden: true });
+        const hiddenToolMessage = { ...toolMessage, is_hidden: true };
+        logger.log(`[LOG] _handleToolExecution: Adding hidden tool message`, { hiddenToolMessage });
+        await agentStore.addMessage(hiddenToolMessage);
 
         if (toolResult.startsWith("错误：")) {
             agentStore.incrementToolErrors();
             if (agentStore.consecutiveToolErrors >= 3) {
                  logger.error("AI 已连续3次工具调用失败。正在中止。");
-                 agentStore.addMessage({ role: 'assistant', type: 'error', content: "AI可能遇到了困难，它连续3次工具调用失败或返回了错误的结果。" });
+                 await agentStore.addMessage({ role: 'assistant', type: 'error', content: "AI可能遇到了困难，它连续3次工具调用失败或返回了错误的结果。" });
                  return; // 中止队列
             }
         } else {
@@ -271,14 +280,15 @@ class AgentService {
         }
 
         const apiMessages = history
-            .filter(m => m.type !== 'tool_status' && m.type !== 'tool_result' && !m.is_hidden)
+            .filter(m => m.type !== 'tool_status' && !m.is_hidden)
             .map(m => {
+                // OpenAI API expects a specific format. We will create a clean object.
                 const messageForApi: any = {
                     role: m.role,
                     content: m.content,
                     name: m.name,
                 };
-                
+                // For user messages, ensure content is always an array of parts
                 if (m.role === 'user') {
                     if (Array.isArray(m.content)) {
                         messageForApi.content = m.content.map(part => {
@@ -288,27 +298,31 @@ class AgentService {
                             return part;
                         });
                     } else {
+                        // Always wrap string content in the multimodal format
                         messageForApi.content = [{ type: 'text', text: m.content }];
                     }
                 }
                 
+                // For tool messages, the API expects tool_call_id and content
                 if (m.role === 'tool') {
-                    messageForApi.tool_call_id = m.name;
-                    delete messageForApi.name;
+                    messageForApi.tool_call_id = m.name; // 'name' from our store maps to 'tool_call_id'
                     messageForApi.content = String(m.content);
+                    delete messageForApi.name; // Clean up the original 'name' property
                 }
 
+                // For assistant messages, include tool_calls if they exist
                 if (m.role === 'assistant' && m.tool_calls) {
                     messageForApi.tool_calls = m.tool_calls;
                 }
-                
+
+                // Clean up properties that are not part of the standard API message format
                 if (m.role !== 'assistant' || !m.tool_calls) {
                     delete messageForApi.name;
                 }
-                if(m.role !== 'tool'){
+                 if (m.role !== 'tool') {
                     delete messageForApi.tool_call_id;
                 }
-
+                
                 return messageForApi;
             });
 
@@ -319,7 +333,7 @@ class AgentService {
             stream: activeConfig.value.stream,
         };
         
-        logger.log("Agent: 准备调用 API...", { last_message: apiMessages.at(-1) });
+        logger.log("Agent: 准备调用 API...", { messages: JSON.parse(JSON.stringify(apiMessages)) });
         logger.setLastRequest(requestBody);
 
         try {
@@ -365,7 +379,7 @@ class AgentService {
                 }
                 
                 if (!assistantMessage && chunk.value) {
-                    const newMsg = agentStore.addMessage({
+                    const newMsg = await agentStore.addMessage({
                         role: 'assistant',
                         content: '',
                         type: 'text',
@@ -379,7 +393,8 @@ class AgentService {
                 }
                 
                 if (messageId && chunk.value) {
-                    agentStore.appendMessageContent({ messageId, chunk: chunk.value });
+                    logger.log(`[LOG] _handleStream: Appending chunk to ${messageId}`, { chunk: chunk.value });
+                    await agentStore.appendMessageContent({ messageId, chunk: chunk.value });
                 }
             }
             
@@ -388,7 +403,7 @@ class AgentService {
         } catch (error: any) {
            logger.error('[AgentService] > _handleStream: 消费 stream 时发生意外错误:', error);
            if (messageId) {
-               agentStore.updateMessage({
+               await agentStore.updateMessage({
                    messageId,
                    updates: { status: 'error' }
                });
@@ -397,7 +412,7 @@ class AgentService {
         }
         
         if (messageId) {
-            agentStore.updateMessage({
+            await agentStore.updateMessage({
                 messageId,
                 updates: { streamCompleted: true, status: 'done' }
             });
@@ -434,15 +449,15 @@ class AgentService {
                     newMessagesById[message.id] = message;
                     newMessageIds.push(message.id);
                 }
-                agentStore.$patch({
-                    messagesById: newMessagesById,
-                    messageIds: newMessageIds,
-                });
+                if (agentStore.currentSession) {
+                    agentStore.currentSession.messagesById = newMessagesById;
+                    agentStore.currentSession.messageIds = newMessageIds;
+                }
 
                 logger.log(`[AgentCompress] 上下文压缩成功。新 token 数: ${optimizationResult.tokens}`);
             } else if (optimizationResult.status !== 'SUCCESS') {
                 logger.error(`[AgentCompress] 主动压缩失败:`, optimizationResult.userMessage);
-                agentStore.addMessage({ role: 'assistant', type: 'error', content: `上下文压缩失败: ${optimizationResult.userMessage}` });
+                await agentStore.addMessage({ role: 'assistant', type: 'error', content: `上下文压缩失败: ${optimizationResult.userMessage}` });
             }
         }
     }

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { nanoid } from 'nanoid';
 import localforage from 'localforage';
 import agentService from '@/services/agentService';
@@ -290,7 +290,7 @@ export const useAgentStore = defineStore('agent', () => {
     await startNewChatWithAgent(roleId);
   }
 
-  function addMessage(messageData: Partial<Message>): Message | null {
+  async function addMessage(messageData: Partial<Message>): Promise<Message | null> {
     if (!currentSession.value) return null;
     
     const id = messageData.id || nanoid();
@@ -303,17 +303,20 @@ export const useAgentStore = defineStore('agent', () => {
 
     currentSession.value.messagesById[id] = message;
     currentSession.value.messageIds.push(id);
+    await nextTick();
     return message;
   }
 
-  function updateMessage({ messageId, updates }: { messageId: string, updates: Partial<Message> }): void {
+  async function updateMessage({ messageId, updates }: { messageId: string, updates: Partial<Message> }): Promise<void> {
     const message = currentSession.value?.messagesById?.[messageId];
     if (message) {
+      logger.log(`[LOG] agentStore: Updating message ${messageId}`, { updates });
       Object.assign(message, updates);
+      await nextTick();
     }
   }
 
-  function removeMessage(messageId: string): void {
+  async function removeMessage(messageId: string): Promise<void> {
     const session = currentSession.value;
     if (!session || !session.messagesById[messageId]) return;
 
@@ -322,9 +325,11 @@ export const useAgentStore = defineStore('agent', () => {
       session.messageIds.splice(index, 1);
     }
     delete session.messagesById[messageId];
+    await nextTick();
   }
 
-  function replaceMessage(oldId: string, newMessageData: Partial<Message>): void {
+  async function replaceMessage(oldId: string, newMessageData: Partial<Message>): Promise<void> {
+    logger.log(`[LOG] agentStore: Replacing message ${oldId}`, { newMessageData });
     const session = currentSession.value;
     if (!session || !session.messagesById[oldId]) return;
 
@@ -338,9 +343,10 @@ export const useAgentStore = defineStore('agent', () => {
     session.messagesById[newId] = message;
 
     session.messageIds.splice(index, 1, newId);
+    await nextTick();
   }
 
-  function appendMessageContent({ messageId, chunk }: { messageId: string, chunk: string }): void {
+  async function appendMessageContent({ messageId, chunk }: { messageId: string, chunk: string }): Promise<void> {
     const session = currentSession.value;
     if (!session) return;
 
@@ -348,10 +354,12 @@ export const useAgentStore = defineStore('agent', () => {
     if (message) {
         const oldContent = message.content;
         const newContent = (Array.isArray(oldContent) ? oldContent.map(c=>c.text).join('') : (oldContent || '')) + chunk;
+        // logger.log(`[LOG] agentStore: Appending to ${messageId}. New content length: ${newContent.length}`);
         session.messagesById[messageId] = {
             ...message,
             content: newContent,
         };
+        await nextTick();
     }
   }
 

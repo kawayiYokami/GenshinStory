@@ -20,7 +20,7 @@
     <div v-else-if="results.length > 0" class="results-area">
       <ul class="search-results">
         <li v-for="item in results" :key="item.id">
-          <router-link :to="{ path: item.path, query: { from: 'search' } }" class="result-item">
+          <router-link :to="{ path: item.path.replace('/v2/', '/domain/'), query: { from: 'search' } }" class="result-item">
             <span class="result-type">[{{ item.type }}]</span>
             <span class="result-name">{{ item.name }}</span>
           </router-link>
