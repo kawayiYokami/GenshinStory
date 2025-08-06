@@ -362,7 +362,7 @@ class LocalToolsService {
          return a.line - b.line;
        });
        
-       return finalResults.map(r => `${r.path}\n  ${r.line}: ${r.snippet}`).join('\n\n');
+       return JSON.stringify(finalResults, null, 2);
 
      } catch (e: any) {
        logger.error("高级搜索时发生异常:", e);

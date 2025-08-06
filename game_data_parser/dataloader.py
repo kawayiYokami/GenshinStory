@@ -47,6 +47,7 @@ class DataLoader:
         self._text_map_cache: Optional[Dict[str, str]] = None
         self._directory_cache: Dict[str, List[Any]] = {}  # 新增：缓存目录遍历结果
         self._search_index: Dict[str, List[SearchResult]] = collections.defaultdict(list) # 新增：搜索索引
+        self._orphan_text_ids: List[int] = [] # 新增：用于存储零散文本ID
         self._readable_types: Dict[str, str] = {} # path -> 'world' or 'used'
         self._all_readables_initialized = False
         
@@ -305,7 +306,8 @@ class DataLoader:
             'text_map_cache': self.get_text_map(), # Ensure it's generated
             'directory_cache': self._directory_cache, # New: 目录遍历结果缓存
             'search_index': self._search_index, # 新增
-            'readable_types': self._readable_types
+            'readable_types': self._readable_types,
+            'orphan_text_ids': self._orphan_text_ids # 新增
         }
         
         try:
@@ -333,6 +335,7 @@ class DataLoader:
             self._directory_cache = cache_data.get('directory_cache', {})
             self._search_index = cache_data.get('search_index', collections.defaultdict(list)) # 新增
             self._readable_types = cache_data.get('readable_types', {})
+            self._orphan_text_ids = cache_data.get('orphan_text_ids', []) # 新增
 
             # Mark derivative caches as loaded
             if not self._talk_id_map: self._talk_id_map = {}

@@ -190,7 +190,7 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<string> {
     if (['search_docs', 'list_docs'].includes(name) && toolResult && !toolResult.startsWith("错误：")) {
         const linkPrompt = await _getLinkPrompt();
         if (linkPrompt) {
-            toolResult = `${linkPrompt}\n\n---\n\n${toolResult}`;
+            toolResult = `${toolResult}\n\n---\n\n${linkPrompt}`;
         }
     }
 

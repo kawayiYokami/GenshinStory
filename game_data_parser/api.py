@@ -9,6 +9,7 @@ from .services.quest_service import QuestService
 from .services.relic_service import RelicService
 from .services.weapon_service import WeaponService
 from .services.text_map_service import TextMapService
+from .services.orphan_text_service import OrphanTextService
 from .services.readable_service import ReadableService
 
 
@@ -34,6 +35,7 @@ class GameDataAPI:
         self.relic = RelicService(self.loader)
         self.weapon = WeaponService(self.loader)
         self.readable = ReadableService(self.loader)
+        self.orphan_text = OrphanTextService(self.loader, self.text)
 
         self.search_index = self.loader._search_index
 
