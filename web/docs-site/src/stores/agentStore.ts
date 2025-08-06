@@ -333,7 +333,7 @@ export const useAgentStore = defineStore('agent', () => {
     await _checkAndCompressContextIfNeeded();
 
     incrementAiTurns();
-    _initiateAiTurn();
+    setTimeout(() => _initiateAiTurn(), 100); 
   }
 
   async function _callApi(history: Message[]) {
