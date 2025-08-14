@@ -95,6 +95,7 @@ export const useAgentStore = defineStore('agent', () => {
   const commandQueue = ref<Command[]>([]);
   const isProcessing = ref(false);
   let abortController: AbortController | null = null;
+  let toolFeedbackPromptContent: string | null = null;
 
   // --- Original Store State ---
   const sessions = ref<{ [key: string]: Session }>({});
@@ -108,6 +109,8 @@ export const useAgentStore = defineStore('agent', () => {
   const _isFetchingAgents = ref<{ [key: string]: boolean }>({ gi: false, hsr: false });
   const consecutiveToolErrors = ref(0);
   const consecutiveAiTurns = ref(0);
+  const noToolCallRetries = ref(0);
+  const isForceStopped = ref(false);
 
   // --- Getters / 计算属性 ---
   const appStore = useAppStore();
@@ -125,19 +128,60 @@ export const useAgentStore = defineStore('agent', () => {
   });
 
   // --- AgentService Logic (as actions) ---
+  
+  /**
+   * 立即停止所有正在进行的 Agent 活动。
+   * 这包括中止网络请求、清空命令队列、更新 UI 状态并提供用户反馈。
+   */
+  function stopAgent() {
+    // 0. 设置全局中止标志，防止任何后续的自动重试
+    isForceStopped.value = true;
 
-  function stop() {
+    // 1. 立即中止网络请求
     if (abortController) {
         abortController.abort();
         logger.log("Agent: 请求被用户中止。");
     }
+
+    // 2. 立即清空命令队列，防止任何后续任务被执行
+    commandQueue.value = [];
+
+    // 3. 立即重置 UI 状态，为用户提供即时反馈
+    // 检查 isProcessing 是为了防止在非处理状态下误操作
+    if (isProcessing.value) {
+        isLoading.value = false;
+        isProcessing.value = false;
+        
+        // 4. 找到任何正在“流式输出”的消息，并将其状态更新为“已手动中断”
+        const streamingMessage = orderedMessages.value.find(m => m.status === 'streaming');
+        if (streamingMessage) {
+            updateMessage({
+                messageId: streamingMessage.id,
+                updates: { status: 'error', content: `${streamingMessage.content}\n\n---\n*已手动中断*` }
+            });
+        }
+    }
+    
+    // 5. 重置 AbortController
+    abortController = null;
+    
+    logger.log("Agent: 所有活动已停止。");
   }
 
   function startTurn() {
+    // 用户主动发起新回合时，重置全局中止标志
+    isForceStopped.value = false;
     _initiateAiTurn();
   }
 
   function _initiateAiTurn() {
+    // 检查全局中止标志，如果为 true 则拒绝开始新的回合
+    if (isForceStopped.value) {
+      logger.log("Agent 已被强制停止，新的回合将不会开始。");
+      isForceStopped.value = false; // 重置标志
+      return;
+    }
+    
     abortController = new AbortController();
     commandQueue.value.push({ type: 'CALL_AI' });
     if (!isProcessing.value) {
@@ -191,37 +235,80 @@ export const useAgentStore = defineStore('agent', () => {
     logger.log("命令队列处理完成。");
   }
 
+  /**
+   * 加载并缓存 tool_feedback_prompt.md 的内容
+   */
+  async function _getToolFeedbackPrompt(): Promise<string> {
+    // 如果已经缓存了内容，则直接返回
+    if (toolFeedbackPromptContent) {
+      return toolFeedbackPromptContent;
+    }
+
+    try {
+      // 构造提示词文件的URL，添加时间戳以避免缓存
+      const v = Date.now();
+      const response = await fetch(`/prompts/tool_feedback_prompt.md?v=${v}`);
+      
+      // 检查响应是否成功
+      if (!response.ok) {
+        logger.error("无法加载 tool_feedback_prompt.md");
+        return "你的回复中没有包含任何工具调用。你的每一次回复都必须是 'search_docs', 'read_doc', 'list_docs', 或 'ask_question' 中的一种。请重新评估并选择一个指令来回应。";
+      }
+      
+      // 获取并缓存内容
+      toolFeedbackPromptContent = await response.text();
+      return toolFeedbackPromptContent;
+    } catch (error) {
+      // 如果加载失败，记录错误并返回默认提示
+      logger.error("加载 tool_feedback_prompt.md 时出错:", error);
+      return "你的回复中没有包含任何工具调用。你的每一次回复都必须是 'search_docs', 'read_doc', 'list_docs', 或 'ask_question' 中的一种。请重新评估并选择一个指令来回应。";
+    }
+  }
+
   async function _handleApiCall() {
     let assistantMessage: Message | null = null;
-    const { response } = await _callApi(orderedMessages.value);
+    
+    try {
+      const { response } = await _callApi(orderedMessages.value, abortController!.signal);
 
-    if (configStore.activeConfig?.stream) {
-        assistantMessage = await _handleStream(response);
-    } else {
-        const responseData = response;
-        logger.log("Agent: 收到 API 响应 (非流式):", responseData);
-        const message = responseData.choices[0].message;
+      if (configStore.activeConfig?.stream) {
+          assistantMessage = await _handleStream(response);
+      } else {
+          const responseData = response;
+          logger.log("Agent: 收到 API 响应 (非流式):", responseData);
+          const message = responseData.choices[0].message;
 
-        const placeholderMessage = await addMessage({
-            role: 'assistant',
-            content: '',
-            type: 'text',
-            status: 'streaming'
-        });
-        
-        if (placeholderMessage) {
-            await updateMessage({
-                messageId: placeholderMessage.id,
-                updates: {
-                    content: message.content,
-                    status: 'done',
-                    streamCompleted: true
-                }
-            });
-            assistantMessage = messagesById.value[placeholderMessage.id];
-        }
+          const placeholderMessage = await addMessage({
+              role: 'assistant',
+              content: '',
+              type: 'text',
+              status: 'streaming'
+          });
+          
+          if (placeholderMessage) {
+              await updateMessage({
+                  messageId: placeholderMessage.id,
+                  updates: {
+                      content: message.content,
+                      status: 'done',
+                      streamCompleted: true
+                  }
+              });
+              assistantMessage = messagesById.value[placeholderMessage.id];
+          }
+      }
+    } catch (error: any) {
+      // 专门处理 AbortError，避免不友好的错误信息
+      if (error.name === 'AbortError') {
+        logger.log("Agent: API 调用被用户中止。");
+        // 直接返回，不执行后续逻辑
+        return;
+      }
+      // 如果是其他错误，则重新抛出
+      throw error;
     }
     
+    // 只有在没有被中止的情况下，才继续执行后续逻辑
     if (!assistantMessage || !assistantMessage.id) {
         throw new Error("AI 未返回任何有效数据。");
     }
@@ -238,7 +325,10 @@ export const useAgentStore = defineStore('agent', () => {
     });
 
     const parsedQuestion = toolParserService.parseAskQuestionCall(finalContent);
+    const parsedTool = toolParserService.parseXmlToolCall(finalContent);
+
     if (parsedQuestion) {
+        // 发现 <ask_question> 指令，正常处理并结束回合
         logger.log("Agent: 在流结束后发现 <ask_question> 指令。", parsedQuestion);
         const cleanContent = finalContent.replace(parsedQuestion.xml, '').trim();
         await updateMessage({
@@ -252,8 +342,8 @@ export const useAgentStore = defineStore('agent', () => {
         return;
     }
 
-    const parsedTool = toolParserService.parseXmlToolCall(finalContent);
     if (parsedTool) {
+        // 发现标准工具调用，正常处理并移交执行
         logger.log("Agent: V3: 在流结束后发现工具调用。", parsedTool);
         const cleanContent = finalContent.replace(parsedTool.xml, '').trim();
         await updateMessage({
@@ -264,8 +354,26 @@ export const useAgentStore = defineStore('agent', () => {
         commandQueue.value.push({ type: 'EXECUTE_TOOL', payload: { parsedTool } });
         return;
     }
-    
-    logger.log("Agent: V3: 在流结束后未发现工具调用。回合结束。", { content: finalContent });
+
+    // 如果代码执行到这里，意味着既没有工具调用，也没有提问指令
+    // 这将被视为"无工具调用"
+    if (noToolCallRetries.value >= 2) {
+        logger.error("AI 在收到反馈后仍未调用任何指令，中止循环。");
+        await addMessage({ role: 'assistant', type: 'error', content: "抱歉，我似乎无法找到合适的指令来回应您的问题。" });
+        return; // 必须中止
+    }
+
+    noToolCallRetries.value++; // 增加重试计数
+
+    const feedbackPrompt = await _getToolFeedbackPrompt(); // 加载外部提示词
+    await addMessage({
+        role: 'system',
+        content: feedbackPrompt,
+        is_hidden: true,
+    });
+
+    logger.log(`第 ${noToolCallRetries.value} 次追加"无指令调用"反馈，并重新发起AI调用。`);
+    _initiateAiTurn(); // 重新发起AI调用
   }
   
   async function _handleToolExecution(payload: any) {
@@ -336,7 +444,7 @@ export const useAgentStore = defineStore('agent', () => {
     setTimeout(() => _initiateAiTurn(), 100); 
   }
 
-  async function _callApi(history: Message[]) {
+  async function _callApi(history: Message[], signal: AbortSignal) {
     if (!activeConfig.value || !activeConfig.value.apiUrl || !activeConfig.value.apiKey) {
         const errorMsg = "没有激活的有效AI配置。请在设置中选择或创建一个配置。";
         logger.error(`Agent: ${errorMsg}`);
@@ -391,7 +499,7 @@ export const useAgentStore = defineStore('agent', () => {
     logger.setLastRequest(requestBody);
 
     try {
-        const response = await openaiService.createChatCompletion(requestBody, activeConfig.value);
+        const response = await openaiService.createChatCompletion(requestBody, activeConfig.value, signal);
         return { response };
     } catch (error) {
         logger.error("Agent: 调用 API 失败:", error);
@@ -753,6 +861,7 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   async function sendMessage(payload: string | { text: string; images?: string[]; references?: any[] }): Promise<void> {
+    noToolCallRetries.value = 0; // 重置"无工具调用"重试计数器
     if (!currentSession.value) {
       const initError = "没有激活的会话。";
       logger.error(initError);
@@ -943,7 +1052,7 @@ export const useAgentStore = defineStore('agent', () => {
     currentSession, activeAgentName, availableAgents, currentRoleId, messagesById,
     orderedMessages, consecutiveToolErrors, consecutiveAiTurns,
     switchDomainContext, fetchAvailableAgents, switchAgent, startNewSession,
-    sendMessage, stop, resetAgent, addMessage, updateMessage, removeMessage,
+    sendMessage, stopAgent, resetAgent, addMessage, updateMessage, removeMessage,
     replaceMessage, appendMessageContent, markStreamAsCompleted, incrementToolErrors,
     resetToolErrors, incrementAiTurns, resetCounters, markAllAsSent, deleteMessagesFrom,
     initializeStoreFromCache, switchSession, deleteSession, renameSession, startNewChatWithAgent,

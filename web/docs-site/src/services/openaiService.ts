@@ -47,7 +47,7 @@ class OpenaiService {
      * @param config 活动的 AI 配置。
      * @returns 如果 stream 为 true，则返回流对象，否则返回完成对象。
      */
-    public async createChatCompletion(requestBody: any, config: Config): Promise<any> {
+    public async createChatCompletion(requestBody: any, config: Config, signal: AbortSignal): Promise<any> {
         if (!config || !config.apiKey || !config.apiUrl) {
             throw new Error("[OpenaiService] AI 配置缺失或无效。");
         }
@@ -60,7 +60,7 @@ class OpenaiService {
 
         try {
             logger.log("[OpenaiService] 正在调用 'openai.chat.completions.create'，请求正文:", requestBody);
-            const response = await this.openai.chat.completions.create(requestBody);
+            const response = await this.openai.chat.completions.create(requestBody, { signal });
             return response;
         } catch (error) {
             logger.error("[OpenaiService] OpenAI API 调用失败:", error);

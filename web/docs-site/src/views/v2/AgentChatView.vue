@@ -150,7 +150,8 @@ const handleSend = async (payload) => {
   if (isLoading.value) {
     logger.log("--- UI: Sending message while loading. Stopping agent first. ---");
     stopAgent();
-    await nextTick();
+    // 关键修改：在调用 stopAgent 后直接返回，不再执行后续代码
+    return;
   }
   
   // Pass the entire payload object to the store
@@ -264,6 +265,22 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 12px;
   max-width: 1000px;
+}
+/* 针对 Webkit 浏览器 (Chrome, Safari) 的悬停隐藏效果 */
+.history-panel::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+}
+.history-panel:hover::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1; /* 恢复默认或原有颜色 */
+}
+/* Firefox 的滚动条通常较细且半透明，悬停时可以变得更明显一些 */
+.history-panel {
+  scrollbar-color: transparent transparent; /* thumb track */
+  transition: scrollbar-color 0.3s ease;
+}
+.history-panel:hover {
+  scrollbar-color: #c1c1c1 transparent; /* thumb track */
 }
 
 /* --- Status Indicators --- */

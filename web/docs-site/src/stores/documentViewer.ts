@@ -24,15 +24,29 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
     documentContent.value = ''; // 清除先前的内容
 
     try {
-      const result = await localToolsService.readDoc(path);
-      // readDoc 返回的结果是格式化的字符串，我们需要提取原始内容。
-      const contentMatch = result.match(/--- DOC START:.*? ---\n\n([\s\S]*)\n\n--- DOC END:.*? ---/);
+      const xmlResult = await localToolsService.readDoc(path);
       
-      if (contentMatch && contentMatch[1]) {
-        documentContent.value = contentMatch[1];
-      } else {
-        // 处理 readDoc 返回错误消息字符串的情况
-        throw new Error(`从工具结果解析文档内容失败: ${result}`);
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlResult, "text/xml");
+
+        const parserError = xmlDoc.querySelector("parsererror");
+        if (parserError) {
+          throw new Error(`XML 解析错误: ${parserError.textContent}`);
+        }
+
+        const contentNode = xmlDoc.querySelector("doc > content");
+        const errorNode = xmlDoc.querySelector("doc > error");
+
+        if (contentNode) {
+          documentContent.value = contentNode.textContent || '';
+        } else if (errorNode) {
+          throw new Error(errorNode.textContent || '发生未知错误');
+        } else {
+          throw new Error('在返回的 XML 中没有找到 <content> 或 <error> 标签。');
+        }
+      } catch (e) {
+        throw new Error(`从工具结果解析文档内容失败: ${(e as Error).message}`);
       }
 
     } catch (error: any) {

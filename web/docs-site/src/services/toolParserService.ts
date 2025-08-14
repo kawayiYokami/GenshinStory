@@ -20,6 +20,7 @@ interface ParsedQuestion {
 }
 
 const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs'];
+const RETRYABLE_TOOLS = ['search_docs', 'read_doc', 'list_docs'];
 let linkPromptContent: string | null = null;
 
 async function _getLinkPrompt(): Promise<string> {
@@ -236,6 +237,10 @@ function parseAskQuestionCall(xmlString: string): ParsedQuestion | null {
     };
 }
 
+export function isToolRetryable(toolName: string): boolean {
+    return RETRYABLE_TOOLS.includes(toolName);
+}
+
 export default {
     parseXmlToolCall,
     parseJsonToolCall,
@@ -243,4 +248,5 @@ export default {
     createStatusMessage,
     executeTool,
     parseAskQuestionCall,
+    isToolRetryable,
 };

@@ -90,6 +90,22 @@ const renderedMarkdown = computed(() => {
   overflow-y: auto;
   position: relative;
 }
+/* 针对 Webkit 浏览器 (Chrome, Safari) 的悬停隐藏效果 */
+.content::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+}
+.content:hover::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1; /* 恢复默认或原有颜色 */
+}
+/* Firefox 的滚动条通常较细且半透明，悬停时可以变得更明显一些 */
+.content {
+  scrollbar-color: transparent transparent; /* thumb track */
+  transition: scrollbar-color 0.3s ease;
+}
+.content:hover {
+  scrollbar-color: #c1c1c1 transparent; /* thumb track */
+}
 
 .loading-overlay, .error-message {
   display: flex;
