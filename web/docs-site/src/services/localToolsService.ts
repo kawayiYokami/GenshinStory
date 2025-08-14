@@ -82,7 +82,7 @@ class LocalToolsService {
     // 检查是否是错误信息
     if (jsonResult.startsWith("错误：")) {
       // 将错误信息包装在 XML 中
-      return `<tool_result tool="list_docs" path="${path}"><error><![CDATA[${jsonResult}]]></error></tool_result>`;
+      return `<directory_listing path="${path}"><error><![CDATA[${jsonResult}]]></error></directory_listing>`;
     }
     
     try {
@@ -156,10 +156,10 @@ class LocalToolsService {
       const xmlContent = buildXmlTree(results, path);
       
       // 返回完整的 XML 结构
-      return `<tool_result tool="list_docs" path="${path}">${xmlContent}</tool_result>`;
+      return `<directory_listing path="${path}">${xmlContent}</directory_listing>`;
     } catch (e) {
       // 如果解析 JSON 或构建 XML 时出错，返回错误信息
-      return `<tool_result tool="list_docs" path="${path}"><error><![CDATA[解析目录列表结果时出错: ${(e as Error).message}]]></error></tool_result>`;
+      return `<directory_listing path="${path}"><error><![CDATA[解析目录列表结果时出错: ${(e as Error).message}]]></error></directory_listing>`;
     }
   }
 
@@ -208,7 +208,7 @@ class LocalToolsService {
     const dataStore = useDataStore();
     
     if (!docRequests || docRequests.length === 0) {
-      return '<tool_result tool="read_doc"><error><![CDATA[错误：未提供任何文档读取请求。]]></error></tool_result>';
+      return '<docs><error><![CDATA[错误：未提供任何文档读取请求。]]></error></docs>';
     }
 
     const contentPromises = docRequests.map(async (request) => {
@@ -248,8 +248,18 @@ class LocalToolsService {
         
         const content = this._applyLineRanges(fullContent, lineRanges);
         logger.log(`文档读取成功: ${path}`, { lineRanges, originalPath });
+        
+        // 构建 <content> 标签，如果指定了行号范围，则添加 lines 属性
+        let contentTag = '<content';
+        if (lineRanges && lineRanges.length > 0) {
+            // 将行号范围数组 join 成字符串，例如 "1-10, 20-30"
+            const linesAttrValue = lineRanges.join(', ');
+            contentTag += ` lines="${linesAttrValue}"`;
+        }
+        contentTag += '>';
+        
         // 使用 CDATA 包裹内容以处理特殊字符
-        return `<doc path="${path}"><content><![CDATA[${content}]]></content></doc>`;
+        return `<doc><path>${path}</path>${contentTag}<![CDATA[${content}]]></content></doc>`;
     });
 
     const results = await Promise.allSettled(contentPromises);
@@ -264,19 +274,19 @@ class LocalToolsService {
               const { path: failedPath, error: errorMessage } = result.value as any;
               logger.error(`读取文档失败 (settled): ${failedPath}`, { reason: errorMessage });
               // 错误信息也使用 CDATA 包裹以防特殊字符
-              docElements.push(`<doc path="${failedPath}"><error><![CDATA[${errorMessage}]]></error></doc>`);
+              docElements.push(`<doc><path>${failedPath}</path><error><![CDATA[${errorMessage}]]></error></doc>`);
           }
       } else {
           const failedPath = docRequests[index].path;
           logger.error(`读取文档时发生意外的Promise拒绝: ${failedPath}`, { reason: result.reason });
           const errorMessage = `错误：处理文档 '${failedPath}' 时发生意外错误。`;
-          docElements.push(`<doc path="${failedPath}"><error><![CDATA[${errorMessage}]]></error></doc>`);
+          docElements.push(`<doc><path>${failedPath}</path><error><![CDATA[${errorMessage}]]></error></doc>`);
       }
     });
 
     // 构建最终的 XML 结构
     const xmlContent = docElements.join('');
-    return `<tool_result tool="read_doc">${xmlContent}</tool_result>`;
+    return `<docs>${xmlContent}</docs>`;
   }
 
    private async _performSingleSearch(query: string): Promise<SearchResult[]> {
@@ -361,7 +371,7 @@ class LocalToolsService {
      if (typeof query !== 'string' || !query.trim()) {
        const errorMsg = "错误：查询工具收到了无效或缺失的查询参数。";
        logger.error(errorMsg, { query });
-       return `<tool_result tool="search_docs" query="${query}"><error><![CDATA[${errorMsg}]]></error></tool_result>`;
+       return `<search_results query="${query}"><error><![CDATA[${errorMsg}]]></error></search_results>`;
      }
 
      logger.log(`执行高级搜索...`, { query });
@@ -370,7 +380,7 @@ class LocalToolsService {
      const currentDomain = appStore.currentDomain;
 
      if (!currentDomain) {
-         return '<tool_result tool="search_docs" query="${query}"><error><![CDATA[错误：当前域未设置。]]></error></tool_result>';
+         return `<search_results query="${query}"><error><![CDATA[错误：当前域未设置。]]></error></search_results>`;
      }
 
      if (!dataStore.indexData || dataStore.indexData.length === 0) {
@@ -379,13 +389,13 @@ class LocalToolsService {
          await dataStore.fetchIndex(currentDomain);
        } catch (e) {
          logger.error(`错误：为域 '${currentDomain}' 自动加载知识库索引失败:`, e);
-         return `<tool_result tool="search_docs" query="${query}"><error><![CDATA[错误: 无法加载知识库索引。]]></error></tool_result>`;
+         return `<search_results query="${query}"><error><![CDATA[错误: 无法加载知识库索引。]]></error></search_results>`;
        }
      }
 
      try {
         const orGroups = query.split('|').map(g => g.trim()).filter(g => g);
-        if (orGroups.length === 0) return `<tool_result tool="search_docs" query="${query}"><message><![CDATA[请输入有效的查询词。]]></message></tool_result>`;
+        if (orGroups.length === 0) return `<search_results query="${query}"><message><![CDATA[请输入有效的查询词。]]></message></search_results>`;
 
         const allGroupResults = await Promise.all(orGroups.map(async (group) => {
             const andTerms = group.split(/\s+/).map(t => t.trim()).filter(t => t);
@@ -440,7 +450,7 @@ class LocalToolsService {
        logger.log("高级搜索成功。", { count: finalResults.length });
        
        if (finalResults.length === 0) {
-         return `<tool_result tool="search_docs" query="${query}"><message><![CDATA[未找到相关文档。]]></message></tool_result>`;
+         return `<search_results query="${query}"><message><![CDATA[未找到相关文档。]]></message></search_results>`;
        }
        
        finalResults.sort((a, b) => {
@@ -453,14 +463,14 @@ class LocalToolsService {
        let resultElements = '';
        for (const result of finalResults) {
          // 使用 CDATA 包裹代码片段以处理特殊字符
-         resultElements += `<result path="${result.path}" line="${result.line}"><snippet><![CDATA[${result.snippet}]]></snippet></result>`;
+         resultElements += `<result><path>${result.path}</path><line>${result.line}</line><snippet><![CDATA[${result.snippet}]]></snippet></result>`;
        }
        
-       return `<tool_result tool="search_docs" query="${query}"><results>${resultElements}</results></tool_result>`;
+       return `<search_results query="${query}">${resultElements}</search_results>`;
 
      } catch (e: any) {
        logger.error("高级搜索时发生异常:", e);
-       return `<tool_result tool="search_docs" query="${query}"><error><![CDATA[错误：在执行高级搜索时发生异常: ${e.message}]]></error></tool_result>`;
+       return `<search_results query="${query}"><error><![CDATA[错误：在执行高级搜索时发生异常: ${e.message}]]></error></search_results>`;
      }
     }
 

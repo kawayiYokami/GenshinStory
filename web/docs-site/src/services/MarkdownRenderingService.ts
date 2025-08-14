@@ -3,17 +3,17 @@ import DOMPurify from 'dompurify';
 import linkProcessorService from '@/services/linkProcessorService';
 import logger from '@/services/loggerService';
 
-// --- Shared Logic ---
+// --- 共享逻辑 ---
 
 /**
- * Helper function to process a single [[...]] link text.
- * This is a synchronous version that returns a placeholder.
- * The actual link processing will happen later.
- * @param linkText The full link text, e.g., '[[Document Name]]' or '[[Display Text|path:some/path]]'.
- * @returns A placeholder string.
+ * 处理单个 [[...]] 链接文本的辅助函数。
+ * 这是一个同步版本，返回一个占位符。
+ * 实际的链接处理将在稍后进行。
+ * @param linkText 完整的链接文本，例如 '[[Document Name]]' 或 '[[Display Text|path:some/path]]'。
+ * @returns 占位符字符串。
  */
 export function createLinkPlaceholder(linkText: string): string {
-  // Escape the link text for HTML attribute
+  // 为 HTML 属性转义链接文本
   const escapedLinkText = linkText
     .replace(/&/g, "&")
     .replace(/</g, "<")
@@ -24,18 +24,19 @@ export function createLinkPlaceholder(linkText: string): string {
 }
 
 /**
- * Helper function to process a single [[...]] link text asynchronously.
- * @param linkText The full link text, e.g., '[[Document Name]]' or '[[Display Text|path:some/path]]'.
- * @returns A promise that resolves to the processed HTML anchor tag string.
+ * 异步处理单个 [[...]] 链接文本的辅助函数。
+ * @param linkText 完整的链接文本，例如 '[[Document Name]]' 或 '[[Display Text|path:some/path]]'。
+ * @returns 解析为已处理的 HTML 锚点标签字符串的 Promise。
  */
 export async function processSingleLinkText(linkText: string): Promise<string> {
-  // This regex should match the one in the markdown-it plugin
-  const linkRegex = /^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/;
+  // 此正则表达式应与 markdown-it 插件中的正则表达式匹配
+  // 使用非贪婪匹配来更稳健地处理包含特殊字符的链接
+  const linkRegex = /^\[\[(.+?)(?:\|(.+?))?\]\]$/;
   const match = linkText.match(linkRegex);
 
   if (!match) {
-    // This should not happen if the function is called correctly.
-    logger.warn(`Invalid link format passed to processSingleLinkText: ${linkText}`);
+    // 如果函数被正确调用，则不应发生这种情况。
+    logger.warn(`传递给 processSingleLinkText 的链接格式无效: ${linkText}`);
     return linkText;
   }
 
@@ -46,9 +47,9 @@ export async function processSingleLinkText(linkText: string): Promise<string> {
   const baseText = group1;
   let basePath = group2 !== undefined ? group2 : group1;
 
-  // Handle 'path:' prefix if present in basePath
+  // 处理 basePath 中存在的 'path:' 前缀
   if (basePath.startsWith('path:')) {
-    basePath = basePath.substring(5); // Remove 'path:' prefix
+    basePath = basePath.substring(5); // 移除 'path:' 前缀
   }
 
   let pathForValidation = basePath;
@@ -61,7 +62,7 @@ export async function processSingleLinkText(linkText: string): Promise<string> {
 
   const textForValidation = baseText.replace(/#.*$/, '');
   const finalDisplayText = anchor ? `${textForValidation} #${anchor}` : textForValidation;
-  // The linkProcessorService expects the format [[text|path:...]]
+  // linkProcessorService 期望的格式是 [[text|path:...]]
   const linkToProcess = `[[${textForValidation}|path:${pathForValidation}]]`;
 
   try {
@@ -69,8 +70,9 @@ export async function processSingleLinkText(linkText: string): Promise<string> {
       const isValid = result.isValid;
       const validityClass = isValid ? '' : 'invalid-link';
       
-      // Return the HTML string.
-      return `<a href="#" class="internal-doc-link ${validityClass}" data-is-valid="${isValid}" data-raw-link="${rawLink}" data-path="${pathForValidation}" data-anchor="${anchor}">${finalDisplayText}</a>`;
+      // 返回 HTML 字符串。
+      const returnHtml = `<a href="#" class="internal-doc-link ${validityClass}" data-is-valid="${isValid}" data-raw-link="${rawLink}" data-path="${pathForValidation}" data-anchor="${anchor}">${finalDisplayText}</a>`;
+      return returnHtml;
 
   } catch (error) {
     logger.error(`处理链接时出错: ${rawLink}`, error);
@@ -78,17 +80,18 @@ export async function processSingleLinkText(linkText: string): Promise<string> {
   }
 }
 
-// --- markdown-it Plugin ---
+// --- markdown-it 插件 ---
 
 /**
- * A markdown-it plugin to process [[...]] internal links.
- * @param md The markdown-it instance.
+ * 用于处理 [[...]] 内部链接的 markdown-it 插件。
+ * @param md markdown-it 实例。
  */
 function internalLinkPlugin(md: MarkdownIt) {
-  // Define the regex to match [[...]] links
-  const linkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/;
+  // 定义用于匹配 [[...]] 链接的正则表达式
+  // 使用非贪婪匹配来更稳健地处理包含特殊字符的链接
+  const linkRegex = /\[\[(.+?)(?:\|(.+?))?\]\]/;
 
-  // Function to find the next potential '[' character
+  // 查找下一个潜在的 '[' 字符的函数
   function locator(state: any, start: number, end: number): number {
     for (let pos = start; pos < end; pos++) {
       if (state.src.charCodeAt(pos) === 0x5B /* [ */) {
@@ -98,14 +101,14 @@ function internalLinkPlugin(md: MarkdownIt) {
     return -1;
   }
 
-  // The main rule function for parsing [[...]] links
+  // 解析 [[...]] 链接的主要规则函数
   function internal_link(state: any, silent: boolean): boolean {
     const start = state.pos;
     
-    // Check if the current character is '['
+    // 检查当前字符是否为 '['
     if (state.src.charCodeAt(start) !== 0x5B /* [ */) { return false; }
     
-    // Use the regex to test the substring starting at 'start'
+    // 使用正则表达式测试从 'start' 开始的子字符串
     const match = state.src.slice(start).match(linkRegex);
     
     if (!match) { return false; }
@@ -114,41 +117,41 @@ function internalLinkPlugin(md: MarkdownIt) {
     const linkText = fullMatch;
     const matchEnd = start + fullMatch.length;
     
-    // If silent mode, just report success
+    // 如果是静默模式，则只报告成功
     if (silent) { return true; }
     
-    // Create a new token for the internal link
+    // 为内部链接创建一个新令牌
     const token = state.push('internal_link', '', 0);
-    token.content = linkText; // Store the full link text for later processing
+    token.content = linkText; // 存储完整的链接文本以供后续处理
     
-    // Update the position
+    // 更新位置
     state.pos = matchEnd;
     return true;
   }
 
-  // Assign the locator function to the rule function itself
+  // 将定位器函数分配给规则函数本身
   (internal_link as any).locator = locator;
   
-  // Add the rule to the inline parser
-  md.inline.ruler.push('internal_link', internal_link);
+  // 在内联解析器中添加规则，优先级较高，在内置的 'link' 规则之前
+  md.inline.ruler.before('link', 'internal_link', internal_link);
   
-  // Add the renderer for 'internal_link' token type
+  // 为 'internal_link' 令牌类型添加渲染器
   md.renderer.rules.internal_link = function (tokens: any[], idx: number) {
     const token = tokens[idx];
-    const linkText = token.content; // This is the full [[...]] text
+    const linkText = token.content; // 这是完整的 [[...]] 文本
     
-    // Return a placeholder. We will replace this later.
+    // 返回一个占位符。我们稍后会替换它。
     return createLinkPlaceholder(linkText);
   };
 }
 
-// --- Public API ---
+// --- 公共 API ---
 
 /**
- * Synchronously renders Markdown text to HTML and processes internal links.
- * Internal links are replaced with placeholders.
- * @param markdownText The Markdown text to render.
- * @returns The rendered HTML string with placeholders for internal links.
+ * 同步将 Markdown 文本渲染为 HTML 并处理内部链接。
+ * 内部链接将被替换为占位符。
+ * @param markdownText 要渲染的 Markdown 文本。
+ * @returns 包含内部链接占位符的已渲染 HTML 字符串。
  */
 export function renderMarkdownSync(markdownText: string): string {
   if (!markdownText) {
@@ -156,7 +159,7 @@ export function renderMarkdownSync(markdownText: string): string {
   }
 
   try {
-    // Initialize markdown-it with the internal link plugin
+    // 使用内部链接插件初始化 markdown-it
     const md = new MarkdownIt({
       html: true,
       linkify: true,
@@ -165,14 +168,14 @@ export function renderMarkdownSync(markdownText: string): string {
     
     md.use(internalLinkPlugin);
 
-    // Render the Markdown to HTML
+    // 将 Markdown 渲染为 HTML
     const rawHtml = md.render(markdownText);
     
-    // Note: Placeholders are already inserted by the renderer.
-    // The caller is responsible for replacing placeholders if needed.
-    // For synchronous rendering, we return the HTML with placeholders.
-    // DOMPurify cannot be used here in a Worker context for final sanitization
-    // as it requires a DOM. Sanitization must be done by the caller in the main thread.
+    // 注意：占位符已由渲染器插入。
+    // 调用者负责在需要时替换占位符。
+    // 对于同步渲染，我们返回带有占位符的 HTML。
+    // DOMPurify 无法在此处的 Worker 环境中用于最终清理
+    // 因为它需要 DOM。清理必须由调用者在主线程中完成。
     
     return rawHtml;
   } catch (error) {
@@ -182,9 +185,9 @@ export function renderMarkdownSync(markdownText: string): string {
 }
 
 /**
- * Asynchronously replaces placeholders in HTML with processed internal links.
- * @param htmlWithPlaceholders The HTML string containing placeholders.
- * @returns A promise that resolves to the HTML string with placeholders replaced by actual links.
+ * 异步将 HTML 中的占位符替换为已处理的内部链接。
+ * @param htmlWithPlaceholders 包含占位符的 HTML 字符串。
+ * @returns 解析为已将占位符替换为实际链接的 HTML 字符串的 Promise。
  */
 export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Promise<string> {
   if (!htmlWithPlaceholders) {
@@ -192,29 +195,29 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
   }
 
   try {
-    // Check if DOMParser is available (browser environment)
+    // 检查 DOMParser 是否可用（浏览器环境）
     if (typeof DOMParser === 'undefined') {
-      // If not, we cannot process placeholders here.
-      // This is the case in a Web Worker. We should document that
-      // the caller in a Worker environment needs to handle placeholder replacement differently
-      // or pass the HTML back to the main thread for processing.
-      // For now, we'll log a warning and return the HTML as is.
-      // A more robust solution for Worker would be to use string replacement.
+      // 如果不可用，则无法在此处处理占位符。
+      // 这在 Web Worker 中是这种情况。我们应该记录文档说明
+      // Worker 环境中的调用者需要以不同方式处理占位符替换
+      // 或将 HTML 传递回主线程进行处理。
+      // 现在，我们将记录警告并按原样返回 HTML。
+      // 对于 Worker，更健壮的解决方案是使用字符串替换。
       
-      // Fallback to string replacement for environments without DOMParser (e.g., Web Workers)
-      logger.warn('DOMParser is not available, using string replacement for link placeholders.');
+      // 对于没有 DOMParser 的环境（例如 Web Workers），回退到字符串替换
+      logger.warn('DOMParser 不可用，使用字符串替换处理链接占位符。');
       
-      // Regex to find placeholders
+      // 用于查找占位符的正则表达式
       const placeholderRegex = /\{\{INTERNAL_LINK_PLACEHOLDER:([^\}]+)\}\}/g;
       let match;
       let newHtml = htmlWithPlaceholders;
       const replacements: { [key: string]: string } = {};
 
-      // Find all unique placeholders
+      // 查找所有唯一的占位符
       while ((match = placeholderRegex.exec(htmlWithPlaceholders)) !== null) {
         const placeholder = match[0];
         const encodedLinkText = match[1];
-        // Decode the link text
+        // 解码链接文本
         const linkText = encodedLinkText
           .replace(/&/g, "&")
           .replace(/</g, "<")
@@ -223,33 +226,37 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
           .replace(/'/g, "'");
         
         if (!replacements[placeholder]) {
-          // Process the link text and store the result
-          replacements[placeholder] = await processSingleLinkText(linkText);
+          // 处理链接文本并存储结果
+          const replacement = await processSingleLinkText(linkText);
+          replacements[placeholder] = replacement;
         }
       }
 
-      // Replace all placeholders
+      // 替换所有占位符
       for (const [placeholder, replacement] of Object.entries(replacements)) {
-        newHtml = newHtml.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
-      }
-      
-      return newHtml;
+        // 修复：确保 | 字符也被正确转义，防止正则表达式解析错误
+        const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedPlaceholder, 'g');
+        newHtml = newHtml.replace(regex, replacement);
+        }
+        
+        return newHtml;
     }
 
-    // Parse the HTML string into a DOM document
+    // 将 HTML 字符串解析为 DOM 文档
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlWithPlaceholders, 'text/html');
 
-    // Find all placeholder spans
-    // Note: The renderer now creates text placeholders, not spans.
-    // We need to adjust the selector or the renderer.
-    // Let's adjust the renderer to create a specific class for easier selection if needed,
-    // but for now, we'll stick with text replacement as shown in the fallback above.
-    // The current renderer creates `{{INTERNAL_LINK_PLACEHOLDER:...}}` text nodes.
-    // Finding and replacing these in the DOM is tricky.
-    // String replacement is more reliable.
+    // 查找所有占位符跨度
+    // 注意：渲染器现在创建的是文本占位符，而不是跨度。
+    // 我们需要调整选择器或渲染器。
+    // 让我们调整渲染器以创建一个特定的类以便于选择（如果需要），
+    // 但现在，我们将坚持使用上面回退中显示的文本替换。
+    // 当前渲染器创建 `{{INTERNAL_LINK_PLACEHOLDER:...}}` 文本节点。
+    // 在 DOM 中查找和替换这些节点很棘手。
+    // 字符串替换更可靠。
     
-    // Re-use the string replacement logic from the fallback
+    // 重用回退中的字符串替换逻辑
     const placeholderRegex = /\{\{INTERNAL_LINK_PLACEHOLDER:([^\}]+)\}\}/g;
     let match;
     let newHtml = htmlWithPlaceholders;
@@ -266,18 +273,22 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
         .replace(/'/g, "'");
       
       if (!replacements[placeholder]) {
-        replacements[placeholder] = await processSingleLinkText(linkText);
+        const replacement = await processSingleLinkText(linkText);
+        replacements[placeholder] = replacement;
       }
     }
 
     for (const [placeholder, replacement] of Object.entries(replacements)) {
-      newHtml = newHtml.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
-    }
-    
-    return newHtml;
+      // 修复：确保 | 字符也被正确转义，防止正则表达式解析错误
+      const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedPlaceholder, 'g');
+      newHtml = newHtml.replace(regex, replacement);
+      }
+      
+      return newHtml;
 
   } catch (error) {
     logger.error('替换链接占位符时出错:', error);
-    return htmlWithPlaceholders; // Return the original HTML on error
+    return htmlWithPlaceholders; // 出错时返回原始 HTML
   }
 }

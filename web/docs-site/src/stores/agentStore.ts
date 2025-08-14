@@ -335,6 +335,7 @@ export const useAgentStore = defineStore('agent', () => {
         // 发现 <ask_question> 指令，正常处理并结束回合
         logger.log("Agent: 在流结束后发现 <ask_question> 指令。", parsedQuestion);
         const cleanContent = finalContent.replace(parsedQuestion.xml, '').trim();
+        console.log('[AgentStore] _handleApiCall cleanContent:', JSON.stringify(cleanContent));
         // 使用 MarkdownRenderingService 渲染 cleanContent
         const renderedHtmlWithPlaceholders = renderMarkdownSync(cleanContent);
         const finalRenderedHtml = await replaceLinkPlaceholders(renderedHtmlWithPlaceholders);
@@ -830,7 +831,6 @@ export const useAgentStore = defineStore('agent', () => {
   async function updateMessage({ messageId, updates }: { messageId: string, updates: Partial<Message> }): Promise<void> {
     const message = currentSession.value?.messagesById?.[messageId];
     if (message) {
-      logger.log(`[LOG] agentStore: Updating message ${messageId}`, { updates });
       Object.assign(message, updates);
       await nextTick();
     }

@@ -60,8 +60,8 @@ function internalLinkPlugin(md: MarkdownIt) {
   // Assign the locator function to the rule function itself
   (internal_link as any).locator = locator;
   
-  // Add the rule to the inline parser
-  md.inline.ruler.push('internal_link', internal_link);
+  // Add the rule to the inline parser with high priority, before the built-in 'link' rule
+  md.inline.ruler.before('link', 'internal_link', internal_link);
   
   // Add the renderer for 'internal_link' token type
   md.renderer.rules.internal_link = function (tokens: any[], idx: number) {
