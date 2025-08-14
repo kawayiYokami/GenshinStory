@@ -38,14 +38,8 @@
             <!-- State 1 & 2 are now merged. We either show the streaming text or the final markdown. -->
             <template v-if="message.type === 'text'">
               <StreamingMarkdownRenderer
-                v-if="!finalContent"
-                :raw-content="message.content"
+                :rendered-content="message.renderedContent || ''"
                 :is-stream-complete="!!message.streamCompleted"
-              />
-              <MarkdownRenderer
-                v-else
-                :content="finalContent"
-                @click="handleContentClick"
               />
               <!-- Question/Suggestion Rendering -->
               <div v-if="message.question" class="question-container">
@@ -93,8 +87,8 @@
 <script setup>
 import { ref, watch } from 'vue';
 import StreamingMarkdownRenderer from './StreamingMarkdownRenderer.vue';
-import MarkdownRenderer from './MarkdownRenderer.vue';
-import markdownPostprocessorService from '@/services/MarkdownPostprocessorService';
+// import MarkdownRenderer from './MarkdownRenderer.vue'; // 已移除，不再需要
+// import markdownPostprocessorService from '@/services/MarkdownPostprocessorService'; // 已移除，不再需要
 import { useToast } from 'vue-toastification';
 
 const props = defineProps({
@@ -115,7 +109,7 @@ const props = defineProps({
 const emit = defineEmits(['select-suggestion', 'send-suggestion', 'delete-from-here', 'retry']);
 
 const toast = useToast();
-const finalContent = ref(null);
+// const finalContent = ref(null); // 已移除，不再需要
 
 const handleSuggestionClick = (suggestionText) => {
   emit('select-suggestion', suggestionText);
@@ -158,17 +152,6 @@ const handleDocClick = (path) => {
 };
 
 // This watcher is now the single source of truth for transitioning
-// from a streaming view to the final, post-processed Markdown view.
-watch(
-  () => props.message.streamCompleted,
-  async (isComplete) => {
-    if (isComplete && props.message.type === 'text') {
-      const processedContent = await markdownPostprocessorService.process(props.message.content);
-      finalContent.value = processedContent;
-    }
-  },
-  { immediate: true } // immediate: true ensures it runs once on mount
-);
 </script>
 
 <style scoped>

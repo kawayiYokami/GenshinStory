@@ -1,16 +1,15 @@
 <template>
   <div class="streaming-content-wrapper">
-    <div class="streaming-text">{{ rawContent }}</div>
+    <div class="streaming-html" v-html="renderedContent"></div>
     <span v-if="!isStreamComplete" class="blinking-cursor"></span>
   </div>
 </template>
 
 <script setup>
-// This component is now a "dumb" component. It only displays what it's given.
-// The "animation" is simply the parent component updating the rawContent prop
-// at a controlled pace, thanks to the new streamingService.
+// This component now renders real-time Markdown HTML.
+// It receives pre-rendered, sanitized HTML from the parent component.
 defineProps({
-  rawContent: {
+  renderedContent: {
     type: String,
     required: true,
   },

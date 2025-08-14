@@ -9,14 +9,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/dompurify": "^3.0.5",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/markdown-it": "^14.1.2",
     "@types/splitpanes": "^2.2.6",
+    "dompurify": "^3.2.6",
     "element-plus": "^2.10.4",
     "fuse.js": "^7.1.0",
     "github-markdown-css": "^5.8.1",
     "js-yaml": "^4.1.0",
     "localforage": "^1.10.0",
     "lodash.debounce": "^4.0.8",
+    "markdown-it": "^14.1.0",
     "marked": "^16.1.1",
     "nanoid": "^5.0.7",
     "openai": "^5.11.0",

@@ -1,5 +1,4 @@
-import { marked } from 'marked';
-import MarkdownPostprocessorService from '../services/MarkdownPostprocessorService';
+import { renderMarkdownSync, replaceLinkPlaceholders } from '../services/MarkdownRenderingService';
 
 self.onmessage = async (event) => {
     const { markdownText, originalId } = event.data;
@@ -14,15 +13,15 @@ self.onmessage = async (event) => {
     }
 
     try {
-        // 第一步：使用 marked.js 将 Markdown 转换为 HTML
-        const rawHtml = await marked.parse(markdownText);
+        // 第一步：使用新的同步渲染函数将 Markdown 转换为带有占位符的 HTML
+        const htmlWithPlaceholders = renderMarkdownSync(markdownText);
         
-        // 第二步：后处理 HTML 以解析自定义链接
-        const processedHtml = await MarkdownPostprocessorService.process(rawHtml);
+        // 第二步：异步替换占位符为最终的链接
+        const finalHtml = await replaceLinkPlaceholders(htmlWithPlaceholders);
 
         // 发送回处理过的 HTML
         self.postMessage({
-            html: processedHtml,
+            html: finalHtml,
             originalId: originalId
         });
 

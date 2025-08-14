@@ -13,6 +13,9 @@ import openaiService from '@/services/openaiService';
 import { createPacedStream } from '@/services/streamingService';
 import contextOptimizerService from '@/services/contextOptimizerService';
 import toolParserService from '@/services/toolParserService';
+import { StreamingMarkdownParser } from '@/services/StreamingMarkdownParser'; // 新增：导入实时渲染解析器
+import { renderMarkdownSync, replaceLinkPlaceholders } from '@/services/MarkdownRenderingService'; // 新增：导入 Markdown 渲染服务
+// import markdownPostprocessorService from '@/services/MarkdownPostprocessorService'; // 已移除：不再需要后处理器
 
 // --- 类型定义 ---
 export interface MessageContentPart {
@@ -29,6 +32,7 @@ export interface Message {
     id: string;
     role: 'system' | 'user' | 'assistant' | 'tool';
     content: string | MessageContentPart[];
+    renderedContent?: string; // 用于存储实时渲染的 HTML
     type?: 'text' | 'error' | 'tool_status' | 'tool_result' | 'system';
     status?: 'streaming' | 'done' | 'error';
     streamCompleted?: boolean;
@@ -331,12 +335,19 @@ export const useAgentStore = defineStore('agent', () => {
         // 发现 <ask_question> 指令，正常处理并结束回合
         logger.log("Agent: 在流结束后发现 <ask_question> 指令。", parsedQuestion);
         const cleanContent = finalContent.replace(parsedQuestion.xml, '').trim();
+        // 使用 MarkdownRenderingService 渲染 cleanContent
+        const renderedHtmlWithPlaceholders = renderMarkdownSync(cleanContent);
+        const finalRenderedHtml = await replaceLinkPlaceholders(renderedHtmlWithPlaceholders);
         await updateMessage({
             messageId: assistantMessage.id,
-            updates: { content: cleanContent, question: {
-                text: parsedQuestion.question,
-                suggestions: parsedQuestion.suggestions
-            }}
+            updates: {
+                content: cleanContent,
+                renderedContent: finalRenderedHtml, // 更新 renderedContent
+                question: {
+                    text: parsedQuestion.question,
+                    suggestions: parsedQuestion.suggestions
+                }
+            }
         });
         logger.log("Agent: 问题指令处理完毕，回合结束。");
         return;
@@ -346,9 +357,15 @@ export const useAgentStore = defineStore('agent', () => {
         // 发现标准工具调用，正常处理并移交执行
         logger.log("Agent: V3: 在流结束后发现工具调用。", parsedTool);
         const cleanContent = finalContent.replace(parsedTool.xml, '').trim();
+        // 使用 MarkdownRenderingService 渲染 cleanContent
+        const renderedHtmlWithPlaceholders = renderMarkdownSync(cleanContent);
+        const finalRenderedHtml = await replaceLinkPlaceholders(renderedHtmlWithPlaceholders);
         await updateMessage({
             messageId: assistantMessage.id,
-            updates: { content: cleanContent }
+            updates: {
+                content: cleanContent,
+                renderedContent: finalRenderedHtml // 更新 renderedContent
+            }
         });
 
         commandQueue.value.push({ type: 'EXECUTE_TOOL', payload: { parsedTool } });
@@ -524,6 +541,8 @@ export const useAgentStore = defineStore('agent', () => {
     let assistantMessage: Message | null = null;
     let messageId: string | null = null;
     const pacedStream = createPacedStream(openaiStream);
+    // 新增：为每条新消息创建一个解析器实例
+    let markdownParser: StreamingMarkdownParser | null = null;
 
     logger.log('[AgentService] > _handleStream: 开始消费 paced stream...');
 
@@ -538,16 +557,26 @@ export const useAgentStore = defineStore('agent', () => {
                 const newMsg = await addMessage({
                     role: 'assistant',
                     content: '',
+                    // 新增：初始化 renderedContent 为空字符串
+                    renderedContent: '',
                     type: 'text',
                     status: 'streaming',
                 });
                 if (newMsg) {
                     assistantMessage = newMsg;
                     messageId = newMsg.id;
+                    // 新增：创建解析器实例
+                    markdownParser = new StreamingMarkdownParser();
                     logger.log(`[AgentService] > _handleStream: 已创建新消息 (ID: ${messageId})。`);
                 }
             }
-            if (messageId && chunk.value) {
+            // 修改：处理文本块并更新渲染内容
+            if (messageId && chunk.value && markdownParser) {
+                // 使用新服务处理文本块，获取实时渲染的 HTML
+                const renderedHtml = await markdownParser.processChunk(chunk.value);
+                // 更新消息的渲染内容
+                await updateMessage({ messageId, updates: { renderedContent: renderedHtml } });
+                // 保留原始的纯文本追加，以供后处理使用
                 await appendMessageContent({ messageId, chunk: chunk.value });
             }
         }
