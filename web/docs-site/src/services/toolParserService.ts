@@ -160,7 +160,7 @@ function createStatusMessage(parsedTool: ParsedToolCall): string {
 /**
  * 执行工具并处理所有相关逻辑，如结果处理和错误处理。
  */
-async function executeTool(parsedTool: ParsedToolCall): Promise<string> {
+async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'success' | 'error'; result: string; }> {
     const { name, params } = parsedTool;
     logger.log(`[ToolCoordinator] 准备执行工具: ${name}`, params);
     
@@ -183,9 +183,16 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<string> {
             toolResult = `错误：未知的工具 '${name}'`;
             logger.error(`[ToolCoordinator] 尝试调用一个未知的工具: ${name}`);
         }
+        
+        // 在成功执行后，返回成功状态和结果
+        return { status: 'success', result: toolResult };
     } catch (e: any) {
-        toolResult = `错误：执行工具 '${name}' 时发生异常: ${e.message}`;
+        const errorMessage = `错误：执行工具 '${name}' 时发生异常: ${e.message}`;
+        const errorDetails = e.stack ? `\n\n**详细错误日志:**\n\`\`\`\n${e.stack}\n\`\`\`` : '';
+        const detailedErrorString = `${errorMessage}${errorDetails}`;
         logger.error(`[ToolCoordinator] 执行工具 '${name}' 异常:`, e);
+        // 在发生错误时，返回错误状态和详细的错误信息
+        return { status: 'error', result: detailedErrorString };
     }
 
     if (['search_docs', 'list_docs'].includes(name) && toolResult && !toolResult.startsWith("错误：")) {
@@ -195,7 +202,7 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<string> {
         }
     }
 
-    return toolResult;
+    
 }
 
 /**

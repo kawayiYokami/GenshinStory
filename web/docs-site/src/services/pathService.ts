@@ -87,25 +87,38 @@ class PathService {
 
     const loadPromise = (async () => {
       try {
-        const cachedTree = await catalogStore.getItem<CatalogTree>(currentDomain);
-        if (cachedTree) {
-          logger.log(`目录树 for '${currentDomain}' 从持久化缓存中加载成功。`);
-          this._catalogTreeCache[currentDomain] = cachedTree;
-          return;
-        }
-
-        const mapPath = `/domains/${currentDomain}/metadata/catalog.json`;
-        logger.log(`目录树缓存未命中，正在为域 '${currentDomain}' 加载: ${mapPath}`);
+        // 强制从网络获取以解决顽固的缓存问题。
+        // localforage 缓存现在仅用作网络失败时的备用。
+        const mapPath = `/domains/${currentDomain}/metadata/catalog.json?t=${new Date().getTime()}`;
+        logger.log(`正在为域 '${currentDomain}' 加载目录树: ${mapPath}`);
         const response = await fetch(mapPath);
-        if (!response.ok) throw new Error(`HTTP 错误! status: ${response.status}`);
+        if (!response.ok) {
+          // 网络请求失败时，尝试从缓存加载作为备用
+          const cachedTree = await catalogStore.getItem<CatalogTree>(currentDomain);
+          if (cachedTree) {
+            logger.warn(`网络请求失败，从 LocalForage 缓存加载了备用数据 for '${currentDomain}'.`);
+            this._catalogTreeCache[currentDomain] = cachedTree;
+            return; // 从缓存加载后返回
+          }
+          throw new Error(`HTTP 错误! status: ${response.status}`);
+        }
         const tree = await response.json();
 
         this._catalogTreeCache[currentDomain] = tree;
-        await catalogStore.setItem(currentDomain, tree);
+        await catalogStore.setItem(currentDomain, tree); // 更新缓存
 
         logger.log(`目录树 for '${currentDomain}' 加载并缓存成功。`);
       } catch (error) {
         logger.error(`加载目录树失败 for '${currentDomain}':`, error);
+        
+        // 在捕获到错误后，也尝试从缓存加载作为最终备用
+        const cachedTree = await catalogStore.getItem<CatalogTree>(currentDomain);
+        if (cachedTree) {
+            logger.warn(`网络请求和解析失败，从 LocalForage 缓存加载了最终备用数据 for '${currentDomain}'.`);
+            this._catalogTreeCache[currentDomain] = cachedTree;
+            return;
+        }
+
         throw error;
       } finally {
         delete this._catalogLoadingPromise[currentDomain];

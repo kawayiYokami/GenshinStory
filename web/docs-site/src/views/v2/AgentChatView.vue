@@ -24,7 +24,7 @@
     <div v-if="error" class="status-panel error">
       发生错误: {{ error.message }}
     </div>
-    <div v-else-if="isLoading" class="status-panel thinking-indicator">
+    <div v-else-if="isLoading || isProcessing" class="status-panel thinking-indicator">
       <span>{{ activeAgentName }} 正在思考中... ({{ thinkingTime }}s)</span>
     </div>
     <div v-else class="status-panel">
@@ -47,7 +47,7 @@
     <ChatInputPanel
       ref="inputPanelRef"
       v-model="userInput"
-      :is-loading="isLoading"
+      :is-loading="isLoading || isProcessing"
       @send="handleSend"
       @stop="stopAgent"
     />
@@ -77,8 +77,8 @@ const appStore = useAppStore();
 const { currentDomain } = storeToRefs(appStore);
 
 const agentStore = useAgentStore();
-const { orderedMessages, isLoading, error, activeAgentName, availableAgents, currentRoleId } = storeToRefs(agentStore);
-const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache, retryLastTurn } = agentStore;
+const { orderedMessages, isLoading, isProcessing, error, activeAgentName, availableAgents, currentRoleId } = storeToRefs(agentStore);
+const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache, retryLastTurn, updateActiveAgentName } = agentStore;
 
 const configStore = useConfigStore();
 const { activeConfig } = storeToRefs(configStore);
@@ -179,7 +179,7 @@ const handleHistoryPanelClick = async (event) => {
       const docViewerStore = useDocumentViewerStore();
       docViewerStore.open(result.resolvedPath);
     } else {
-      alert(`链接指向的路径 "${result.resolvedPath}" 无法被解析或找到。`);
+      alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
     }
   }
 }
@@ -222,7 +222,8 @@ onMounted(() => {
 //   fetchAvailableAgents(newDomain);
 // });
 
-watch(isLoading, (newValue) => {
+watch([isLoading, isProcessing], ([newIsLoading, newIsProcessing]) => {
+  const newValue = newIsLoading || newIsProcessing;
   if (newValue) {
     // Start timer when loading begins
     thinkingTime.value = 0;
@@ -310,16 +311,18 @@ onUnmounted(() => {
   background-color: transparent !important;
 }
 :deep(.internal-doc-link) {
-  background-color: var(--m3-primary-container);
-  border: 1px solid var(--m3-outline);
   color: var(--m3-primary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
   cursor: pointer;
   font-weight: 500;
+  transition: all 0.2s ease;
 }
+
 :deep(.internal-doc-link:hover) {
-  border-color: var(--m3-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 2.5px;
+  color: var(--m3-primary-dark);
 }
 </style>

@@ -1,6 +1,5 @@
 # Ignore large game data directories
 .*/
-agent/
 .__pycache__/
 AnimeGameData/
 GenshinCompanion-Ele/
@@ -20,3 +19,4 @@ metadata/
 /web/docs-site/src/**/*.js
 /web/docs-site/src/**/*.js.map
 /web/docs-site/src/**/*.vue.js
+/web/docs-site/src/modules
