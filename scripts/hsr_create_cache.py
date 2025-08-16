@@ -139,8 +139,12 @@ def main():
             for item in items:
                 markdown_content = formatter.format(item)
                 item_id = getattr(item, 'id', None)
-                item_name = getattr(item, 'name', None)
                 
+                if store_key == 'rogue_events':
+                    item_name = f"模拟宇宙事件-{item_id}"
+                else:
+                    item_name = getattr(item, 'name', None)
+
                 if type_name == 'MessageThread' and not item_name:
                     item_name = f"短信对话: {getattr(item.messages[0], 'sender', '未知')}" if item.messages else "未知对话"
 

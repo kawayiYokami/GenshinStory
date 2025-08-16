@@ -190,27 +190,6 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
                 })
             except Exception as e:
                 logging.error(f"    处理 {cat_name} 目录项目 {getattr(item, 'id', 'N/A')} 时出错: {e}", exc_info=True)
-            cleaned_sub_cat = clean_filename(sub_category)
-            cleaned_item_name = clean_filename(item_name)
-
-            # 调整路径和key的生成逻辑，以匹配新的文件结构
-            if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions', 'rogue_events']:
-                path = f"/v2/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
-                key = f"{cat_name}-{item_id}"
-                cat_display_name = sub_category # "角色", "光锥", "遗器" 等
-            else:
-                path = f"/v2/hsr/category/{cat_name}/{cleaned_sub_cat}/{cleaned_item_name}-{item_id}"
-                key = f"{cat_name}-{cleaned_sub_cat}-{item_id}"
-                cat_display_name = sub_category
-            
-            catalog.append({
-                "id": item_id,
-                "name": item_name,
-                "type": cat_name.capitalize(), # 类型，如 Character
-                "category": cat_display_name, # 子分类，如 物理
-                "path": path,
-                "key": key
-            })
     
     output_path = output_dir / "index.json"
     save_file(output_path, json.dumps(catalog, ensure_ascii=False, indent=2))
