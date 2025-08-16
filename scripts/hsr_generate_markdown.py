@@ -101,7 +101,9 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
                 cleaned_item_name = clean_filename(item_name)
 
                 # 对于没有实际子分类的类别（如角色、光锥、遗器），直接放在该类别的一级目录下
-                if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions', 'rogue_events']:
+                if cat_name == 'rogue_events':
+                    file_path = output_dir / cat_name / f"{cleaned_item_name}.md"
+                elif cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
                      file_path = output_dir / cat_name / f"{cleaned_item_name}-{item_id}.md"
                 else:
                      file_path = output_dir / cat_name / cleaned_sub_cat / f"{cleaned_item_name}-{item_id}.md"

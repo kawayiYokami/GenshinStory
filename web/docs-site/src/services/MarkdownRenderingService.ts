@@ -164,6 +164,7 @@ export function renderMarkdownSync(markdownText: string): string {
       html: true,
       linkify: true,
       typographer: true,
+      breaks: true,
     });
     
     md.use(internalLinkPlugin);

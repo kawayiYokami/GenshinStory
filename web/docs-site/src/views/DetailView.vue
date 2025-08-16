@@ -101,5 +101,6 @@ onUnmounted(() => {
 .markdown-body {
   background-color: transparent !important;
   line-height: 1.7;
+  color: var(--m3-on-surface-variant);
 }
 </style>

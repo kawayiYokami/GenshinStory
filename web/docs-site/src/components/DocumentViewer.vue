@@ -19,8 +19,8 @@
 <script setup>
 import { computed } from 'vue';
 import { useDocumentViewerStore } from '@/stores/documentViewer';
-import { marked } from 'marked';
-import 'github-markdown-css/github-markdown.css';
+import MarkdownIt from 'markdown-it';
+import 'github-markdown-css/github-markdown-light.css';
 
 const docViewerStore = useDocumentViewerStore();
 
@@ -44,9 +44,16 @@ const formattedTitle = computed(() => {
   return filename;
 });
 
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+});
+
 const renderedMarkdown = computed(() => {
   if (docViewerStore.documentContent) {
-    return marked(docViewerStore.documentContent);
+    return md.render(docViewerStore.documentContent);
   }
   return '';
 });

@@ -4,7 +4,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { marked } from 'marked';
+import MarkdownIt from 'markdown-it';
 import 'github-markdown-css/github-markdown-light.css';
 
 const props = defineProps({
@@ -16,12 +16,16 @@ const props = defineProps({
 
 // This component is now "dumb" again. It only parses what it's given.
 // The expensive processing is handled upstream.
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+});
+
 const renderedContent = computed(() => {
   if (!props.content) return '';
-  // The `breaks: true` option was creating double line breaks in combination
-  // with the `white-space: pre-wrap` style in the parent. Removing it
-  // makes the renderer compliant with standard Markdown and fixes the issue.
-  return marked.parse(props.content, { gfm: true });
+  return md.render(props.content);
 });
 </script>
 
