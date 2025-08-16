@@ -94,3 +94,20 @@ class RogueEventInterpreter:
             return None
             
         return RogueEvent(id=event_id, dialogues=dialogues)
+
+    def interpret_all(self) -> List[RogueEvent]:
+        """
+        通过调用加载器发现并解析所有的模拟宇宙事件。
+
+        Returns:
+            一个包含所有已解析事件的 RogueEvent 对象列表。
+        """
+        events = []
+        event_ids = self.data_loader.discover_rogue_event_ids()
+        
+        for event_id in event_ids:
+            event_data = self.interpret(event_id)
+            if event_data:
+                events.append(event_data)
+        
+        return events

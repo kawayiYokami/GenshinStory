@@ -69,6 +69,7 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
         'books': {'attr': 'books', 'formatter': BookFormatter(), 'sub_cat_func': lambda item: "书籍"},
         'miracles': {'attr': 'miracles', 'formatter': MiracleFormatter(), 'sub_cat_func': lambda item: "奇物"},
         'missions': {'attr': 'missions', 'formatter': MissionFormatter(), 'sub_cat_func': lambda item: "任务"},
+        'rogue_events': {'attr': 'rogue_events', 'formatter': RogueEventFormatter(), 'sub_cat_func': lambda item: "模拟宇宙事件"},
     }
 
     for cat_name, config in category_map.items():
@@ -84,7 +85,10 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
         for item in items:
             try:
                 item_id = item.id
-                item_name = item.name or f"{cat_name}-{item_id}"
+                if cat_name == 'rogue_events':
+                    item_name = f"模拟宇宙事件-{item_id}"
+                else:
+                    item_name = item.name or f"{cat_name}-{item_id}"
                 sub_category = sub_cat_func(item) or "未分类"
 
                 markdown_content = formatter.format(item)
@@ -97,7 +101,26 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
                 cleaned_item_name = clean_filename(item_name)
 
                 # 对于没有实际子分类的类别（如角色、光锥、遗器），直接放在该类别的一级目录下
-                if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
+                if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions', 'rogue_events']:
+                     file_path = output_dir / cat_name / f"{cleaned_item_name}-{item_id}.md"
+                else:
+                     file_path = output_dir / cat_name / cleaned_sub_cat / f"{cleaned_item_name}-{item_id}.md"
+
+                save_file(file_path, markdown_content)
+            except Exception as e:
+                logging.error(f"    处理 {cat_name} 项目 {getattr(item, 'id', 'N/A')} 时出错: {e}", exc_info=True)
+                if not markdown_content:
+                    logging.warning(f"    无法为 {cat_name} ID '{item_id}' ({item_name}) 生成Markdown内容，已跳过。")
+                    continue
+
+                # 构建路径
+                cleaned_sub_cat = clean_filename(sub_category)
+                cleaned_item_name = clean_filename(item_name)
+
+                # 对于没有实际子分类的类别（如角色、光锥、遗器），直接放在该类别的一级目录下
+                if cat_name == 'rogue_events':
+                    file_path = output_dir / cat_name / f"{cleaned_item_name}.md"
+                elif cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
                      file_path = output_dir / cat_name / f"{cleaned_item_name}-{item_id}.md"
                 else:
                      file_path = output_dir / cat_name / cleaned_sub_cat / f"{cleaned_item_name}-{item_id}.md"
@@ -123,6 +146,7 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
         'books': {'attr': 'books', 'sub_cat_func': lambda item: "书籍"},
         'miracles': {'attr': 'miracles', 'sub_cat_func': lambda item: "奇物"},
         'missions': {'attr': 'missions', 'sub_cat_func': lambda item: "任务"},
+        'rogue_events': {'attr': 'rogue_events', 'sub_cat_func': lambda item: "模拟宇宙事件"},
     }
 
     for cat_name, config in category_map.items():
@@ -130,16 +154,47 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
         sub_cat_func = config['sub_cat_func']
 
         for item in items:
-            item_id = item.id
-            item_name = item.name or f"{cat_name}-{item_id}"
-            sub_category = sub_cat_func(item) or "未分类"
+            try:
+                item_id = item.id
+                if cat_name == 'rogue_events':
+                    item_name = f"模拟宇宙事件-{item_id}"
+                else:
+                    item_name = item.name or f"{cat_name}-{item_id}"
+                sub_category = sub_cat_func(item) or "未分类"
 
-            # 构建与 antdv 兼容的 key 和前端路由 path
+                # 构建与 antdv 兼容的 key 和前端路由 path
+                cleaned_sub_cat = clean_filename(sub_category)
+                cleaned_item_name = clean_filename(item_name)
+
+                # 调整路径和key的生成逻辑，以匹配新的文件结构
+                if cat_name == 'rogue_events':
+                    path = f"/v2/hsr/category/{cat_name}/{cleaned_item_name}"
+                    key = f"{cat_name}-{item_id}"
+                    cat_display_name = sub_category
+                elif cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
+                    path = f"/v2/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
+                    key = f"{cat_name}-{item_id}"
+                    cat_display_name = sub_category # "角色", "光锥", "遗器" 等
+                else:
+                    path = f"/v2/hsr/category/{cat_name}/{cleaned_sub_cat}/{cleaned_item_name}-{item_id}"
+                    key = f"{cat_name}-{cleaned_sub_cat}-{item_id}"
+                    cat_display_name = sub_category
+                
+                catalog.append({
+                    "id": item_id,
+                    "name": item_name,
+                    "type": cat_name.capitalize(), # 类型，如 Character
+                    "category": cat_display_name, # 子分类，如 物理
+                    "path": path,
+                    "key": key
+                })
+            except Exception as e:
+                logging.error(f"    处理 {cat_name} 目录项目 {getattr(item, 'id', 'N/A')} 时出错: {e}", exc_info=True)
             cleaned_sub_cat = clean_filename(sub_category)
             cleaned_item_name = clean_filename(item_name)
 
             # 调整路径和key的生成逻辑，以匹配新的文件结构
-            if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions']:
+            if cat_name in ['characters', 'lightcones', 'relics', 'books', 'miracles', 'missions', 'rogue_events']:
                 path = f"/v2/hsr/category/{cat_name}/{cleaned_item_name}-{item_id}"
                 key = f"{cat_name}-{item_id}"
                 cat_display_name = sub_category # "角色", "光锥", "遗器" 等
