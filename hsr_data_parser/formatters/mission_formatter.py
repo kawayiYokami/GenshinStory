@@ -15,9 +15,10 @@ class MissionFormatter:
                 speaker = element.speaker
                 text = element.text or ""
                 
-                # 玩家选项通常由开拓者说出，可以进行强调。
+                # 玩家的选项用星号列表项表示
                 if speaker == "开拓者":
                     lines.append(f"* **{speaker}**: {text}")
+                # NPC的对话直接表示
                 elif speaker:
                     lines.append(f"**{speaker}**: {text}")
                 else:
