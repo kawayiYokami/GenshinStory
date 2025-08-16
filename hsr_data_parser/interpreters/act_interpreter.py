@@ -11,10 +11,10 @@ class ActInterpreter:
         self.talk_sentence_interpreter = talk_sentence_interpreter
 
     def _extract_dialogue_blocks(self, data: Any) -> List[DialogueBlock]:
-        """Recursively traverses the data structure to find and extract dialogue blocks."""
+        """递归遍历数据结构以查找并提取对话块。"""
         blocks = []
         if isinstance(data, dict):
-            # Check if this dictionary represents a dialogue-containing task
+            # 检查此字典是否代表包含对话的任务
             task_type = data.get("$type")
             if task_type in ("RPG.GameCore.PlayAndWaitSimpleTalk", "RPG.GameCore.PlayMissionTalk"):
                 sentences = []
@@ -30,11 +30,11 @@ class ActInterpreter:
                 for o in data.get("OptionList", []):
                     sentence_data = self.talk_sentence_interpreter.get_sentence_data_by_id(o.get("TalkSentenceID"))
                     if sentence_data and sentence_data.get("text"):
-                        options.append(DialogueSentence(text=sentence_data["text"], speaker=sentence_data.get("speaker"), is_option=True))
+                        options.append(DialogueSentence(text=sentence_data["text"], speaker=sentence_data.get("speaker")))
                 if options:
                     blocks.append(DialogueBlock(sentences=options))
 
-            # Recursively search in nested structures
+            # 在嵌套结构中递归搜索
             for value in data.values():
                 blocks.extend(self._extract_dialogue_blocks(value))
 
@@ -45,7 +45,7 @@ class ActInterpreter:
         return blocks
 
     def interpret_file(self, file_path: str) -> Optional[ActScript]:
-        """Interprets a single Act script file."""
+        """解析单个 Act 脚本文件。"""
         script_data = self.loader.get_json(file_path, base_path_override="turnbasedgamedata")
         if not script_data:
             return None

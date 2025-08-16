@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from ..services import DataLoader, TextMapService
 
@@ -10,7 +10,7 @@ class TalkSentenceInterpreter:
         self._sentences: Dict[int, Any] = {}
 
     def _prepare_data(self):
-        """Pre-loads and caches the TalkSentenceConfig.json data."""
+        """预加载并缓存 TalkSentenceConfig.json 数据。"""
         sentence_data = self.loader.get_json("TalkSentenceConfig.json")
         if sentence_data:
             self._sentences = {}
@@ -22,7 +22,7 @@ class TalkSentenceInterpreter:
                     }
 
     def get_sentence_data_by_id(self, sentence_id: int) -> Optional[Dict[str, str]]:
-        """Gets speaker and text from a sentence ID."""
+        """根据句子 ID 获取说话人和文本。"""
         if not self._sentences:
             self._prepare_data()
 
@@ -41,6 +41,28 @@ class TalkSentenceInterpreter:
         if speaker_hash:
             speaker = self.text_map_service.get(str(speaker_hash))
         else:
-            speaker = "开拓者" # Default to Player Character if no speaker is specified
+            speaker = "开拓者" # 如果没有指定说话人，则默认为玩家角色
 
-        return {"speaker": speaker, "text": text}
+        return {"id": sentence_id, "speaker": speaker, "text": text}
+
+    def interpret_playable(self, playable_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        从 .playable.bytes JSON 结构中提取所有对话句子。
+        """
+        sentences = []
+        if not playable_data:
+            return sentences
+
+        # 实际的对话 ID 在 "TalkSentenceList" 中
+        talk_sentence_list = playable_data.get("TalkSentenceList")
+        if not talk_sentence_list:
+            return sentences
+
+        for sentence_entry in talk_sentence_list:
+            sentence_id = sentence_entry.get("TalkSentenceID")
+            if sentence_id:
+                sentence_data = self.get_sentence_data_by_id(sentence_id)
+                if sentence_data:
+                    sentences.append(sentence_data)
+        
+        return sentences

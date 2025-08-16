@@ -1,4 +1,4 @@
-from .act import ActScript, DialogueBlock, DialogueSentence
+from .act import ActScript, DialogueBlock, DialogueSentence, DialogueOption, DialogueOptionGroup, DialogueElement
 from .mission import MainMission, SubMissionScript
 from ._core import Quest, QuestStep, TalkSentence
 from .character import Character, CharacterStory, CharacterVoiceLine
