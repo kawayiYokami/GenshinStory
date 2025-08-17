@@ -7,7 +7,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import './style.css'
-import { checkVersion } from '@/services/versionService';
+import { checkVersion } from '@/features/app/services/versionService';
 
 async function initializeApp() {
   // 在执行任何 Vue 相关操作之前，首先检查版本

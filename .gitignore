@@ -12,8 +12,10 @@ test_outputs/
 # Python
 __pycache__/
 *.pyc
-docs/
+/docs/
 metadata/
+web/docs-site/public/domains/hsr/docs/
+web/docs-site/public/domains/gi/docs/
 
 # TypeScript compilation output
 /web/docs-site/src/**/*.js

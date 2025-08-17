@@ -64,7 +64,7 @@ Usage:
 <path>path/to/document</path>
 </list_docs>
 
-ask_question
+ask
 Description: Use this tool to ask the user a question when you need to clarify ambiguous instructions, obtain missing information, or require a decision among multiple options.
 Important:
 - You MUST provide a clear and specific question.
@@ -73,8 +73,8 @@ Parameters:
 - question: (Required) The question to ask the user.
 - suggest: (Required) Provide at least two suggested answers.
 Usage:
-<ask_question>
+<ask>
   <question>this is a question</question>
   <suggest>suggest A</suggest>
   <suggest>suggest B</suggest>
-</ask_question>
+</ask>

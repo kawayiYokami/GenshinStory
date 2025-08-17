@@ -1,4 +1,4 @@
-import { renderMarkdownSync, replaceLinkPlaceholders } from '../services/MarkdownRenderingService';
+import { renderMarkdownSync, replaceLinkPlaceholders } from "../features/viewer/services/MarkdownRenderingService";
 
 self.onmessage = async (event) => {
     const { markdownText, originalId } = event.data;

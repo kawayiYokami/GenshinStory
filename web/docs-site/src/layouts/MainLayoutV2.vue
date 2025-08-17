@@ -22,17 +22,17 @@
 <script setup lang="ts">
 import { computed, onMounted, watch, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAgentStore } from '@/stores/agentStore';
-import { useAppStore, Game } from '@/stores/app';
-import { useDataStore } from '@/stores/data';
-import { useDocumentViewerStore } from '@/stores/documentViewer';
+import { useAgentStore } from '@/features/agent/stores/agentStore';
+import { useAppStore, Game } from '@/features/app/stores/app';
+import { useDataStore } from '@/features/app/stores/data';
+import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 
-import DocumentViewer from '@/components/DocumentViewer.vue';
-import ItemListView from '@/views/v2/ItemListView.vue';
-import SearchViewV2 from '@/views/v2/SearchViewV2.vue';
-import AgentChatView from '@/views/v2/AgentChatView.vue';
+import DocumentViewer from '@/features/docs/components/DocumentViewer.vue';
+import ItemListView from '@/features/docs/views/ItemListView.vue';
+import SearchViewV2 from '@/features/search/views/SearchViewV2.vue';
+import AgentChatView from '@/features/agent/views/AgentChatView.vue';
 
 const route = useRoute();
 const agentStore = useAgentStore();

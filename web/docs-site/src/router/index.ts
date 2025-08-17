@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { useAppStore } from '@/stores/app';
+import { useAppStore } from '@/features/app/stores/app';
 
 const router = createRouter({
     history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -20,8 +20,8 @@ const router = createRouter({
                     name: 'v2-agent',
                     meta: { functionPane: 'AgentChatView' },
                     components: {
-                        nav: () => import('@/views/v2/CategoryNav.vue'),
-                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
+                        detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
                 },
                 {
@@ -29,9 +29,9 @@ const router = createRouter({
                     name: 'v2-category',
                     meta: { functionPane: 'ItemListView' },
                     components: {
-                        nav: () => import('@/views/v2/CategoryNav.vue'),
-                        function: () => import('@/views/v2/ItemListView.vue'),
-                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
+                        function: () => import('@/features/docs/views/ItemListView.vue'),
+                        detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
                 },
                 {
@@ -39,9 +39,9 @@ const router = createRouter({
                     name: 'v2-detail',
                     meta: { keepFunctionPane: true },
                     components: {
-                        nav: () => import('@/views/v2/CategoryNav.vue'),
-                        function: () => import('@/views/v2/ItemListView.vue'),
-                        detail: () => import('@/views/DetailView.vue')
+                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
+                        function: () => import('@/features/docs/views/ItemListView.vue'),
+                        detail: () => import('@/features/docs/views/DetailView.vue')
                     }
                 },
                 {
@@ -49,9 +49,9 @@ const router = createRouter({
                     name: 'v2-search',
                     meta: { functionPane: 'SearchViewV2' },
                     components: {
-                        nav: () => import('@/views/v2/CategoryNav.vue'),
-                        function: () => import('@/views/v2/SearchViewV2.vue'),
-                        detail: () => import('@/views/v2/DetailPlaceholder.vue')
+                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
+                        function: () => import('@/features/search/views/SearchViewV2.vue'),
+                        detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
                 }
             ]
