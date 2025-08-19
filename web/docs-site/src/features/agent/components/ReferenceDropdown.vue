@@ -1,17 +1,17 @@
 <template>
   <div v-if="visible && items.length > 0" class="reference-dropdown">
-    <ul>
-      <li
-        v-for="(item, index) in items"
-        :key="item.id"
-        :class="{ active: index === activeIndex }"
-        @mousedown.prevent="selectItem(item)"
-        @mouseover="activeIndex = index"
-      >
-        <span class="item-name">{{ item.name }}</span>
-      </li>
-    </ul>
-  </div>
+        <ul>
+          <li
+            v-for="(item, index) in items"
+            :key="item.id"
+            :class="['reference-item', { active: index === activeIndex }]"
+            @mousedown.prevent="selectItem(item)"
+            @mouseover="activeIndex = index"
+          >
+            <span class="item-name">{{ item.name }}</span>
+          </li>
+        </ul>
+      </div>
 </template>
 
 <script setup>
@@ -65,49 +65,10 @@ defineExpose({
 </script>
 
 <style scoped>
-.reference-dropdown {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  width: 100%;
-  max-height: 800px;
-  overflow-y: auto;
-  background-color: var(--m3-surface);
-  border: 1px solid var(--m3-outline);
-  border-radius: 12px; /* Consistent with modal */
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  margin-bottom: 8px;
-  padding: 8px;
-  box-sizing: border-box;
-}
-
 ul {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-li {
-  padding: 12px;
-  cursor: pointer;
-  border-radius: 8px; /* Rounded corners for each item */
-  transition: background-color 0.2s;
-  color: var(--m3-on-surface);
-  margin-bottom: 4px; /* Space between items */
-}
-
-li:last-child {
-  margin-bottom: 0;
-}
-
-li:hover {
-  background-color: var(--m3-surface-variant);
-}
-
-li.active {
-  background-color: var(--m3-primary-container);
-  color: var(--m3-on-primary-container);
 }
 
 .item-name {

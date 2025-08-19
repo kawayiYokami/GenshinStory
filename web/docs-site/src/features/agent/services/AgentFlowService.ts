@@ -10,10 +10,11 @@ import { AgentResponseHandlerService, type HandleResponseResult } from './AgentR
 
 export class AgentFlowService {
   public isProcessing = ref(false);
+  public consecutiveToolErrors = ref(0);
+  public consecutiveAiTurns = ref(0);
   private commandQueue = ref<Command[]>([]);
   private abortController: AbortController | null = null;
   private isForceStopped = ref(false);
-  private consecutiveAiTurns = ref(0);
 
   private messageManager: MessageManager;
   private contextService: AgentContextService;
@@ -124,6 +125,11 @@ export class AgentFlowService {
 
   private async handleToolExecution(parsedTool: ParsedToolCall) {
     const result = await this.toolService.handleToolExecution(parsedTool);
-    if (result.status === 'success') this.initiateAiTurn();
+    if (result.status === 'success') {
+      this.consecutiveToolErrors.value = 0;
+      this.initiateAiTurn();
+    } else {
+      this.consecutiveToolErrors.value++;
+    }
   }
 }

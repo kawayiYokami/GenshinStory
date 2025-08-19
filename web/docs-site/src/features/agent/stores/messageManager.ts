@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import { nextTick } from 'vue';
 import logger from '@/features/app/services/loggerService';
-import type { Message, Session } from './types';
+import type { Message, Session } from '../types';
 
 // --- MessageManager 类型定义 ---
 export interface MessageManager {

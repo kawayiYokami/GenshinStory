@@ -1,163 +1,112 @@
 <template>
-  <div class="category-nav">
-    <div class="game-switcher">
-      <button @click="switchDomain('gi')" :class="{ active: appStore.currentDomain === 'gi' }">原神</button>
-      <button @click="switchDomain('hsr')" :class="{ active: appStore.currentDomain === 'hsr' }">星穹铁道</button>
+  <div class="relative h-full flex flex-col">
+    <!-- Header: Current Domain -->
+    <div class="flex h-16 items-center justify-center p-4">
+      <span class="font-bold text-lg">{{ currentDomainName }}</span>
     </div>
 
-    <!-- Guarded Content -->
-    <div v-if="appStore.isCoreDataReady" class="nav-list-wrapper">
-      <ul class="nav-list">
-        <li><router-link :to="getNavPath('agent')">问答</router-link></li>
-        <li><router-link :to="getNavPath('search')">搜索</router-link></li>
-        <li v-for="cat in categories" :key="cat.path">
-          <router-link :to="getNavPath('category', cat.path)" :class="{ 'router-link-active': isActive(cat.path) }">{{ cat.name }}</router-link>
+    <!-- Navigation List -->
+    <div v-if="appStore.isCoreDataReady" class="flex-grow overflow-y-auto">
+      <ul class="list-none p-0 m-0 mt-4 space-y-1 px-2">
+        <li v-for="navItem in navigationItems" :key="navItem.id">
+          <router-link
+            :to="getNavPath(navItem)"
+            class="flex items-center gap-3 rounded-lg p-2 no-underline bg-transparent font-medium transition-colors duration-150 ease-out hover:bg-white/10 [&.router-link-exact-active]:bg-primary [&.router-link-exact-active]:text-on-primary"
+          >
+            <span v-html="navItem.icon" class="h-6 w-6"></span>
+            <span>{{ navItem.label }}</span>
+          </router-link>
         </li>
       </ul>
     </div>
+    
     <!-- Loading Indicator -->
-    <div v-else class="loading-indicator">
+    <div v-else class="flex-grow flex items-center justify-center">
       <p>加载中...</p>
     </div>
 
+    <!-- Footer: Settings Button -->
+    <div class="flex-shrink-0 p-2">
+      <button @click="toggleSettingsMenu" class="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-white/10 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="text-sm font-medium">设置</span>
+      </button>
+    </div>
+
+    <!-- Settings Menu Pop-up -->
+    <Teleport to="body">
+      <SettingsMenu :visible="isSettingsMenuOpen" />
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch, computed, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { watch, computed, ref, Teleport } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAppStore } from "@/features/app/stores/app";
-import { useDataStore } from "@/features/app/stores/data";
-import { storeToRefs } from 'pinia';
+import SettingsMenu from './SettingsMenu.vue';
+
+interface NavItem {
+  id: string;
+  type: 'route' | 'category';
+  label?: string;
+  icon: string;
+}
 
 const route = useRoute();
-const router = useRouter();
 const appStore = useAppStore();
-const dataStore = useDataStore();
 
-const { indexData: fullIndex } = storeToRefs(dataStore);
-const categoryTranslations = ref<{ [key: string]: string }>({});
+const navigationItems = ref<NavItem[]>([]);
+const isSettingsMenuOpen = ref(false);
 
-const categories = computed(() => {
-  console.log('[CategoryNav] Computed `categories` is running...');
-  console.log(`[CategoryNav] fullIndex length: ${fullIndex.value.length}`);
-  if (!fullIndex.value.length) return [];
-  
-  const categoryNames = new Set<string>();
-  fullIndex.value.forEach(item => {
-    // Extract top-level category (e.g., "Weapon" from "Weapon/Sword")
-    if (item && typeof item.type === 'string') {
-      const topLevelCategory = item.type.split('/')[0];
-      categoryNames.add(topLevelCategory);
-    }
-  });
-  
-  console.log(`[CategoryNav] Found category names:`, categoryNames);
-
-  const result = Array.from(categoryNames).map(name => ({
-    name: categoryTranslations.value[name.toLowerCase()] || name,
-    path: name
-  }));
-
-  console.log(`[CategoryNav] Final categories array:`, result);
-  return result;
+const currentDomainName = computed(() => {
+  if (appStore.currentDomain === 'gi') return '原神';
+  if (appStore.currentDomain === 'hsr') return '星穹铁道';
+  return '知识领域';
 });
 
 async function loadUiConfig(domain: string) {
-    try {
-        const response = await fetch(`/domains/${domain}/metadata/uiconfig.json`);
-        if (!response.ok) {
-            throw new Error(`Failed to load UI config for domain ${domain}`);
-        }
-        const config = await response.json();
-        categoryTranslations.value = config.categoryTranslations || {};
-    } catch (error) {
-        console.error(error);
-        categoryTranslations.value = {}; // Reset on error
-    }
+  try {
+    const response = await fetch(`/domains/${domain}/metadata/uiconfig.json`);
+    if (!response.ok) throw new Error(`Failed to load UI config for domain ${domain}`);
+    const config = await response.json();
+    
+    // Remap navigation items to include translations
+    const categoryTranslations = config.categoryTranslations || {};
+    navigationItems.value = config.navigation.map((item: NavItem) => ({
+      ...item,
+      label: item.label || categoryTranslations[item.id] || item.id,
+    }));
+
+  } catch (error) {
+    console.error(error);
+    navigationItems.value = [];
+  }
 }
 
 watch(() => appStore.currentDomain, (newDomain) => {
   if (newDomain) {
-    // dataStore.fetchIndex(newDomain); // This is now handled by the layout orchestrator
     loadUiConfig(newDomain);
+    isSettingsMenuOpen.value = false; // Close menu on domain switch
   }
 }, { immediate: true });
 
-function getNavPath(type: 'search' | 'category' | 'agent', payload?: string) {
+function getNavPath(item: NavItem) {
   const domain = appStore.currentDomain;
-  if (type === 'search') {
-    return `/domain/${domain}/search`;
+  if (item.type === 'route') {
+    return `/domain/${domain}/${item.id}`;
   }
-  if (type === 'agent') {
-    return `/domain/${domain}/agent`;
-  }
-  if (type === 'category' && payload) {
-    return `/domain/${domain}/category/${payload}`;
+  if (item.type === 'category') {
+    return `/domain/${domain}/category/${item.id}`;
   }
   return `/domain/${domain}`;
 }
 
-function switchDomain(domain: string) {
-  if (appStore.currentDomain !== domain) {
-    appStore.setCurrentDomain(domain);
-    router.push(`/domain/${domain}/agent`);
-  }
-}
-
-function isActive(categoryPath: string) {
-  const currentCategory = route.params.categoryName;
-  return currentCategory === categoryPath;
+function toggleSettingsMenu() {
+  isSettingsMenuOpen.value = !isSettingsMenuOpen.value;
 }
 </script>
 
-<style scoped>
-.category-nav {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.game-switcher {
-  display: flex;
-  padding: 16px;
-  gap: 8px;
-  border-bottom: 1px solid var(--genshin-bg-primary);
-}
-
-.game-switcher button {
-  flex: 1;
-  padding: 8px;
-  background-color: var(--genshin-tab-inactive-bg);
-  color: var(--genshin-text-secondary);
-  border: 1px solid var(--genshin-accent-gold);
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s ease-out;
-  border-radius: 4px;
-}
-
-.game-switcher button.active {
-  background-color: var(--genshin-accent-gold);
-  color: var(--genshin-text-primary);
-}
-
-.nav-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-a {
-  display: block;
-  padding: 12px 24px;
-  text-decoration: none;
-  color: var(--genshin-text-secondary);
-  background-color: transparent;
-  font-weight: bold;
-  transition: all 0.2s ease-out;
-}
-a.router-link-active {
-  background-color: var(--genshin-tab-active-bg);
-  color: var(--genshin-tab-active-text);
-}
-</style>

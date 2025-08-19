@@ -1,14 +1,22 @@
 <template>
-  <div v-if="visible" class="agent-selector-modal">
-    <div class="modal-overlay" @click="closeModal"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>选择一个角色</h3>
-        <button @click="closeModal" class="close-button">&times;</button>
+  <div v-if="visible" class="fixed inset-0 z- flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" @click="closeModal"></div>
+    <div class="relative z- flex w-11/12 max-w-sm flex-col rounded-xl bg-surface p-4 shadow-md">
+      <div class="mb-4 flex items-center justify-between border-b border-outline pb-2">
+        <h3 class="text-lg font-semibold text-on-surface">选择一个角色</h3>
+        <button @click="closeModal" class="border-none bg-transparent text-2xl font-bold text-on-surface-variant hover:text-on-surface">&times;</button>
       </div>
-      <ul class="agent-list">
-        <li v-for="agent in agents" :key="agent.id">
-          <button @click="selectAgent(agent.id)" :class="{ active: agent.id === selectedAgentId }">
+      <ul class="m-0 max-h-[60vh] list-none overflow-y-auto p-0">
+        <li v-for="agent in agents" :key="agent.id" class="mb-2">
+          <button
+            @click="selectAgent(agent.id)"
+            :class="[
+              'w-full rounded-lg p-3 text-left transition-colors',
+              agent.id === selectedAgentId
+                ? 'bg-primary-container text-on-primary-container'
+                : 'hover:bg-surface-variant text-on-surface'
+            ]"
+          >
             {{ agent.name }}
           </button>
         </li>
@@ -45,82 +53,5 @@ const selectAgent = (agentId) => {
 </script>
 
 <style scoped>
-.agent-selector-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-}
-.modal-content {
-  background-color: var(--m3-surface);
-  padding: 20px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 400px;
-  z-index: 1001;
-  display: flex;
-  flex-direction: column;
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--m3-outline);
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-}
-.modal-header h3 {
-  margin: 0;
-  color: var(--m3-on-surface);
-}
-.close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--m3-on-surface-variant);
-}
-.agent-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.agent-list li button {
-  width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: 1px solid var(--m3-outline);
-  border-radius: 8px;
-  margin-bottom: 8px;
-  text-align: left;
-  font-size: 1em;
-  cursor: pointer;
-  color: var(--m3-on-surface);
-  transition: background-color 0.2s, border-color 0.2s;
-}
-.agent-list li button:hover {
-  background-color: var(--m3-surface-variant);
-  border-color: var(--m3-primary);
-}
-.agent-list li button.active {
-  background-color: var(--m3-primary-container);
-  color: var(--m3-on-primary-container);
-  border-color: var(--m3-primary);
-  font-weight: bold;
-}
+/* All styles are now handled by Tailwind utility classes directly in the template. */
 </style>

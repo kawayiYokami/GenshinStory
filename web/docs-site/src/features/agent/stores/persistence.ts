@@ -1,7 +1,7 @@
 import { type Ref } from 'vue';
 import localforage from 'localforage';
 import logger from '@/features/app/services/loggerService';
-import type { Session } from './types';
+import type { Session } from '../types';
 
 // --- Localforage 和 debounce 设置 ---
 const AGENT_CACHE_VERSION = '2.0';

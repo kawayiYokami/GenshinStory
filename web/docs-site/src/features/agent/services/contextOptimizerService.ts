@@ -1,4 +1,4 @@
-import tokenizer from '../../../lib/tokenizer/tokenizerService';
+import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import yaml from 'js-yaml';
 import logger from '../../app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
@@ -242,7 +242,7 @@ class ContextOptimizerService {
         if (!history) return 0;
         return history.reduce((acc, msg) => {
             const content = Array.isArray(msg.content) ? msg.content.map((c: MessageContentPart) => c.text || '').join(' ') : msg.content;
-            const contentTokens = tokenizer.countTokens(content || '');
+            const contentTokens = tokenizerService.countTokens(content || '');
             return acc + contentTokens;
         }, 0);
     }

@@ -3,6 +3,7 @@ import { useDataStore } from '@/features/app/stores/data';
 import { useAppStore } from '@/features/app/stores/app';
 import type { IndexItem } from '@/features/app/stores/data';
 import pathService from '../../app/services/pathService';
+import tokenizerService from '@/lib/tokenizer/tokenizerService';
 
 // --- 类型定义 ---
 export interface DocRequest {
@@ -477,7 +478,7 @@ class LocalToolsService {
    public async getDocMetadata(logicalPath: string): Promise<DocMetadata | null> {
      logger.log(`获取文档元数据...`, { path: logicalPath });
      const dataStore = useDataStore();
-     const tokenizer = (await import('../../../lib/tokenizer/tokenizerService')).default;
+     const tokenizer = tokenizerService;
 
      try {
        const physicalPath = this._getPhysicalPathFromLogicalPath(logicalPath);

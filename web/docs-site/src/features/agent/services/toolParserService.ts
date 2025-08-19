@@ -233,7 +233,7 @@ function parseAskCall(xmlString: string): ParsedQuestion | null {
 
     const suggestions = Array.from(suggestNodes).map(node => (node.textContent || '').trim());
 
-    if (suggestions.length < 2 || suggestions.length > 4) {
+    if (suggestions.length < 2 || suggestions.length > 10) {
         logger.warn(`[ToolParser] 解析到 <ask> 但找到了 ${suggestions.length} 个建议 (应为 2-4个)。已忽略。`);
         return null;
     }

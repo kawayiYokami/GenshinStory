@@ -1,29 +1,29 @@
 <template>
-  <div class="search-view-v2">
-    <div class="search-bar">
+  <div class="flex flex-col h-full">
+    <div class="flex flex-col gap-3 pb-4 border-b border-m3-border-soft">
       <input
         type="text"
         v-model="searchQuery"
         placeholder="在当前游戏内搜索..."
-        class="search-input"
+        class="w-full h-12 px-4 text-base bg-m3-surface-variant text-m3-on-surface-variant border border-transparent rounded-lg focus:outline-none focus:border-m3-primary"
         @keyup.enter="performSearch"
       />
-      <button @click="performSearch" class="search-button">搜索</button>
+      <button @click="performSearch" class="h-12 border-none rounded-lg bg-m3-primary text-m3-on-primary text-base cursor-pointer">搜索</button>
     </div>
 
-    <div v-if="isLoading" class="results-area">正在加载...</div>
-    <div v-else-if="isSearching" class="results-area">正在搜索...</div>
-    <div v-else-if="error" class="results-area error">{{ error }}</div>
-    <div v-else-if="hasSearched && results.length === 0" class="results-area">
+    <div v-if="isLoading" class="pt-4 overflow-y-auto grow">正在加载...</div>
+    <div v-else-if="isSearching" class="pt-4 overflow-y-auto grow">正在搜索...</div>
+    <div v-else-if="error" class="pt-4 overflow-y-auto grow text-m3-error">{{ error }}</div>
+    <div v-else-if="hasSearched && results.length === 0" class="pt-4 overflow-y-auto grow">
       未找到与 "{{ searchQuery }}" 相关的内容。
     </div>
-    <div v-else-if="results.length > 0" class="results-area">
-      <ul class="search-results">
+    <div v-else-if="results.length > 0" class="pt-4 overflow-y-auto grow">
+      <ul class="list-none p-0 m-0">
         <li v-for="item in results" :key="item.id">
-          <router-link :to="{ path: item.path.replace('/v2/', '/domain/'), query: { from: 'search' } }" class="result-item">
-            <span class="result-type">[{{ item.type }}]</span>
-            <span class="result-name">{{ item.name }}</span>
-          </router-link>
+          <div @click="docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))" class="block py-3 px-2 my-1 no-underline text-m3-on-surface rounded-lg transition-colors duration-200 hover:bg-m3-surface-variant cursor-pointer">
+            <span class="text-sm text-m3-on-surface-variant mr-2">[{{ item.type }}]</span>
+            <span class="font-medium">{{ item.name }}</span>
+          </div>
         </li>
       </ul>
     </div>
@@ -34,6 +34,7 @@
 import { ref, watch, computed } from 'vue';
 import { useAppStore } from "@/features/app/stores/app";
 import { useDataStore } from "@/features/app/stores/data";
+import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { storeToRefs } from 'pinia';
 
 // --- 类型定义 ---
@@ -61,6 +62,7 @@ type SearchChunk = Record<string, number[]>;
 // --- 响应式状态 ---
 const appStore = useAppStore();
 const dataStore = useDataStore();
+const docViewerStore = useDocumentViewerStore();
 const { isLoading, error, indexData: catalogIndex } = storeToRefs(dataStore);
 
 const searchQuery = ref('');
@@ -164,74 +166,3 @@ watch(() => appStore.currentDomain, (newDomain) => {
   }
 }, { immediate: true });
 </script>
-
-<style scoped>
-.search-view-v2 {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-.search-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--m3-border-color-soft);
-}
-.search-input {
-  width: 100%;
-  height: 48px;
-  padding: 0 16px;
-  font-size: 16px;
-  background-color: var(--m3-surface-variant);
-  color: var(--m3-on-surface-variant);
-  border: 1px solid transparent;
-  border-radius: 8px;
-}
-.search-input:focus {
-  outline: none;
-  border-color: var(--m3-primary);
-}
-.search-button {
-  height: 48px;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--m3-primary);
-  color: var(--m3-on-primary);
-  font-size: 16px;
-  cursor: pointer;
-}
-.results-area {
-  padding-top: 16px;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-.error {
-  color: var(--m3-error);
-}
-.search-results {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.result-item {
-  display: block;
-  padding: 12px 8px;
-  margin: 4px 0;
-  text-decoration: none;
-  color: var(--m3-on-surface);
-  border-radius: 8px;
-  transition: background-color 0.2s;
-}
-.result-item:hover {
-  background-color: var(--m3-surface-variant);
-}
-.result-type {
-  font-size: 0.9rem;
-  color: var(--m3-on-surface-variant);
-  margin-right: 0.5rem;
-}
-.result-name {
-  font-weight: 500;
-}
-</style>

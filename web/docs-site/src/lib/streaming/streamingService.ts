@@ -1,4 +1,4 @@
-import logger from './loggerService';
+import logger from '@/features/app/services/loggerService';
 import type { Stream } from 'openai/streaming';
 import type { ChatCompletionChunk } from 'openai/resources/chat';
 

@@ -43,6 +43,14 @@ export class AgentService {
     return this.flowService.isProcessing.value;
   }
 
+  public getConsecutiveToolErrors(): number {
+    return this.flowService.consecutiveToolErrors.value;
+  }
+
+  public getConsecutiveAiTurns(): number {
+    return this.flowService.consecutiveAiTurns.value;
+  }
+
   public static async forceClearAgentCache(): Promise<void> {
     await agentCacheService.forceClearAgentCache();
   }

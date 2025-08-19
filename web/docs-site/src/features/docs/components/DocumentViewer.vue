@@ -1,17 +1,23 @@
 <template>
-  <div class="document-viewer-sidebar">
-    <div class="header">
-      <span class="path" :title="docViewerStore.documentPath">{{ formattedTitle }}</span>
-      <button class="close-btn" @click="docViewerStore.close()">×</button>
+  <div class="w-full h-full flex flex-col bg-transparent">
+    <div class="flex justify-between items-center py-2 px-4 bg-transparent">
+      <span class="font-semibold text-base whitespace-nowrap overflow-hidden text-ellipsis" :title="docViewerStore.documentPath">{{ formattedTitle }}</span>
+      <button class="bg-none border-none text-2xl cursor-pointer py-0 px-2" @click="docViewerStore.close()">×</button>
     </div>
-    <div class="content">
-      <div v-if="docViewerStore.isLoading" class="loading-overlay">
+    <div class="flex-1 overflow-y-auto relative">
+      <div v-if="docViewerStore.isLoading" class="flex justify-center items-center h-full text-gray-500 italic">
         <p>正在加载...</p>
       </div>
-      <div v-else-if="docViewerStore.errorMessage" class="error-message">
+      <div v-else-if="docViewerStore.errorMessage" class="flex justify-center items-center h-full text-gray-500 italic">
         <p>{{ docViewerStore.errorMessage }}</p>
       </div>
-      <div v-else class="markdown-body" v-html="renderedMarkdown"></div>
+      <div v-else class="py-4 px-10 max-w-4xl mx-auto">
+        <MarkdownRenderer
+          v-if="docViewerStore.documentContent"
+          :markdownText="processedMarkdownText"
+          :docId="docViewerStore.documentPath"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -19,10 +25,14 @@
 <script setup>
 import { computed } from 'vue';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
-import MarkdownIt from 'markdown-it';
-import 'github-markdown-css/github-markdown-light.css';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer.vue';
 
 const docViewerStore = useDocumentViewerStore();
+
+// 转义正则表达式特殊字符
+const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[$$\$$\\/]/g, '\\$&');
+};
 
 const formattedTitle = computed(() => {
   const path = docViewerStore.documentPath;
@@ -44,95 +54,23 @@ const formattedTitle = computed(() => {
   return filename;
 });
 
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  breaks: true,
-});
+const processedMarkdownText = computed(() => {
+  let content = docViewerStore.documentContent;
+  const keywords = docViewerStore.highlightKeywords;
 
-const renderedMarkdown = computed(() => {
-  if (docViewerStore.documentContent) {
-    return md.render(docViewerStore.documentContent);
+  if (!keywords || keywords.length === 0) {
+    return content;
   }
-  return '';
+
+  keywords.forEach(keyword => {
+    if (keyword) {
+      const escapedKeyword = escapeRegExp(keyword);
+      // 使用 'gi' 标志进行全局、不区分大小写的匹配
+      const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+      content = content.replace(regex, '<mark>$1</mark>');
+    }
+  });
+
+  return content;
 });
 </script>
-
-<style scoped>
-.document-viewer-sidebar {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background-color: transparent; /* Inherit background from parent */
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 1rem;
-  background-color: transparent; /* Inherit background from parent */
-}
-
-.path {
-  font-weight: 600;
-  font-size: 1em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0 0.5rem;
-}
-
-.content {
-  flex: 1;
-  overflow-y: auto;
-  position: relative;
-}
-/* 针对 Webkit 浏览器 (Chrome, Safari) 的悬停隐藏效果 */
-.content::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  transition: background-color 0.3s ease;
-}
-.content:hover::-webkit-scrollbar-thumb {
-  background-color: #c1c1c1; /* 恢复默认或原有颜色 */
-}
-/* Firefox 的滚动条通常较细且半透明，悬停时可以变得更明显一些 */
-.content {
-  scrollbar-color: transparent transparent; /* thumb track */
-  transition: scrollbar-color 0.3s ease;
-}
-.content:hover {
-  scrollbar-color: #c1c1c1 transparent; /* thumb track */
-}
-
-.loading-overlay, .error-message {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #777;
-  font-style: italic;
-}
-
-.markdown-body {
-  padding: 1rem 2.5rem;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-</style>
-
-<style>
-/* Global style override to make markdown background transparent */
-.markdown-body {
-  background-color: transparent !important;
-}
-</style>

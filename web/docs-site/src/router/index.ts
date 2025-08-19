@@ -13,7 +13,7 @@ const router = createRouter({
         // --- V2 Three-Pane Layout Routes ---
         {
             path: '/domain/:domain',
-            component: () => import('@/layouts/MainLayoutV2.vue'),
+            component: () => import('@/layouts/MainLayout.vue'),
             children: [
                 {
                     path: 'agent',
@@ -25,23 +25,13 @@ const router = createRouter({
                     }
                 },
                 {
-                    path: 'category/:categoryName',
+                    path: 'category/:categoryName/:pathMatch(.*)*',
                     name: 'v2-category',
                     meta: { functionPane: 'ItemListView' },
                     components: {
                         nav: () => import('@/features/navigation/components/CategoryNav.vue'),
                         function: () => import('@/features/docs/views/ItemListView.vue'),
                         detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
-                    }
-                },
-                {
-                    path: 'category/:categoryName/:pathMatch(.*)*',
-                    name: 'v2-detail',
-                    meta: { keepFunctionPane: true },
-                    components: {
-                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
-                        function: () => import('@/features/docs/views/ItemListView.vue'),
-                        detail: () => import('@/features/docs/views/DetailView.vue')
                     }
                 },
                 {

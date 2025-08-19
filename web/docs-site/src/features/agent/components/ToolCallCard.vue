@@ -1,7 +1,17 @@
 <template>
-  <div class="tool-call-card">
-    <span class="tool-name">{{ formattedToolName }}:</span>
-    <span class="tool-value">{{ displayValue }}</span>
+  <div class="my-1 inline-flex items-center gap-2 rounded-lg bg-surface-variant px-3 py-2 text-sm text-on-surface-variant">
+    <div class="flex h-5 w-5 items-center justify-center" >
+      <!-- Search Icon -->
+      <svg v-if="toolCall.name === 'search_docs'" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <!-- Read Doc Icon -->
+      <svg v-else-if="toolCall.name === 'read_doc'" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <!-- List Docs Icon -->
+      <svg v-else-if="toolCall.name === 'list_docs'" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+      <!-- Default/Generic Tool Icon -->
+      <svg v-else class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+    </div>
+    <span class="font-medium">{{ formattedToolName }}:</span>
+    <span class="truncate font-semibold">{{ displayValue }}</span>
   </div>
 </template>
 
@@ -43,31 +53,4 @@ const displayValue = computed(() => {
 </script>
 
 <style scoped>
-.tool-call-card {
-  border: 1px solid var(--m3-outline);
-  border-radius: 8px;
-  padding: 8px 12px; /* 减小垂直 padding */
-  margin: 8px 0;
-  background-color: var(--m3-surface-variant);
-  color: var(--m3-on-surface-variant);
-  font-size: 0.9rem;
-  display: flex; /* 改为 flex 布局 */
-  align-items: baseline; /* 基线对齐 */
-  gap: 8px;
-  white-space: nowrap; /* 防止换行 */
-  overflow: hidden; /* 隐藏溢出内容 */
-}
-
-.tool-name {
-  font-weight: 600;
-  color: var(--m3-primary);
-  flex-shrink: 0; /* 防止工具名被压缩 */
-}
-
-.tool-value {
-  flex-grow: 1; /* 占据剩余空间 */
-  overflow: hidden; /* 隐藏溢出内容 */
-  text-overflow: ellipsis; /* 显示省略号 */
-  white-space: nowrap; /* 确保单行 */
-}
 </style>

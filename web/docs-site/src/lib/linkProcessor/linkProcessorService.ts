@@ -1,4 +1,4 @@
-import logger from './loggerService';
+import logger from '@/features/app/services/loggerService';
 import pathService from '../../features/app/services/pathService';
 
 // --- 类型定义 ---

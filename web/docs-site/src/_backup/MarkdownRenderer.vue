@@ -1,5 +1,5 @@
 <template>
-  <div class="markdown-body" v-html="renderedContent"></div>
+  <div class="markdown-body bg-transparent text-inherit text-base" v-html="renderedContent"></div>
 </template>
 
 <script setup>
@@ -28,11 +28,3 @@ const renderedContent = computed(() => {
   return md.render(props.content);
 });
 </script>
-
-<style scoped>
-.markdown-body {
-  background-color: transparent !important;
-  color: inherit;
-  font-size: 1rem;
-}
-</style>

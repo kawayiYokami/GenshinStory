@@ -1,0 +1,478 @@
+@import "tailwindcss";
+
+/* ============================================= */
+/* Multi-Theme System Base                     */
+/* ============================================= */
+
+/* 
+  This section defines the raw color palettes and the theme mapping system.
+  The active theme is controlled by the `data-theme` attribute on the <html> element.
+*/
+
+:root {
+  /* M3 Light Theme Raw Palette */
+  --m3-light-primary: #41464B;
+  --m3-light-on-primary: #C0BABC;
+  --m3-light-primary-container: #E9EEF6;
+  --m3-light-on-primary-container: #333333; /* Use on-surface color for black text */
+  --m3-light-secondary: #666666;
+  --m3-light-on-secondary: #FFFFFF;
+  --m3-light-secondary-container: #E8DEF8; /* Kept default */
+  --m3-light-on-secondary-container: #1D192B; /* Kept default */
+  --m3-light-tertiary: #7D5260; /* Kept default */
+  --m3-light-on-tertiary: #FFFFFF; /* Kept default */
+  --m3-light-tertiary-container: #FFD8E4; /* Kept default */
+  --m3-light-on-tertiary-container: #31111D; /* Kept default */
+  --m3-light-error: #B3261E; /* Kept default */
+  --m3-light-on-error: #FFFFFF; /* Kept default */
+  --m3-light-error-container: #F9DEDC; /* Kept default */
+  --m3-light-on-error-container: #410E0B; /* Kept default */
+  --m3-light-background: #F7F7F7;
+  --m3-light-on-background: #333333;
+  --m3-light-surface: #FFFFFF;
+  --m3-light-on-surface: #333333;
+  --m3-light-surface-variant: #EAEAEA;
+  --m3-light-on-surface-variant: #666666;
+  --m3-light-outline: #C2C2C2;
+  --color-m3-border-soft: rgba(0, 0, 0, 0.12);
+  
+  /* M3 Dark Theme Raw Palette */
+  --m3-dark-primary: #2F3134;
+  --m3-dark-on-primary: #A2A7AE;
+  --m3-dark-primary-container: #0087BD;
+  --m3-dark-on-primary-container: #EADDFF;
+  --m3-dark-secondary: #CCC2DC;
+  --m3-dark-on-secondary: #332D41;
+  --m3-dark-secondary-container: #4A4458;
+  --m3-dark-on-secondary-container: #E8DEF8;
+  --m3-dark-tertiary: #EFB8C8;
+  --m3-dark-on-tertiary: #492532;
+  --m3-dark-tertiary-container: #633B48;
+  --m3-dark-on-tertiary-container: #FFD8E4;
+  --m3-dark-error: #F2B8B5;
+  --m3-dark-on-error: #601410;
+  --m3-dark-error-container: #8C1D18;
+  --m3-dark-on-error-container: #F9DEDC;
+  --m3-dark-background: #111111;
+  --m3-dark-on-background: #E6E1E5;
+  --m3-dark-surface: #1B1B1B;
+  --m3-dark-on-surface: #E6E1E5;
+  --m3-dark-surface-variant: #49454F;
+  --m3-dark-on-surface-variant: #CAC4D0;
+  --m3-dark-outline: #938F99;
+  --m3-dark-shadow: rgba(255, 255, 255, 0.1);
+
+  /* Genshin Light Theme Raw Palette */
+  --genshin-light-bg-primary: #EAE4D9;
+  --genshin-light-bg-secondary: #3D4450;
+  --genshin-light-text-primary: #3D4450;
+  --genshin-light-text-secondary: #FFFFFF;
+  --genshin-light-accent-gold: #C6A273;
+}
+
+/* --------------------------------------------- */
+/* Theme Mapping                                 */
+/* --------------------------------------------- */
+
+[data-theme="m3-light"] {
+  --sys-primary: var(--m3-light-primary);
+  --sys-on-primary: var(--m3-light-on-primary);
+  --sys-primary-container: var(--m3-light-primary-container);
+  --sys-on-primary-container: var(--m3-light-on-primary-container);
+  --sys-secondary: var(--m3-light-secondary);
+  --sys-on-secondary: var(--m3-light-on-secondary);
+  --sys-secondary-container: var(--m3-light-secondary-container);
+  --sys-on-secondary-container: var(--m3-light-on-secondary-container);
+  --sys-tertiary: var(--m3-light-tertiary);
+  --sys-on-tertiary: var(--m3-light-on-tertiary);
+  --sys-tertiary-container: var(--m3-light-tertiary-container);
+  --sys-on-tertiary-container: var(--m3-light-on-tertiary-container);
+  --sys-error: var(--m3-light-error);
+  --sys-on-error: var(--m3-light-on-error);
+  --sys-error-container: var(--m3-light-error-container);
+  --sys-on-error-container: var(--m3-light-on-error-container);
+  --sys-background: var(--m3-light-background);
+  --sys-on-background: var(--m3-light-on-background);
+  --sys-surface: var(--m3-light-surface);
+  --sys-on-surface: var(--m3-light-on-surface);
+  --sys-surface-variant: var(--m3-light-surface-variant);
+  --sys-on-surface-variant: var(--m3-light-on-surface-variant);
+  --sys-outline: var(--m3-light-outline);
+  --sys-shadow: var(--color-shadow); /* Default to black shadow */
+}
+
+[data-theme="m3-dark"] {
+  --sys-primary: var(--m3-dark-primary);
+  --sys-on-primary: var(--m3-dark-on-primary);
+  --sys-primary-container: var(--m3-dark-primary-container);
+  --sys-on-primary-container: var(--m3-dark-on-primary-container);
+  --sys-secondary: var(--m3-dark-secondary);
+  --sys-on-secondary: var(--m3-dark-on-secondary);
+  --sys-secondary-container: var(--m3-dark-secondary-container);
+  --sys-on-secondary-container: var(--m3-dark-on-secondary-container);
+  --sys-tertiary: var(--m3-dark-tertiary);
+  --sys-on-tertiary: var(--m3-dark-on-tertiary);
+  --sys-tertiary-container: var(--m3-dark-tertiary-container);
+  --sys-on-tertiary-container: var(--m3-dark-on-tertiary-container);
+  --sys-error: var(--m3-dark-error);
+  --sys-on-error: var(--m3-dark-on-error);
+  --sys-error-container: var(--m3-dark-error-container);
+  --sys-on-error-container: var(--m3-dark-on-error-container);
+  --sys-background: var(--m3-dark-background);
+  --sys-on-background: var(--m3-dark-on-background);
+  --sys-surface: var(--m3-dark-surface);
+  --sys-on-surface: var(--m3-dark-on-surface);
+  --sys-surface-variant: var(--m3-dark-surface-variant);
+  --sys-on-surface-variant: var(--m3-dark-on-surface-variant);
+  --sys-outline: var(--m3-dark-outline);
+  --sys-shadow: var(--m3-dark-shadow); /* White shadow for dark theme */
+}
+
+[data-theme="genshin-light"] {
+  /* Genshin theme inherits from m3-light and overrides specific values */
+  --sys-primary: var(--genshin-light-accent-gold);
+  --sys-on-primary: var(--genshin-light-text-primary);
+  --sys-primary-container: var(--genshin-light-bg-primary);
+  --sys-on-primary-container: var(--genshin-light-text-primary);
+  --sys-secondary: var(--genshin-light-bg-secondary);
+  --sys-on-secondary: var(--genshin-light-text-secondary);
+  --sys-background: var(--genshin-light-bg-primary);
+  --sys-on-background: var(--genshin-light-text-primary);
+  --sys-surface: var(--genshin-light-bg-primary);
+  --sys-on-surface: var(--genshin-light-text-primary);
+  --sys-surface-variant: #ECE5D8; /* Re-using a value from m3-light for consistency */
+  --sys-on-surface-variant: #49454F;
+  --sys-outline: var(--genshin-light-accent-gold);
+}
+
+
+@theme {
+  /* System Colors -> Tailwind Theme Tokens */
+  --color-primary: var(--sys-primary);
+  --color-on-primary: var(--sys-on-primary);
+  --color-primary-container: var(--sys-primary-container);
+  --color-on-primary-container: var(--sys-on-primary-container);
+  --color-secondary: var(--sys-secondary);
+  --color-on-secondary: var(--sys-on-secondary);
+  --color-secondary-container: var(--sys-secondary-container);
+  --color-on-secondary-container: var(--sys-on-secondary-container);
+  --color-tertiary: var(--sys-tertiary);
+  --color-on-tertiary: var(--sys-on-tertiary);
+  --color-tertiary-container: var(--sys-tertiary-container);
+  --color-on-tertiary-container: var(--sys-on-tertiary-container);
+  --color-error: var(--sys-error);
+  --color-on-error: var(--sys-on-error);
+  --color-error-container: var(--sys-error-container);
+  --color-on-error-container: var(--sys-on-error-container);
+  --color-background: var(--sys-background);
+  --color-on-background: var(--sys-on-background);
+  --color-surface: var(--sys-surface);
+  --color-on-surface: var(--sys-on-surface);
+  --color-surface-variant: var(--sys-surface-variant);
+  --color-on-surface-variant: var(--sys-on-surface-variant);
+  --color-outline: var(--sys-outline);
+  --color-shadow: var(--sys-shadow);
+
+  /* Spacing */
+  --spacing-gap: 8px;
+
+  /* Transition Timing Function */
+  --ease-short: 0.2s ease-out;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    font-size: 15px;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-on-background);
+  }
+
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  /* --- Unified Prose Styling Container --- */
+  .prose-styling-container,
+  .markdown-body {
+    background-color: transparent !important;
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--color-on-surface-variant);
+  }
+
+  .prose-styling-container h1, .markdown-body h1,
+  .prose-styling-container h2, .markdown-body h2,
+  .prose-styling-container h3, .markdown-body h3,
+  .prose-styling-container h4, .markdown-body h4,
+  .prose-styling-container h5, .markdown-body h5,
+  .prose-styling-container h6, .markdown-body h6 {
+    color: var(--color-on-surface);
+    border-bottom-color: var(--color-outline);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+  }
+  
+  .prose-styling-container h1, .markdown-body h1 { font-size: 2.25em; padding-bottom: 0.3em; border-bottom-width: 1px; }
+  .prose-styling-container h2, .markdown-body h2 { font-size: 1.75em; padding-bottom: 0.3em; border-bottom-width: 1px; }
+  .prose-styling-container h3, .markdown-body h3 { font-size: 1.5em; }
+  .prose-styling-container h4, .markdown-body h4 { font-size: 1.25em; }
+
+  .prose-styling-container p, .markdown-body p {
+    margin-bottom: 1em;
+  }
+
+  .prose-styling-container a, .markdown-body a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  .prose-styling-container a:hover, .markdown-body a:hover {
+    text-decoration: underline;
+  }
+
+  .prose-styling-container code, .markdown-body code {
+    font-family: monospace;
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    border-radius: 6px;
+    background-color: var(--color-surface-variant);
+    color: var(--color-on-surface-variant);
+  }
+
+  .prose-styling-container pre, .markdown-body pre {
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    border-radius: 6px;
+    background-color: var(--color-surface-variant);
+  }
+
+  .prose-styling-container pre code, .markdown-body pre code {
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  .prose-styling-container blockquote, .markdown-body blockquote {
+    margin-left: 0;
+    padding-left: 1em;
+    border-left: 0.25em solid var(--color-outline);
+    color: var(--color-on-surface-variant);
+    font-style: italic;
+  }
+
+  .prose-styling-container ul, .markdown-body ul,
+  .prose-styling-container ol, .markdown-body ol {
+    padding-left: 2em;
+    margin-bottom: 1em;
+  }
+  
+  .prose-styling-container li, .markdown-body li {
+    margin-bottom: 0.25em;
+  }
+}
+
+@layer components {
+  /* All component styles below will now use the new system variables */
+  /* --- Form Elements --- */
+  .form-input, .form-select {
+      @apply p-2 rounded border bg-surface-variant text-on-surface-variant w-full;
+      border-color: var(--color-outline);
+    }
+
+  /* --- Switch (Toggle) --- */
+  .switch {
+    @apply relative inline-block w-12 h-7;
+  }
+  .switch input {
+    @apply opacity-0 w-0 h-0;
+  }
+  .slider {
+    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-surface-variant transition-all duration-400;
+  }
+  .slider:before {
+    @apply absolute h-5 w-5 left-1 bottom-1 bg-outline transition-all duration-400;
+    content: "";
+  }
+  input:checked + .slider {
+    @apply bg-primary;
+  }
+  input:checked + .slider:before {
+    @apply bg-white transform translate-x-5;
+  }
+  .slider.round {
+    @apply rounded-full;
+  }
+  .slider.round:before {
+    @apply rounded-full;
+  }
+
+  /* --- Chat Input Panel --- */
+  .chat-input-panel {
+      @apply p-4 border-t;
+      border-color: var(--color-outline);
+    }
+  .chat-textarea {
+      @apply w-full p-4 rounded-3xl border bg-surface resize-none font-sans text-on-surface transition-all duration-200;
+      border-color: var(--color-outline);
+    }
+  .chat-textarea:focus {
+    @apply outline-hidden border-primary shadow-[0_0_0_2px_var(--color-primary-container)];
+  }
+  .send-button {
+    @apply w-10 h-10 rounded-full bg-primary text-on-primary border-none flex items-center justify-center cursor-pointer;
+  }
+  .send-button:hover {
+    @apply bg-primary-container text-on-primary-container;
+  }
+  .send-button:disabled {
+    @apply bg-surface-variant text-on-surface-variant cursor-not-allowed;
+  }
+  .send-button.stop-button {
+    @apply bg-error text-on-error;
+  }
+  .send-button.stop-button:hover {
+    @apply bg-error-container text-on-error-container;
+  }
+
+  /* --- Message Bubble --- */
+  .message-bubble {
+    @apply max-w-4xl w-full mx-auto px-4;
+  }
+  .message-bubble.user {
+    @apply bg-primary text-on-primary rounded-br-sm;
+  }
+  .message-bubble.assistant {
+    @apply bg-transparent text-on-surface-variant;
+  }
+  .message-bubble .content {
+    @apply p-3 rounded-lg;
+  }
+  .retry-button {
+      @apply mt-2 bg-transparent border text-on-surface-variant px-2.5 py-1 rounded-md text-sm;
+      border-color: var(--color-outline);
+    }
+  .retry-button:hover {
+      @apply bg-primary-container text-on-primary-container;
+      border-color: var(--color-primary);
+    }
+
+  /* --- Agent Selector Modal --- */
+  .modal-content {
+    @apply bg-surface p-5;
+  }
+  .modal-header {
+      @apply flex justify-between items-center border-b pb-2.5;
+      border-color: var(--color-outline);
+    }
+  .modal-title {
+    @apply m-0 text-on-surface;
+  }
+  .close-button {
+    @apply cursor-pointer text-on-surface-variant;
+  }
+  .agent-list-button {
+      @apply w-full text-left p-3 bg-transparent border rounded-lg cursor-pointer text-on-surface transition-colors duration-200;
+      border-color: var(--color-outline);
+    }
+  .agent-list-button:hover {
+      @apply bg-surface-variant;
+      border-color: var(--color-primary);
+    }
+  .agent-list-button.active {
+      @apply bg-primary-container text-on-primary-container font-bold;
+      border-color: var(--color-primary);
+    }
+
+  /* --- Reference Dropdown --- */
+  .reference-dropdown {
+      @apply absolute bottom-full mb-2 w-full max-h-60 overflow-y-auto bg-surface border rounded-xl shadow-md z-10;
+      border-color: var(--color-outline);
+    }
+  .reference-item {
+    @apply p-3 cursor-pointer text-on-surface mb-1;
+  }
+  .reference-item:hover {
+    @apply bg-surface-variant;
+  }
+  .reference-item.active {
+    @apply bg-primary-container text-on-primary-container;
+  }
+
+  /* --- Session History Panel --- */
+  .session-item {
+    @apply p-3 border border-transparent rounded-lg cursor-pointer;
+  }
+  .session-item:hover {
+    @apply bg-surface-variant;
+  }
+  .session-item.active {
+      @apply bg-primary-container text-on-primary-container font-bold;
+      border-color: var(--color-primary);
+    }
+  .session-name {
+    @apply font-semibold text-primary text-sm;
+  }
+  .session-item.active .session-name {
+    @apply text-on-primary-container;
+  }
+  .session-details {
+    @apply text-sm text-on-surface-variant;
+  }
+  .delete-button {
+    @apply bg-transparent border-none text-on-surface-variant cursor-pointer;
+  }
+  .delete-button:hover {
+    @apply bg-error-container text-on-error-container;
+  }
+
+  /* --- Tool Call Card --- */
+  .tool-call-card {
+      @apply border rounded-lg my-2 bg-surface-variant text-on-surface-variant text-sm;
+      border-color: var(--color-outline);
+    }
+  .tool-call-header {
+      @apply flex items-center gap-2 p-2 border-b;
+      border-color: var(--color-outline);
+    }
+  .tool-name {
+    @apply font-semibold text-primary flex-shrink-0;
+  }
+
+  /* --- Header Action Button --- */
+  .btn-header-action {
+    @apply p-1.5 rounded-lg cursor-pointer font-medium transition-colors duration-200 bg-transparent text-on-surface-variant border-none hover:bg-surface-variant disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-header-action svg {
+    @apply w-5 h-5;
+  }
+}

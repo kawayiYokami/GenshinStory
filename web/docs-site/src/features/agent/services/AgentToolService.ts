@@ -1,11 +1,11 @@
 import type { ComputedRef } from 'vue';
 import toolParserService from '@/features/agent/services/toolParserService';
-import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import contextOptimizerService from './contextOptimizerService';
 import logger from '@/features/app/services/loggerService';
 import type { Message, Session } from '../types';
 import type { ParsedToolCall } from './toolParserService';
 import type { MessageManager } from '../stores/messageManager';
+import tokenizerService from '@/lib/tokenizer/tokenizerService';
 
 export class AgentToolService {
   private messageManager: MessageManager;
@@ -48,7 +48,7 @@ export class AgentToolService {
       historyForCalculation.push(newToolMessage);
     }
 
-    const predictedTotalTokens = contextOptimizerService.calculateHistoryTokens(historyForCalculation);
+    const predictedTotalTokens = await contextOptimizerService.calculateHistoryTokens(historyForCalculation);
     const configMaxTokens = this.activeConfig.value?.maxTokens || 128000;
     const predictionThreshold = Math.floor(configMaxTokens * 0.9);
 

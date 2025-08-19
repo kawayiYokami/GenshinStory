@@ -63,7 +63,7 @@ export const useAgentStore = defineStore('agent', () => {
   });
 
   // --- Managers and Services ---
-  const messageManager: MessageManager = new MessageManagerImpl(currentSession.value || null);
+  const messageManager: MessageManagerImpl = new MessageManagerImpl(currentSession.value || null);
   // Update messageManager when currentSession changes
   watch(currentSession, (newSession) => {
     (messageManager as MessageManagerImpl).setCurrentSession(newSession || null);
@@ -83,8 +83,7 @@ export const useAgentStore = defineStore('agent', () => {
   const agentService = new AgentService(
     messageManager,
     currentSession,
-    activeConfig,
-    currentDomain
+    activeConfig
   );
   
   // Create persist function
@@ -435,7 +434,7 @@ export const useAgentStore = defineStore('agent', () => {
           messageId,
           updates: { status: 'done' }
         });
-        agentService.resumeAfterRender(messageId);
+        agentService.startTurn();
       }
     },
     retryLastTurn,

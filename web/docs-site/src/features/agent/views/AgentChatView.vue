@@ -197,7 +197,7 @@ const handleHistoryButtonClick = async () => {
 let mutationObserver = null;
 
 onMounted(() => {
-  // fetchAvailableAgents(currentDomain.value); // This is now handled by MainLayoutV2's orchestrator
+  // fetchAvailableAgents(currentDomain.value); // This is now handled by MainLayout's orchestrator
   historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
   
   const scrollToBottom = () => {
@@ -220,7 +220,7 @@ onMounted(() => {
 });
 
 // This watcher is redundant and was causing race conditions.
-// The MainLayoutV2 component is now the single source of truth for orchestrating domain changes.
+// The MainLayout component is now the single source of truth for orchestrating domain changes.
 // watch(currentDomain, (newDomain) => {
 //   fetchAvailableAgents(newDomain);
 // });
@@ -251,7 +251,7 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 /* Base styling for the view */
 .agent-chat-view {
   display: flex;
@@ -268,12 +268,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 1000px;
+  max-width: 900px;
 }
 /* 针对 Webkit 浏览器 (Chrome, Safari) 的悬停隐藏效果 */
 .history-panel::-webkit-scrollbar-thumb {
   background-color: transparent;
-  transition: background-color 0.3s ease;
+  @apply transition-colors duration-300 ease-in-out;
 }
 .history-panel:hover::-webkit-scrollbar-thumb {
   background-color: #c1c1c1; /* 恢复默认或原有颜色 */
@@ -281,7 +281,7 @@ onUnmounted(() => {
 /* Firefox 的滚动条通常较细且半透明，悬停时可以变得更明显一些 */
 .history-panel {
   scrollbar-color: transparent transparent; /* thumb track */
-  transition: scrollbar-color 0.3s ease;
+  @apply transition-colors duration-300 ease-in-out;
 }
 .history-panel:hover {
   scrollbar-color: #c1c1c1 transparent; /* thumb track */
@@ -297,35 +297,10 @@ onUnmounted(() => {
   text-align: center;
   min-height: 38px;
   box-sizing: border-box;
-  transition: background-color 0.2s;
+  @apply transition-colors duration-200;
 }
 /* .clickable class and its hover effect are no longer needed */
 .status-panel.error {
   color: var(--m3-error);
-}
-
-/* --- Tool & Markdown Styles (kept for MessageBubble) --- */
-:deep(.markdown-body) {
-  background-color: transparent !important;
-  padding: 0;
-  color: var(--m3-on-surface-variant);
-}
-:deep(.markdown-body pre) {
-  background-color: transparent !important;
-}
-:deep(.internal-doc-link) {
-  color: var(--m3-primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-:deep(.internal-doc-link:hover) {
-  text-decoration: underline;
-  text-decoration-thickness: 2.5px;
-  color: var(--m3-primary-dark);
 }
 </style>

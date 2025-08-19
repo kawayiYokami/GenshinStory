@@ -30,7 +30,7 @@ const formattedRequest = computed(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 .agent-report-container {
   display: flex;
   height: 100%;
@@ -39,7 +39,7 @@ const formattedRequest = computed(() => {
 .main-content {
   flex: 1;
   padding: 1rem;
-  transition: width 0.3s ease-in-out;
+  @apply transition-all duration-300 ease-in-out;
   width: 100%;
   height: 100%;
 }
