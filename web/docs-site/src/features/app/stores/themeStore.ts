@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-export type ThemeName = 'system' | 'm3-light' | 'm3-dark' | 'genshin-light';
+export type ThemeName = 'm3-light' | 'm3-dark' | 'genshin-light';
 
 interface ThemeState {
   currentTheme: ThemeName;
@@ -14,9 +14,9 @@ export const useThemeStore = defineStore('theme', {
   state: (): ThemeState => ({
     /**
      * The current theme of the application.
-     * Defaults to 'system'.
+     * Defaults to 'm3-light'.
      */
-    currentTheme: (localStorage.getItem('app-theme') as ThemeName) || 'system',
+    currentTheme: (localStorage.getItem('app-theme') as ThemeName) || 'm3-light',
   }),
   actions: {
     /**

@@ -8,7 +8,7 @@
         message.role,
         'message-bubble',
         {
-          'bg-primary-container text-on-primary-container': message.role === 'user',
+          'bg-primary-container': message.role === 'user',
         }
       ]">
         <div :class="['content', { 'tool-content': message.tool_calls || message.type === 'tool_result' }]">
@@ -209,6 +209,7 @@ const handleDocClick = (path) => {
 .content-part .text-part {
   margin: 0;
   white-space: pre-wrap; /* Preserve line breaks in text */
+  color: var(--color-on-surface); /* Ensure consistent text color */
 }
 .content-part .image-part {
   max-width: 100%;

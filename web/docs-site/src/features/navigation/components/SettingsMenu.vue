@@ -79,7 +79,6 @@ const themes = ref<ThemeOption[]>([
   { name: 'm3-light', label: '浅色' },
   { name: 'm3-dark', label: '深色' },
   { name: 'genshin-light', label: '原神' },
-  { name: 'system', label: '系统' },
 ]);
 
 const domains = ref([

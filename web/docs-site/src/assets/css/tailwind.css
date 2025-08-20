@@ -10,64 +10,77 @@
 */
 
 :root {
-  /* M3 Light Theme Raw Palette */
-  --m3-light-primary: #41464B;
-  --m3-light-on-primary: #C0BABC;
-  --m3-light-primary-container: #E9EEF6;
-  --m3-light-on-primary-container: #333333; /* Use on-surface color for black text */
-  --m3-light-secondary: #666666;
+  /* M3 Light Theme Raw Palette - Enhanced Contrast & Visibility */
+  --m3-light-primary: #6C627A; /* Brighter blue for better visibility */
+  --m3-light-on-primary: #FFFFFF; /* Pure white for maximum contrast */
+  --m3-light-primary-container: #E0E0E0; /* Light blue container */
+  --m3-light-on-primary-container: #1E40AF; /* Dark blue text on container */
+  --m3-light-secondary: #555555; /* Darkened from #666666 */
   --m3-light-on-secondary: #FFFFFF;
-  --m3-light-secondary-container: #E8DEF8; /* Kept default */
-  --m3-light-on-secondary-container: #1D192B; /* Kept default */
-  --m3-light-tertiary: #7D5260; /* Kept default */
-  --m3-light-on-tertiary: #FFFFFF; /* Kept default */
-  --m3-light-tertiary-container: #FFD8E4; /* Kept default */
-  --m3-light-on-tertiary-container: #31111D; /* Kept default */
-  --m3-light-error: #B3261E; /* Kept default */
-  --m3-light-on-error: #FFFFFF; /* Kept default */
-  --m3-light-error-container: #F9DEDC; /* Kept default */
-  --m3-light-on-error-container: #410E0B; /* Kept default */
+  --m3-light-secondary-container: #D8CEE8; /* Darkened from #E8DEF8 */
+  --m3-light-on-secondary-container: #0D091B; /* Darkened from #1D192B */
+  --m3-light-tertiary: #6D4250; /* Darkened from #7D5260 */
+  --m3-light-on-tertiary: #FFFFFF;
+  --m3-light-tertiary-container: #EFC8D4; /* Darkened from #FFD8E4 */
+  --m3-light-on-tertiary-container: #21010D; /* Darkened from #31111D */
+  --m3-light-error: #9B1610; /* Darkened from #B3261E */
+  --m3-light-on-error: #FFFFFF;
+  --m3-light-error-container: #E9CECC; /* Darkened from #F9DEDC */
+  --m3-light-on-error-container: #310006; /* Darkened from #410E0B */
   --m3-light-background: #F7F7F7;
-  --m3-light-on-background: #333333;
+  --m3-light-on-background: #000000; /* Pure black for maximum contrast */
   --m3-light-surface: #FFFFFF;
-  --m3-light-on-surface: #333333;
-  --m3-light-surface-variant: #EAEAEA;
-  --m3-light-on-surface-variant: #666666;
-  --m3-light-outline: #C2C2C2;
+  --m3-light-on-surface: #000000; /* Pure black for maximum contrast */
+  --m3-light-surface-variant: #E0E0E0; /* Darkened from #EAEAEA */
+  --m3-light-on-surface-variant: #333333; /* Darkened from #666666 */
+  --m3-light-outline: #B2B2B2; /* Darkened from #C2C2C2 */
   --color-m3-border-soft: rgba(0, 0, 0, 0.12);
   
-  /* M3 Dark Theme Raw Palette */
-  --m3-dark-primary: #2F3134;
-  --m3-dark-on-primary: #A2A7AE;
-  --m3-dark-primary-container: #0087BD;
-  --m3-dark-on-primary-container: #EADDFF;
-  --m3-dark-secondary: #CCC2DC;
-  --m3-dark-on-secondary: #332D41;
-  --m3-dark-secondary-container: #4A4458;
-  --m3-dark-on-secondary-container: #E8DEF8;
-  --m3-dark-tertiary: #EFB8C8;
-  --m3-dark-on-tertiary: #492532;
-  --m3-dark-tertiary-container: #633B48;
-  --m3-dark-on-tertiary-container: #FFD8E4;
-  --m3-dark-error: #F2B8B5;
-  --m3-dark-on-error: #601410;
-  --m3-dark-error-container: #8C1D18;
-  --m3-dark-on-error-container: #F9DEDC;
-  --m3-dark-background: #111111;
-  --m3-dark-on-background: #E6E1E5;
-  --m3-dark-surface: #1B1B1B;
-  --m3-dark-on-surface: #E6E1E5;
-  --m3-dark-surface-variant: #49454F;
-  --m3-dark-on-surface-variant: #CAC4D0;
-  --m3-dark-outline: #938F99;
-  --m3-dark-shadow: rgba(255, 255, 255, 0.1);
+  /* Enhanced Color Hierarchy */
+  --m3-light-surface-1: #FFFFFF;
+  --m3-light-surface-2: #F9F9F9;
+  --m3-light-surface-3: #F2F2F2;
+  --m3-light-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --m3-light-elevation-2: 0 2px 4px rgba(0, 0, 0, 0.15);
+  --m3-light-elevation-3: 0 4px 8px rgba(0, 0, 0, 0.2);
+  
+  /* M3 Dark Theme Raw Palette - Enhanced Visibility */
+  --m3-dark-primary: #B88BF3; /* Brighter blue for better visibility */
+  --m3-dark-on-primary: #FFFFFF; /* Pure white for maximum contrast */
+  --m3-dark-primary-container: #191A21; /* Darker blue for containers */
+  --m3-dark-on-primary-container: #FFFFFF; /* Pure white */
+  --m3-dark-secondary: #D4CAE4; /* Softer purple */
+  --m3-dark-on-secondary: #241E32; /* Softer dark purple */
+  --m3-dark-secondary-container: #443E52; /* Softer container */
+  --m3-dark-on-secondary-container: #E8DEF8; /* Original soft purple */
+  --m3-dark-tertiary: #F8C8D8; /* Softer pink */
+  --m3-dark-on-tertiary: #3A1122; /* Softer dark pink */
+  --m3-dark-tertiary-container: #5A3B48; /* Softer container */
+  --m3-dark-on-tertiary-container: #FFD8E4; /* Original soft pink */
+  --m3-dark-error: #FFB4AB; /* Keep for good contrast */
+  --m3-dark-on-error: #7A000A; /* Softer red */
+  --m3-dark-error-container: #9A000A; /* Softer container */
+  --m3-dark-on-error-container: #FFD8D8; /* Soft error text */
+  --m3-dark-background: #21222C; /* Standard dark background */
+  --m3-dark-on-background: #EEEEEE; /* Soft white (93% white) */
+  --m3-dark-surface: #282A36; /* Standard surface */
+  --m3-dark-on-surface: #EEEEEE; /* Soft white */
+  --m3-dark-surface-variant: #3C3D51; /* Softer surface variant */
+  --m3-dark-on-surface-variant: #D0D0D0; /* Soft gray (82% white) - 7.2:1 contrast */
+  --m3-dark-outline: #8A8A8A; /* Softer outline */
+  --m3-dark-shadow: rgba(255, 255, 255, 0.12);
 
-  /* Genshin Light Theme Raw Palette */
-  --genshin-light-bg-primary: #EAE4D9;
-  --genshin-light-bg-secondary: #3D4450;
-  --genshin-light-text-primary: #3D4450;
+  /* Genshin Light Theme - New Color Palette with Depth and Harmony */
+  --genshin-light-bg-primary: #DACECE; /* Lightest - Soft pinkish gray (background) */
+  --genshin-light-bg-secondary: #3C3C3C; /* Dark gray for contrast elements */
+  --genshin-light-surface: #E8E0D9; /* Much lighter and less pink - Soft warm gray (surface) */
+  --genshin-light-surface-variant: #E9A9A7; /* Darker - Muted rose (surface variant) */
+  --genshin-light-text-primary: #372325; /* Deep burgundy for primary text */
   --genshin-light-text-secondary: #FFFFFF;
-  --genshin-light-accent-gold: #C6A273;
+  --genshin-light-accent-primary: #B14141; /* Rich red - Primary accent */
+  --genshin-light-accent-secondary: #3C3C3C; /* Dark gray - Secondary accent */
+  --genshin-light-error: #B14141; /* Error color matching primary accent */
+  --genshin-light-outline: #CA6E73; /* Muted rose outline */
 }
 
 /* --------------------------------------------- */
@@ -129,20 +142,31 @@
 }
 
 [data-theme="genshin-light"] {
-  /* Genshin theme inherits from m3-light and overrides specific values */
-  --sys-primary: var(--genshin-light-accent-gold);
-  --sys-on-primary: var(--genshin-light-text-primary);
-  --sys-primary-container: var(--genshin-light-bg-primary);
-  --sys-on-primary-container: var(--genshin-light-text-primary);
-  --sys-secondary: var(--genshin-light-bg-secondary);
-  --sys-on-secondary: var(--genshin-light-text-secondary);
-  --sys-background: var(--genshin-light-bg-primary);
+  /* Harmonized Genshin theme with regional color accents */
+  --sys-primary: var(--genshin-light-accent-primary); /* #B14141 - Rich red */
+  --sys-on-primary: #FFFFFF; /* White text on red for maximum contrast */
+  --sys-primary-container: var(--genshin-light-surface-variant); /* #CA6E73 - Muted rose */
+  --sys-on-primary-container: #FFFFFF; /* White text for better readability */
+  --sys-secondary: var(--genshin-light-accent-secondary); /* #3C3C3C - Dark gray */
+  --sys-on-secondary: #FFFFFF;
+  --sys-secondary-container: var(--genshin-light-surface); /* #E9A9A7 - Soft coral */
+  --sys-on-secondary-container: var(--genshin-light-text-primary); /* #372325 - Deep burgundy */
+  --sys-tertiary: var(--genshin-light-surface); /* #E9A9A7 - Soft coral */
+  --sys-on-tertiary: var(--genshin-light-text-primary); /* #372325 - Deep burgundy */
+  --sys-tertiary-container: var(--genshin-light-bg-primary); /* #DACECE - Light pinkish gray */
+  --sys-on-tertiary-container: var(--genshin-light-text-primary); /* #372325 - Deep burgundy */
+  --sys-error: var(--genshin-light-error); /* #B14141 - Matching primary accent */
+  --sys-on-error: #FFFFFF;
+  --sys-error-container: #F9DEDC; /* Standard error container for consistency */
+  --sys-on-error-container: #410E0B;
+  --sys-background: var(--genshin-light-bg-primary);      /* #DACECE - 最浅粉色灰 */
   --sys-on-background: var(--genshin-light-text-primary);
-  --sys-surface: var(--genshin-light-bg-primary);
+  --sys-surface: var(--genshin-light-surface);           /* #E9A9A7 - 中间珊瑚粉 */
   --sys-on-surface: var(--genshin-light-text-primary);
-  --sys-surface-variant: #ECE5D8; /* Re-using a value from m3-light for consistency */
-  --sys-on-surface-variant: #49454F;
-  --sys-outline: var(--genshin-light-accent-gold);
+  --sys-surface-variant: var(--genshin-light-surface-variant); /* #CA6E73 - 最深玫瑰色 */
+  --sys-on-surface-variant: var(--genshin-light-text-primary);
+  --sys-outline: var(--genshin-light-outline);
+  --sys-shadow: rgba(198, 162, 115, 0.2); /* Gold-tinted shadow */
 }
 
 
@@ -173,11 +197,21 @@
   --color-outline: var(--sys-outline);
   --color-shadow: var(--sys-shadow);
 
+  /* Enhanced Color Hierarchy */
+  --color-surface-1: var(--m3-light-surface-1);
+  --color-surface-2: var(--m3-light-surface-2);
+  --color-surface-3: var(--m3-light-surface-3);
+  --color-elevation-1: var(--m3-light-elevation-1);
+  --color-elevation-2: var(--m3-light-elevation-2);
+  --color-elevation-3: var(--m3-light-elevation-3);
+
   /* Spacing */
   --spacing-gap: 8px;
 
   /* Transition Timing Function */
   --ease-short: 0.2s ease-out;
+  --ease-medium: 0.3s ease-out;
+  --ease-long: 0.4s ease-out;
 }
 
 @layer base {
@@ -195,6 +229,37 @@
     font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
     background-color: var(--color-background);
     color: var(--color-on-background);
+  }
+
+  /* Enhanced Focus Visibility for Accessibility */
+  *:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* High Contrast Mode Support */
+  @media (prefers-contrast: high) {
+    :root {
+      --m3-light-on-surface: #000000;
+      --m3-light-on-surface-variant: #222222;
+      --m3-light-outline: #000000;
+    }
+    
+    [data-theme="genshin-light"] {
+      --sys-on-surface: #000000;
+      --sys-on-surface-variant: #222222;
+      --sys-outline: #000000;
+    }
+  }
+
+  /* Reduced Motion Support */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* Custom scrollbar styles */
@@ -369,7 +434,7 @@
     @apply max-w-4xl w-full mx-auto px-4;
   }
   .message-bubble.user {
-    @apply bg-primary text-on-primary rounded-br-sm;
+    @apply bg-transparent text-on-surface-variant;
   }
   .message-bubble.assistant {
     @apply bg-transparent text-on-surface-variant;
@@ -474,5 +539,135 @@
   }
   .btn-header-action svg {
     @apply w-5 h-5;
+  }
+}
+/* Enhanced Interactive States */
+@layer components {
+  /* Enhanced Button Hover Effects */
+  .send-button {
+    @apply w-10 h-10 rounded-full bg-primary text-on-primary border-none flex items-center justify-center cursor-pointer transition-all duration-200;
+  }
+  .send-button:hover {
+    @apply bg-primary/90 transform scale-105 shadow-md;
+  }
+  .send-button:active {
+    @apply bg-primary/80 transform scale-95;
+  }
+  .send-button:disabled {
+    @apply bg-surface-variant text-on-surface-variant cursor-not-allowed transform-none;
+  }
+  .send-button.stop-button {
+    @apply bg-error text-on-error;
+  }
+  .send-button.stop-button:hover {
+    @apply bg-error/90 transform scale-105;
+  }
+
+  /* Enhanced Form Input Interactions */
+  .form-input, .form-select {
+    @apply p-2 rounded border bg-surface-variant text-on-surface-variant w-full transition-colors duration-200;
+    border-color: var(--color-outline);
+  }
+  .form-input:focus, .form-select:focus {
+    @apply border-primary shadow-[0_0_0_2px_var(--color-primary-container)];
+  }
+  .form-input:hover, .form-select:hover {
+    @apply border-primary/70;
+  }
+
+  /* Enhanced List Item Interactions */
+  .agent-list-button, .session-item, .reference-item {
+    transition: all var(--ease-medium);
+  }
+  .agent-list-button:hover, .session-item:hover, .reference-item:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--color-elevation-1);
+  }
+
+  /* Enhanced Focus States */
+  .btn-header-action:focus-visible,
+  .send-button:focus-visible,
+  .form-input:focus-visible,
+  .form-select:focus-visible,
+  .agent-list-button:focus-visible,
+  .session-item:focus-visible,
+  .reference-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Enhanced Active States */
+  .agent-list-button.active,
+  .session-item.active,
+  .reference-item.active {
+    @apply transform scale-[1.02] shadow-md;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
+}
+
+/* High Contrast Mode Enhancements */
+@media (prefers-contrast: high) {
+  :root {
+    --m3-light-outline: #000000;
+    --m3-light-on-surface-variant: #000000;
+    --m3-dark-outline: #FFFFFF;
+    --m3-dark-on-surface-variant: #FFFFFF;
+  }
+  
+  .form-input, .form-select {
+    border-width: 2px;
+  }
+  
+  .btn-primary, .btn-secondary {
+    border: 2px solid currentColor;
+  }
+
+  /* Enhanced dark theme for high contrast */
+  [data-theme="m3-dark"] {
+    --sys-outline: #FFFFFF;
+    --sys-on-surface-variant: #FFFFFF;
+  }
+}
+
+/* Dark theme specific accessibility enhancements */
+@media (prefers-color-scheme: dark) {
+  /* Ensure focus indicators are visible in dark mode */
+  *:focus-visible {
+    outline-color: #4A90E2; /* Brighter blue for better visibility in dark mode */
+  }
+
+  /* Enhance text selection visibility */
+  ::selection {
+    background-color: rgba(74, 144, 226, 0.3);
+    color: #FFFFFF;
+  }
+
+  /* Improve scrollbar visibility in dark mode */
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Reduced transparency for better readability */
+@media (prefers-reduced-transparency: reduce) {
+  .modal-content,
+  .reference-dropdown,
+  .tool-call-card {
+    background-color: var(--color-surface) !important;
+    backdrop-filter: none !important;
   }
 }
