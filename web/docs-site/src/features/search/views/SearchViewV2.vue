@@ -1,27 +1,31 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex flex-col gap-3 pb-4 border-b border-m3-border-soft">
+    <div class="flex flex-row items-center gap-3 pb-4 border-b border-m3-border-soft">
       <input
         type="text"
         v-model="searchQuery"
         placeholder="在当前游戏内搜索..."
-        class="w-full h-12 px-4 text-base bg-m3-surface-variant text-m3-on-surface-variant border border-transparent rounded-lg focus:outline-none focus:border-m3-primary"
+        class="form-input h-12 px-4 text-base focus:border-primary focus:outline-none"
         @keyup.enter="performSearch"
       />
-      <button @click="performSearch" class="h-12 border-none rounded-lg bg-m3-primary text-m3-on-primary text-base cursor-pointer">搜索</button>
+      <button @click="performSearch" class="h-12 px-6 rounded-lg bg-primary text-on-primary border-none flex items-center justify-center cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+      </button>
     </div>
 
     <div v-if="isLoading" class="pt-4 overflow-y-auto grow">正在加载...</div>
     <div v-else-if="isSearching" class="pt-4 overflow-y-auto grow">正在搜索...</div>
-    <div v-else-if="error" class="pt-4 overflow-y-auto grow text-m3-error">{{ error }}</div>
+    <div v-else-if="error" class="pt-4 overflow-y-auto grow text-error">{{ error }}</div>
     <div v-else-if="hasSearched && results.length === 0" class="pt-4 overflow-y-auto grow">
       未找到与 "{{ searchQuery }}" 相关的内容。
     </div>
     <div v-else-if="results.length > 0" class="pt-4 overflow-y-auto grow">
       <ul class="list-none p-0 m-0">
         <li v-for="item in results" :key="item.id">
-          <div @click="docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))" class="block py-3 px-2 my-1 no-underline text-m3-on-surface rounded-lg transition-colors duration-200 hover:bg-m3-surface-variant cursor-pointer">
-            <span class="text-sm text-m3-on-surface-variant mr-2">[{{ item.type }}]</span>
+          <div @click="docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))" class="block py-3 px-2 my-1 no-underline text-on-surface rounded-lg transition-colors duration-200 hover:bg-surface-variant cursor-pointer">
+            <span class="text-sm text-on-surface-variant mr-2">[{{ item.type }}]</span>
             <span class="font-medium">{{ item.name }}</span>
           </div>
         </li>
