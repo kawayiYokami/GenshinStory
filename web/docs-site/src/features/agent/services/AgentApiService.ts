@@ -34,10 +34,13 @@ export class AgentApiService {
           delete messageForApi.name;
         }
         if (m.role === 'assistant' && m.tool_calls) {
-          messageForApi.tool_calls = m.tool_calls;
+          // 从API请求中移除tool_calls属性，防止不兼容结构被发送
           const toolXmls = m.tool_calls.map(tc => tc.xml).join('');
           messageForApi.content = (m.content || '') + toolXmls;
+          // messageForApi.tool_calls = m.tool_calls; // <-- 这一行被移除
         }
+        // 确保tool_calls不会被发送到API，即使它存在于其他角色的消息中
+        delete messageForApi.tool_calls;
         if (m.role !== 'assistant' || !m.tool_calls) delete messageForApi.name;
         if (m.role !== 'tool') delete messageForApi.tool_call_id;
         return messageForApi;
