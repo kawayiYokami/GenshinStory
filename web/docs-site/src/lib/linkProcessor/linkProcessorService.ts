@@ -2,7 +2,7 @@ import logger from '@/features/app/services/loggerService';
 import pathService from '../../features/app/services/pathService';
 
 // --- 类型定义 ---
-interface LinkResolutionResult {
+export interface LinkResolutionResult {
   isValid: boolean;
   displayText: string;
   originalPath: string;
