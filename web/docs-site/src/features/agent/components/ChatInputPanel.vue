@@ -33,7 +33,7 @@
           :disabled="isLoading"
           @paste="handlePaste"
           maxlength="10000"
-          class="chat-textarea flex-grow placeholder:text-on-surface-variant"
+          class="chat-textarea flex-grow placeholder:text-placeholder"
         ></textarea>
         <button
           @click="isLoading ? stopAgent() : handleSend()"
