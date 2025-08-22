@@ -1,0 +1,14 @@
+name: "ask"
+type: "ui"
+description: "向用户提问以澄清模糊指令、获取缺失信息或在多个选项间做出决策"
+usage: |
+  <ask>
+  <question>问题内容</question>
+  <suggest>建议选项A</suggest>
+  <suggest>建议选项B</suggest>
+  </ask>
+examples:
+  - "<ask><question>您想搜索哪个游戏的角色信息？</question><suggest>原神</suggest><suggest>星穹铁道</suggest></ask>"
+  - "<ask><question>需要读取文档的哪个部分？</question><suggest>全部内容</suggest><suggest>前50行</suggest><suggest>特定行范围</suggest></ask>"
+error_guidance: "问题不明确或建议选项不足时返回错误，确保问题具体且有2-4个相关选项"
+prompt_trigger: 'system'

@@ -1,5 +1,6 @@
 import yaml from 'js-yaml';
 import logger from '../../app/services/loggerService';
+import { toolPromptService } from './toolPromptService';
 
 // --- 类型定义 ---
 interface RoleInfo {
@@ -128,25 +129,25 @@ async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemP
 
         const finalPersonaPath = resolvePath(roleConfigPath, personaPath);
         const finalInstructionsPath = resolvePath(roleConfigPath, instructionsPath);
-        const globalToolsPath = `/prompts/tools_prompt.md`;
 
-        const [personaResponse, instructionsResponse, toolsResponse] = await Promise.all([
+        const [personaResponse, instructionsResponse] = await Promise.all([
             fetch(`${finalPersonaPath}?v=${v}`),
-            fetch(`${finalInstructionsPath}?v=${v}`),
-            fetch(`${globalToolsPath}?v=${v}`)
+            fetch(`${finalInstructionsPath}?v=${v}`)
         ]);
 
         if (!personaResponse.ok) throw new Error(`无法加载 Persona 模块: ${personaResponse.statusText}`);
         if (!instructionsResponse.ok) throw new Error(`无法加载 Instructions 模块: ${instructionsResponse.statusText}`);
-        if (!toolsResponse.ok) throw new Error(`无法加载全局 Tools 模块: ${toolsResponse.statusText}`);
         
         const personaText = await personaResponse.text();
         const instructionsPrompt = await instructionsResponse.text();
-        const toolsPrompt = await toolsResponse.text();
         
         const personaConfig = yaml.load(personaText) as any;
         const personaDefinition = personaConfig?.definition;
         const agentName = personaConfig?.name || 'AI';
+
+        // 加载原子化工具提示词
+        await toolPromptService.loadToolPrompts();
+        const toolsPrompt = toolPromptService.getSystemPrompt();
 
         const finalSystemPrompt = `${personaDefinition}\n\n${instructionsPrompt}\n\n${toolsPrompt}`;
         logger.log("[PromptService] 模块化系统提示词加载并合并成功。");

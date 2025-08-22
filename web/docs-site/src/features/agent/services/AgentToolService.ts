@@ -65,7 +65,7 @@ export class AgentToolService {
     });
     if (!statusMessage) return { status: 'error' };
 
-    const { status, result: toolResult } = await toolParserService.executeTool(parsedTool);
+    const { status, result: toolResult, followUpPrompt } = await toolParserService.executeTool(parsedTool);
 
     if (status === 'success') {
       const prediction = await this.predictContextSize(toolResult, parsedTool);
@@ -80,6 +80,16 @@ export class AgentToolService {
       await this.messageManager.replaceMessage(statusMessage.id, {
         role: 'assistant', type: 'tool_result', content: toolResult, status: 'done', is_hidden: false
       });
+      
+      // 如果有后续提示，将其作为隐藏的用户消息添加到对话历史中
+      if (followUpPrompt) {
+        await this.messageManager.addMessage({ 
+          role: 'user', 
+          content: followUpPrompt, 
+          is_hidden: true 
+        });
+      }
+      
       return { status: 'success' };
     } else {
       await this.messageManager.addMessage({ role: 'user', content: toolResult, is_hidden: true });

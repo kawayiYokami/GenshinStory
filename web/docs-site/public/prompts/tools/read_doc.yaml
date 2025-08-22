@@ -1,0 +1,18 @@
+name: "read_doc"
+type: "execution"
+description: "读取一个或多个文档的内容，支持指定行号范围，输出带行号的内容"
+usage: |
+  <read_doc>
+  <args>
+    <doc>
+      <path>文档路径</path>
+      <line_range>起始行-结束行</line_range>
+    </doc>
+  </args>
+  </read_doc>
+examples:
+  - "<read_doc><args><doc><path>path/to/document</path><line_range>10-20</line_range></doc></args></read_doc>"
+  - "<read_doc><args><doc><path>src/app.ts</path></doc><doc><path>src/utils.ts</path><line_range>30-40</line_range></doc></args></read_doc>"
+error_guidance: "文档路径无效或文件不存在时返回错误，行号范围超出时提示有效范围"
+prompt_trigger:
+  on_tool_result: ['search_docs', 'list_docs']

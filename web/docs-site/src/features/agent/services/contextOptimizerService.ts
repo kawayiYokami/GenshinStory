@@ -4,6 +4,7 @@ import logger from '../../app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
 import { storeToRefs } from 'pinia';
 import type { Message, MessageContentPart } from '@/features/agent/stores/agentStore';
+import { toolStateService } from '../tools/toolStateService';
 
 // --- 类型定义 ---
 
@@ -100,6 +101,11 @@ class ContextOptimizerService {
 
         logger.log(`[优化器] 优化成功。最终 Token 数: ${finalTokenCount}`);
         logger.log('[优化器] 返回的最终历史记录:', newHistory);
+        
+        // 在上下文压缩后重置所有工具提示状态，允许在新的上下文中重新触发提示
+        toolStateService.resetAllPromptStates();
+        logger.log('[优化器] 已重置所有工具提示状态');
+        
         return { status: 'SUCCESS', history: newHistory, tokens: finalTokenCount };
     }
 

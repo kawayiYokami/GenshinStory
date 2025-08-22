@@ -1,5 +1,6 @@
 # Ignore large game data directories
 .*/
+.*
 .__pycache__/
 AnimeGameData/
 GenshinCompanion-Ele/

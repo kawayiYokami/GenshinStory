@@ -1,5 +1,7 @@
 import logger from '../../app/services/loggerService';
-import localTools from './localToolsService';
+import { toolPromptService } from './toolPromptService';
+import { toolRegistryService } from '../tools/toolRegistryService';
+import { toolStateService } from '../tools/toolStateService';
 import type { DocRequest } from './localToolsService';
 
 // --- 类型定义 ---
@@ -19,7 +21,7 @@ interface ParsedQuestion {
     suggestions: string[];
 }
 
-const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs'];
+const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs', 'ask'];
 const RETRYABLE_TOOLS = ['search_docs', 'read_doc', 'list_docs'];
 let linkPromptContent: string | null = null;
 
@@ -152,6 +154,8 @@ function createStatusMessage(parsedTool: ParsedToolCall): string {
             return `正在读取文档...`;
         case 'list_docs':
             return `正在查看目录: \`${params.path || '/'}\`...`;
+        case 'ask':
+            return `正在向用户提问...`;
         default:
             return `正在执行工具: ${name}...`;
     }
@@ -160,40 +164,64 @@ function createStatusMessage(parsedTool: ParsedToolCall): string {
 /**
  * 执行工具并处理所有相关逻辑，如结果处理和错误处理。
  */
-async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'success' | 'error'; result: string; }> {
+async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'success' | 'error'; result: string; followUpPrompt?: string }> {
     const { name, params } = parsedTool;
     logger.log(`[ToolCoordinator] 准备执行工具: ${name}`, params);
     
-    let toolResult: string;
     try {
-        if (name === 'search_docs') {
-            let query = params.query || params.regex || params.args;
-            if (!query) throw new Error("查询工具收到了无效或缺失的查询参数。");
-            toolResult = await localTools.searchDocs(query);
-        } else if (name === 'read_doc') {
-            const docRequests = parseReadDocRequests(params.args);
-            if (docRequests.length === 0) {
-                throw new Error("在 read_doc 调用中无效或缺失 path/doc 参数，或格式不正确。");
-            }
-            toolResult = await localTools.readDoc(docRequests);
-        } else if (name === 'list_docs') {
-            const path = params.path || '/';
-            toolResult = await localTools.listDocs(path);
-        } else {
-            toolResult = `错误：未知的工具 '${name}'`;
+        // 从工具注册表获取工具实例
+        const tool = toolRegistryService.getTool(name);
+        if (!tool) {
+            const errorMessage = `错误：未知的工具 '${name}'`;
             logger.error(`[ToolCoordinator] 尝试调用一个未知的工具: ${name}`);
+            return { status: 'error', result: errorMessage };
+        }
+
+        // 根据工具类型决定执行逻辑
+        let executionResult;
+        
+        if (tool.type === 'ui') {
+            // UI工具不执行后端逻辑，直接返回空结果
+            executionResult = { result: '' };
+        } else {
+            // 执行工具
+            executionResult = await tool.execute(params);
         }
         
-        // 在成功执行后，对于 list_docs 和 search_docs，附加 link_prompt
-        if (['search_docs', 'list_docs'].includes(name) && toolResult && !toolResult.startsWith("错误：")) {
-            const linkPrompt = await _getLinkPrompt();
-            if (linkPrompt) {
-                toolResult = `${toolResult}\n\n---\n\n${linkPrompt}`;
+        let finalResult = executionResult.result;
+        
+        // 对于执行工具，处理后续提示逻辑
+        if (tool.type === 'execution') {
+            // 获取所有应在当前工具执行后作为后续提示提供的工具
+            const followUpTools = toolRegistryService.getFollowUpTools(name);
+            
+            // 遍历后续工具，检查状态并追加提示
+            for (const followUpTool of followUpTools) {
+                if (!toolStateService.hasPromptBeenSent(followUpTool.name)) {
+                    // 格式化后续工具提示
+                    const followUpPrompt = formatFollowUpPrompt(followUpTool);
+                    finalResult += `\n\n---\n\n${followUpPrompt}`;
+                    
+                    // 标记提示为已发送
+                    toolStateService.markPromptAsSent(followUpTool.name);
+                }
+            }
+            
+            // 对于 list_docs 和 search_docs，附加 link_prompt（保持向后兼容）
+            if (['search_docs', 'list_docs'].includes(name) && finalResult && !finalResult.startsWith("错误：")) {
+                const linkPrompt = await _getLinkPrompt();
+                if (linkPrompt) {
+                    finalResult = `${finalResult}\n\n---\n\n${linkPrompt}`;
+                }
             }
         }
         
-        // 返回成功状态和结果
-        return { status: 'success', result: toolResult };
+        // 返回成功状态、结果和后续提示
+        return { 
+            status: 'success', 
+            result: finalResult,
+            followUpPrompt: executionResult.followUpPrompt
+        };
     } catch (e: any) {
         const errorMessage = `错误：执行工具 '${name}' 时发生异常: ${e.message}`;
         const errorDetails = e.stack ? `\n\n**详细错误日志:**\n\`\`\`\n${e.stack}\n\`\`\`` : '';
@@ -202,8 +230,24 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'succe
         // 在发生错误时，返回错误状态和详细的错误信息
         return { status: 'error', result: detailedErrorString };
     }
+}
 
+/**
+ * 格式化后续工具提示
+ */
+function formatFollowUpPrompt(tool: any): string {
+    let prompt = `**下一步操作建议**\n`;
+    prompt += `您可以使用 ${tool.name} 工具来：${tool.description}\n\n`;
+    prompt += `**使用方法:**\n${tool.usage}\n\n`;
     
+    if (tool.examples && tool.examples.length > 0) {
+        prompt += `**示例:**\n`;
+        tool.examples.forEach((example: string) => {
+            prompt += `- ${example}\n`;
+        });
+    }
+    
+    return prompt;
 }
 
 /**
@@ -258,3 +302,5 @@ export default {
     parseAskCall,
     isToolRetryable,
 };
+
+export { parseReadDocRequests };
