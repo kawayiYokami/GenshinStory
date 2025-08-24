@@ -1,5 +1,5 @@
 <template>
-  <div class="my-1 inline-flex items-center gap-2 rounded-lg bg-surface-variant px-3 py-2 text-sm text-on-surface-variant">
+  <div class="badge badge-outline my-1 gap-2">
     <div class="flex h-5 w-5 items-center justify-center" >
       <!-- Search Icon -->
       <svg v-if="toolCall.name === 'search_docs'" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>

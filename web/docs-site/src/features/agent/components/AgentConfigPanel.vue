@@ -1,16 +1,16 @@
 <template>
-  <div class="border-b border-solid border-(--m3-outline)">
+  <div class="border-b border-outline">
     <div class="flex justify-between items-center p-1">
-      <button class="flex items-center gap-2 bg-transparent rounded-lg px-3 py-1.5 text-sm text-(--m3-on-surface) cursor-pointer transition-colors duration-200 hover:bg-(--m3-surface-variant)" @click="isConfigVisible = !isConfigVisible">
+      <button class="btn btn-ghost btn-sm flex items-center gap-2" @click="isConfigVisible = !isConfigVisible">
         <span v-if="activeConfig">{{ activeConfig.name || '选择配置' }}</span>
         <span v-else>请先创建配置</span>
         <svg :class="isConfigVisible ? 'rotate-180' : ''" class="transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
       </button>
       <div class="flex justify-end gap-2.5">
         <button @click.stop="$emit('history-click')" title="历史会话" class="btn-header-action">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M21 12H3"/><path d="M21 18H3"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16.5 12"/><line x1="12" y1="12" x2="12" y2="16.5"/></svg>
         </button>
-        
+
         <DropdownMenu v-model:open="isNewChatMenuOpen">
           <template #trigger>
             <button title="新对话" class="btn-header-action">

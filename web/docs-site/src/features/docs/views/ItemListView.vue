@@ -1,42 +1,87 @@
 <template>
-  <div class="h-full overflow-y-auto">
-    <el-auto-resizer>
-      <template #default="{ height }">
-        <div v-if="isLoading" class="p-5 text-app-function-pane-text">正在加载...</div>
-        <div v-else-if="error" class="p-5 text-m3-error">{{ error }}</div>
-        <el-virtual-list
-          v-else
-          :data="filteredItems"
-          :total="filteredItems.length"
-          :item-size="45"
-          :height="height"
-          class="p-0 m-0"
+  <div class="max-w-3xl w-full mx-auto p-4">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="p-5 text-function-pane">正在加载...</div>
+    <div v-else-if="error" class="p-5 text-error">{{ error }}</div>
+
+    <!-- Tabs 组件 -->
+    <div v-else>
+      <!-- 手风琴列表 -->
+      <div class="space-y-2">
+        <div
+          v-for="subCategory in subCategories"
+          :key="subCategory"
+          class="collapse collapse-arrow bg-base-200 border border-base-300"
         >
-          <template #default="{ index, style }">
-            <div :key="filteredItems[index].id" :style="style">
-              <div
-                @click="docViewerStore.open(filteredItems[index].path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))"
-                class="flex items-center h-full px-4 no-underline text-on-surface-variant rounded-lg transition-colors duration-200 hover:bg-primary-container [&.router-link-exact-active]:bg-primary [&.router-link-exact-active]:text-on-primary [&.router-link-exact-active]:font-medium cursor-pointer"
-              >
-                {{ filteredItems[index].name }}
+          <input type="checkbox" />
+          <div class="collapse-title font-semibold text-base-content">
+            {{ subCategory }}
+            <span class="text-xs text-base-content/70 ml-2">({{ getSubCategoryItems(subCategory).length }})</span>
+          </div>
+          <div class="collapse-content">
+            <!-- 页码导航 -->
+            <div v-if="getTotalPages(subCategory) > 1" class="mb-6 flex flex-col items-center gap-4">
+              <!-- 当前页码信息（调试用） -->
+              <div class="text-xs text-base-content/50">
+                当前页: {{ getCurrentPage(subCategory) }}
+              </div>
+              <!-- 页码按钮 -->
+              <div class="join">
+                <template v-for="page in getPageNumbers(subCategory)" :key="page">
+                  <button
+                    class="join-item btn btn-sm bg-base-100 hover:bg-base-200 border-base-300"
+                    :class="{
+                      'bg-base-200 hover:bg-base-300 border-base-400': page === getCurrentPage(subCategory),
+                      'btn-disabled': page === '...'
+                    }"
+                    @click="typeof page === 'number' && changePage(subCategory, page)"
+                  >
+                    {{ page }}
+                  </button>
+                </template>
+              </div>
+
+              <!-- 页面信息 -->
+              <div class="text-sm text-base-content/70">
+                第 {{ getCurrentPage(subCategory) }} 页，共 {{ getTotalPages(subCategory) }} 页
+                ({{ getSubCategoryItems(subCategory).length }} 项)
               </div>
             </div>
-          </template>
-        </el-virtual-list>
-      </template>
-    </el-auto-resizer>
+
+            <!-- 分页显示内容 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div
+                v-for="item in getPaginatedItems(subCategory)"
+                :key="item.path"
+                @click="docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))"
+                class="card card-compact bg-base-100 shadow cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <div class="card-body">
+                  <h3 class="card-title text-sm">{{ item.name }}</h3>
+                  <p class="text-xs text-base-content/70 mt-1">{{ item.type }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch, computed } from 'vue';
+import { watch, computed, ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAppStore } from '@/features/app/stores/app';
 import { useDataStore } from '@/features/app/stores/data';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { storeToRefs } from 'pinia';
-import { ElAutoResizer } from 'element-plus/es/components/table-v2/index.mjs';
-import { FixedSizeList as ElVirtualList } from 'element-plus/es/components/virtual-list/index.mjs';
+
+interface IndexItem {
+  name: string;
+  path: string;
+  type: string;
+}
 
 const route = useRoute();
 const appStore = useAppStore();
@@ -45,33 +90,143 @@ const docViewerStore = useDocumentViewerStore();
 
 const { isLoading, error, indexData: fullIndex } = storeToRefs(dataStore);
 
+// --- State ---
+const containerRef = ref<HTMLElement>();
+const pageSize = ref(16); // 每页显示16个
+const expandedCategories = ref<Record<string, number>>({}); // 记录每个分类展开的页数
+const currentPage = ref<Record<string, number>>({}); // 记录每个分类的当前页码
+
+// 获取特定子分类的当前页码
+const getCurrentPage = (subCategory: string) => {
+  return currentPage.value[subCategory] || 1;
+};
+
+// --- Computed ---
 const category = computed(() => {
   return Array.isArray(route.params.categoryName)
     ? route.params.categoryName[0]
     : route.params.categoryName;
 });
 
-const filteredItems = computed(() => {
+// 获取当前分类下的所有文档（包括子目录）
+const categoryItems = computed(() => {
   if (!category.value || fullIndex.value.length === 0) {
     return [];
   }
-  // Use startsWith for broader category matching (e.g., "Weapon" should match "Weapon/Sword")
+
   return fullIndex.value.filter(item =>
-    item.type.toLowerCase().startsWith(category.value.toLowerCase())
+    item.type.toLowerCase() === category.value.toLowerCase()
   );
 });
 
-// Watch for domain changes from the store.
-// When the domain changes, trigger the fetch action in the data store.
-// immediate: true ensures it runs once on component creation.
-watch(() => appStore.currentDomain, (newDomain) => {
-    if (newDomain) {
-        dataStore.fetchIndex(newDomain);
+// 创建子分类索引（优化性能）
+const subCategoryIndex = computed(() => {
+  const index = new Map<string, any[]>();
+
+  categoryItems.value.forEach(item => {
+    if (item && typeof item === 'object' && 'category' in item && item.category) {
+      if (!index.has(item.category)) {
+        index.set(item.category, []);
+      }
+      index.get(item.category)!.push(item);
     }
+  });
+
+  return index;
+});
+
+// 提取子分类（使用 category 字段）
+const subCategories = computed(() => {
+  if (!category.value) return [];
+
+  // 直接从索引中获取所有子分类名称
+  return Array.from(subCategoryIndex.value.keys()).sort();
+});
+
+// 获取特定子分类的项目
+const getSubCategoryItems = (subCategory: string) => {
+  // 直接从索引中获取，O(1) 复杂度
+  return subCategoryIndex.value.get(subCategory) || [];
+};
+
+// 获取分页后的项目
+const getPaginatedItems = (subCategory: string) => {
+  const items = getSubCategoryItems(subCategory);
+  const page = currentPage.value[subCategory] || 1;
+  const start = (page - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return items.slice(start, end);
+};
+
+// 获取总页数
+const getTotalPages = (subCategory: string) => {
+  const items = getSubCategoryItems(subCategory);
+  return Math.ceil(items.length / pageSize.value);
+};
+
+// 生成页码数组
+const getPageNumbers = (subCategory: string) => {
+  const totalPages = getTotalPages(subCategory);
+  const current = currentPage.value[subCategory] || 1;
+  const pages: (number | string)[] = [];
+
+  if (totalPages <= 7) {
+    // 如果页数少于7页，全部显示
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    // 总是显示第一页
+    pages.push(1);
+
+    if (current <= 4) {
+      // 当前页在前4页时
+      for (let i = 2; i <= 5; i++) {
+        pages.push(i);
+      }
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (current >= totalPages - 3) {
+      // 当前页在后4页时
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // 当前页在中间时
+      pages.push('...');
+      for (let i = current - 1; i <= current + 1; i++) {
+        pages.push(i);
+      }
+      pages.push('...');
+      pages.push(totalPages);
+    }
+  }
+
+  return pages;
+};
+
+// 切换页码
+const changePage = (subCategory: string, page: number) => {
+  console.log('Before change:', currentPage.value);
+  if (!currentPage.value) {
+    currentPage.value = {};
+  }
+  currentPage.value[subCategory] = page;
+  console.log('After change:', currentPage.value);
+  console.log('Current page for', subCategory, ':', currentPage.value[subCategory]);
+};
+
+// --- Watchers ---
+watch(() => appStore.currentDomain, (newDomain) => {
+  if (newDomain) {
+    dataStore.fetchIndex(newDomain);
+  }
 }, { immediate: true });
+
 
 </script>
 
-<style scoped>
-/* Styles are now handled by utility classes and the active-class prop. */
+<style>
+/* 移除了自定义样式，让 DaisyUI 完全控制 tabs 样式 */
 </style>

@@ -1,301 +1,11 @@
 @import "tailwindcss";
 
-/* ============================================= */
-/* 多主题系统基础 (Multi-Theme System Base)      */
-/* ============================================= */
-
-/* 
-  本节定义了原始的颜色调色板和主题映射系统。
-  活动主题由 <html> 元素上的 `data-theme` 属性控制。
-  This section defines the raw color palettes and the theme mapping system.
-  The active theme is controlled by the `data-theme` attribute on the <html> element.
-*/
-:root {
-  /* ---------------------------------------------------- */
-  /* Material 3 Light 主题原始调色板                     */
-  /* M3 Light Theme Raw Palette                           */
-  /* ---------------------------------------------------- */
-  
-  /* 主色 (Primary) */
-  --m3-light-primary: #6C627A; /* 更亮的蓝色，提高可见性 / Brighter blue for better visibility */
-  --m3-light-on-primary: #FFFFFF; /* 纯白色，最大对比度 / Pure white for maximum contrast */
-  --m3-light-primary-container: #E0E0E0; /* 浅蓝色容器 / Light blue container */
-  --m3-light-on-primary-container: #1E40AF; /* 容器上的深蓝色文字 / Dark blue text on container */
-
-  /* 辅助色 (Secondary) */
-  --m3-light-secondary: #555555; /* 从 #666666 加深 / Darkened from #666666 */
-  --m3-light-on-secondary: #FFFFFF;
-  --m3-light-secondary-container: #D8CEE8; /* 从 #E8DEF8 加深 / Darkened from #E8DEF8 */
-  --m3-light-on-secondary-container: #0D091B; /* 从 #1D192B 加深 / Darkened from #1D192B */
-
-  /* 第三色 (Tertiary) */
-  --m3-light-tertiary: #6D4250; /* 从 #7D5260 加深 / Darkened from #7D5260 */
-  --m3-light-on-tertiary: #FFFFFF;
-  --m3-light-tertiary-container: #EFC8D4; /* 从 #FFD8E4 加深 / Darkened from #FFD8E4 */
-  --m3-light-on-tertiary-container: #21010D; /* 从 #31111D 加深 / Darkened from #31111D */
-
-  /* 错误色 (Error) */
-  --m3-light-error: #9B1610; /* 从 #B3261E 加深 / Darkened from #B3261E */
-  --m3-light-on-error: #FFFFFF;
-  --m3-light-error-container: #E9CECC; /* 从 #F9DEDC 加深 / Darkened from #F9DEDC */
-  --m3-light-on-error-container: #310006; /* 从 #410E0B 加深 / Darkened from #410E0B */
-
-  /* 背景色 (Background) */
-  --m3-light-background: #F7F7F7;
-  --m3-light-on-background: #000000; /* 纯黑色，最大对比度 / Pure black for maximum contrast */
-
-  /* 表面色 (Surface) */
-  --m3-light-surface: #FFFFFF;
-  --m3-light-on-surface: #000000; /* 纯黑色，最大对比度 / Pure black for maximum contrast */
-  --m3-light-surface-variant: #E0E0E0; /* 从 #EAEAEA 加深 / Darkened from #EAEAEA */
-  --m3-light-on-surface-variant: #333333; /* 从 #666666 加深 / Darkened from #666666 */
-
-  /* 描边色 (Outline) */
-  --m3-light-outline: #B2B2B2; /* 从 #C2C2C2 加深 / Darkened from #C2C2C2 */
-
-  /* 阴影色 (Shadow) */
-  --m3-light-shadow: rgba(0, 0, 0, 0.12); /* 默认黑色阴影 / Default to black shadow */
-
-  /* 占位符文本颜色 (Placeholder Text Color) */
-  --m3-light-placeholder: #CCCCCC; /* 浅灰色占位符文本 / Light gray for placeholder text */
-
-
-  /* ---------------------------------------------------- */
-  /* Material 3 Dark 主题原始调色板                      */
-  /* M3 Dark Theme Raw Palette                            */
-  /* ---------------------------------------------------- */
-  
-  /* 主色 (Primary) */
-  --m3-dark-primary: #B88BF3; /* 更亮的蓝色，提高可见性 / Brighter blue for better visibility */
-  --m3-dark-on-primary: #FFFFFF; /* 纯白色，最大对比度 / Pure white for maximum contrast */
-  --m3-dark-primary-container: #191A21; /* 更深的蓝色容器 / Darker blue for containers */
-  --m3-dark-on-primary-container: #FFFFFF; /* 纯白色 / Pure white */
-
-  /* 辅助色 (Secondary) */
-  --m3-dark-secondary: #D4CAE4; /* 更柔和的紫色 / Softer purple */
-  --m3-dark-on-secondary: #241E32; /* 更柔和的深紫色 / Softer dark purple */
-  --m3-dark-secondary-container: #443E52; /* 更柔和的容器 / Softer container */
-  --m3-dark-on-secondary-container: #E8DEF8; /* 原始柔和紫色 / Original soft purple */
-
-  /* 第三色 (Tertiary) */
-  --m3-dark-tertiary: #F8C8D8; /* 更柔和的粉色 / Softer pink */
-  --m3-dark-on-tertiary: #3A1122; /* 更柔和的深粉色 / Softer dark pink */
-  --m3-dark-tertiary-container: #5A3B48; /* 更柔和的容器 / Softer container */
-  --m3-dark-on-tertiary-container: #FFD8E4; /* 原始柔和粉色 / Original soft pink */
-
-  /* 错误色 (Error) */
-  --m3-dark-error: #FFB4AB; /* 保持良好对比度 / Keep for good contrast */
-  --m3-dark-on-error: #7A000A; /* 更柔和的红色 / Softer red */
-  --m3-dark-error-container: #9A000A; /* 更柔和的容器 / Softer container */
-  --m3-dark-on-error-container: #FFD8D8; /* 柔和的错误文本 / Soft error text */
-
-  /* 背景色 (Background) */
-  --m3-dark-background: #21222C; /* 标准深色背景 / Standard dark background */
-  --m3-dark-on-background: #EEEEEE; /* 柔和的白色 (93% 白色) / Soft white (93% white) */
-
-  /* 表面色 (Surface) */
-  --m3-dark-surface: #282A36; /* 标准表面 / Standard surface */
-  --m3-dark-on-surface: #EEEEEE; /* 柔和的白色 / Soft white */
-  --m3-dark-surface-variant: #3C3D51; /* 更柔和的表面变体 / Softer surface variant */
-  --m3-dark-on-surface-variant: #D0D0D0; /* 柔和的灰色 (82% 白色) - 7.2:1 对比度 / Soft gray (82% white) - 7.2:1 contrast */
-
-  /* 描边色 (Outline) */
-  --m3-dark-outline: #8A8A8A; /* 更柔和的描边 / Softer outline */
-
-  /* 阴影色 (Shadow) */
-  --m3-dark-shadow: rgba(255, 255, 255, 0.12); /* 深色主题的白色阴影 / White shadow for dark theme */
-
-  /* 占位符文本颜色 (Placeholder Text Color) */
-  --m3-dark-placeholder: #DDDDDD; /* 更浅的灰色占位符文本 / Lighter gray for placeholder text */
-
-
-  /* ---------------------------------------------------- */
-  /* Genshin Light 主题原始调色板                        */
-  /* Genshin Light Theme Raw Palette                      */
-  /* ---------------------------------------------------- */
-  
-  /* 背景色 (Background) */
-  --genshin-light-bg-primary: #F9F9F9; /* 最浅 - 柔和的粉灰色 (背景) / Lightest - Soft pinkish gray (background) */
-  --genshin-light-bg-secondary: #3C3C3C; /* 深灰色，用于对比元素 / Dark gray for contrast elements */
-
-  /* 表面色 (Surface) */
-  --genshin-light-surface: #FFFFFF; /* 更浅更少粉 - 柔和的暖灰色 (表面) / Much lighter and less pink - Soft warm gray (surface) */
-  --genshin-light-surface-variant: #E8D1B2; /* 更深 - 柔和的玫瑰色 (表面变体) / Darker - Muted rose (surface variant) */
-
-  /* 文本色 (Text) */
-  --genshin-light-text-primary: #372325; /* 深酒红色，用于主要文本 / Deep burgundy for primary text */
-  --genshin-light-text-secondary: #FFFFFF;
-
-  /* 强调色 (Accent) */
-  --genshin-light-accent-primary: #0E213C; /* 富有质感的红色 - 主要强调色 / Rich red - Primary accent */
-  --genshin-light-accent-secondary: #3C3C3C; /* 深灰色 - 辅助强调色 / Dark gray - Secondary accent */
-
-  /* 错误色 (Error) */
-  --genshin-light-error: #B14141; /* 与主要强调色匹配的错误颜色 / Error color matching primary accent */
-
-  /* 描边色 (Outline) */
-  --genshin-light-outline: #AC775B; /* 柔和的玫瑰色描边 / Muted rose outline */
-
-  /* 阴影色 (Shadow) */
-  --genshin-light-shadow: rgba(198, 162, 115, 0.2); /* 金色调阴影 / Gold-tinted shadow */
-
-  /* 占位符文本颜色 (Placeholder Text Color) */
-  --genshin-light-placeholder: #CCCCCC; /* 浅灰色占位符文本 / Light gray for placeholder text */
-
-
-  /* ---------------------------------------------------- */
-  /* 增强的颜色层级 (Enhanced Color Hierarchy)            */
-  /* ---------------------------------------------------- */
-  --m3-light-surface-1: #FFFFFF;
-  --m3-light-surface-2: #F9F9F9;
-  --m3-light-surface-3: #F2F2F2;
-  --m3-light-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.1);
-  --m3-light-elevation-2: 0 2px 4px rgba(0, 0, 0, 0.15);
-  --m3-light-elevation-3: 0 4px 8px rgba(0, 0, 0, 0.2);
+@plugin "daisyui" {
+  themes: all; /* Enable all built-in themes */
 }
 
-/* --------------------------------------------- */
-/* 主题映射 (Theme Mapping)                      */
-/* --------------------------------------------- */
-
-/* Material 3 Light 主题映射 */
-[data-theme="m3-light"] {
-  /* 系统颜色 (System Colors) */
-  --sys-primary: var(--m3-light-primary);
-  --sys-on-primary: var(--m3-light-on-primary);
-  --sys-primary-container: var(--m3-light-primary-container);
-  --sys-on-primary-container: var(--m3-light-on-primary-container);
-  --sys-secondary: var(--m3-light-secondary);
-  --sys-on-secondary: var(--m3-light-on-secondary);
-  --sys-secondary-container: var(--m3-light-secondary-container);
-  --sys-on-secondary-container: var(--m3-light-on-secondary-container);
-  --sys-tertiary: var(--m3-light-tertiary);
-  --sys-on-tertiary: var(--m3-light-on-tertiary);
-  --sys-tertiary-container: var(--m3-light-tertiary-container);
-  --sys-on-tertiary-container: var(--m3-light-on-tertiary-container);
-  --sys-error: var(--m3-light-error);
-  --sys-on-error: var(--m3-light-on-error);
-  --sys-error-container: var(--m3-light-error-container);
-  --sys-on-error-container: var(--m3-light-on-error-container);
-  --sys-background: var(--m3-light-background);
-  --sys-on-background: var(--m3-light-on-background);
-  --sys-surface: var(--m3-light-surface);
-  --sys-on-surface: var(--m3-light-on-surface);
-  --sys-surface-variant: var(--m3-light-surface-variant);
-  --sys-on-surface-variant: var(--m3-light-on-surface-variant);
-  --sys-outline: var(--m3-light-outline);
-  --sys-shadow: var(--m3-light-shadow); /* 默认黑色阴影 / Default to black shadow */
-  --sys-placeholder: var(--m3-light-placeholder); /* 占位符文本颜色 / Placeholder text color */
-}
-
-/* Material 3 Dark 主题映射 */
-[data-theme="m3-dark"] {
-  /* 系统颜色 (System Colors) */
-  --sys-primary: var(--m3-dark-primary);
-  --sys-on-primary: var(--m3-dark-on-primary);
-  --sys-primary-container: var(--m3-dark-primary-container);
-  --sys-on-primary-container: var(--m3-dark-on-primary-container);
-  --sys-secondary: var(--m3-dark-secondary);
-  --sys-on-secondary: var(--m3-dark-on-secondary);
-  --sys-secondary-container: var(--m3-dark-secondary-container);
-  --sys-on-secondary-container: var(--m3-dark-on-secondary-container);
-  --sys-tertiary: var(--m3-dark-tertiary);
-  --sys-on-tertiary: var(--m3-dark-on-tertiary);
-  --sys-tertiary-container: var(--m3-dark-tertiary-container);
-  --sys-on-tertiary-container: var(--m3-dark-on-tertiary-container);
-  --sys-error: var(--m3-dark-error);
-  --sys-on-error: var(--m3-dark-on-error);
-  --sys-error-container: var(--m3-dark-error-container);
-  --sys-on-error-container: var(--m3-dark-on-error-container);
-  --sys-background: var(--m3-dark-background);
-  --sys-on-background: var(--m3-dark-on-background);
-  --sys-surface: var(--m3-dark-surface);
-  --sys-on-surface: var(--m3-dark-on-surface);
-  --sys-surface-variant: var(--m3-dark-surface-variant);
-  --sys-on-surface-variant: var(--m3-dark-on-surface-variant);
-  --sys-outline: var(--m3-dark-outline);
-  --sys-shadow: var(--m3-dark-shadow); /* 深色主题的白色阴影 / White shadow for dark theme */
-  --sys-placeholder: var(--m3-dark-placeholder); /* 占位符文本颜色 / Placeholder text color */
-}
-
-/* Genshin Light 主题映射 */
-[data-theme="genshin-light"] {
-  /* 和谐化的原神主题，带有区域色彩强调 / Harmonized Genshin theme with regional color accents */
-  --sys-primary: var(--genshin-light-accent-primary); /* #B14141 - 富有质感的红色 / Rich red */
-  --sys-on-primary: #FFFFFF; /* 红色上的白色文字，最大对比度 / White text on red for maximum contrast */
-  --sys-primary-container: var(--genshin-light-surface-variant); /* #CA6E73 - 柔和的玫瑰色 / Muted rose */
-  --sys-on-primary-container: #FFFFFF; /* 白色文字，更好的可读性 / White text for better readability */
-  --sys-secondary: var(--genshin-light-accent-secondary); /* #3C3C3C - 深灰色 / Dark gray */
-  --sys-on-secondary: #FFFFFF;
-  --sys-secondary-container: var(--genshin-light-surface); /* #E9A9A7 - 柔和的珊瑚色 / Soft coral */
-  --sys-on-secondary-container: var(--genshin-light-text-primary); /* #372325 - 深酒红色 / Deep burgundy */
-  --sys-tertiary: var(--genshin-light-surface); /* #E9A9A7 - 柔和的珊瑚色 / Soft coral */
-  --sys-on-tertiary: var(--genshin-light-text-primary); /* #372325 - 深酒红色 / Deep burgundy */
-  --sys-tertiary-container: var(--genshin-light-bg-primary); /* #DACECE - 浅粉灰色 / Light pinkish gray */
-  --sys-on-tertiary-container: var(--genshin-light-text-primary); /* #372325 - 深酒红色 / Deep burgundy */
-  --sys-error: var(--genshin-light-error); /* #B14141 - 与主要强调色匹配 / Matching primary accent */
-  --sys-on-error: #FFFFFF;
-  --sys-error-container: #F9DEDC; /* 标准错误容器，保持一致性 / Standard error container for consistency */
-  --sys-on-error-container: #410E0B;
-  --sys-background: var(--genshin-light-bg-primary);      /* #DACECE - 最浅粉色灰 / Lightest pinkish gray */
-  --sys-on-background: var(--genshin-light-text-primary);
-  --sys-surface: var(--genshin-light-surface);           /* #E9A9A7 - 中间珊瑚粉 / Mid coral pink */
-  --sys-on-surface: var(--genshin-light-text-primary);
-  --sys-surface-variant: var(--genshin-light-surface-variant); /* #CA6E73 - 最深玫瑰色 / Deepest rose */
-  --sys-on-surface-variant: var(--genshin-light-text-primary);
-  --sys-outline: var(--genshin-light-outline);
-  --sys-shadow: var(--genshin-light-shadow); /* 金色调阴影 / Gold-tinted shadow */
-  --sys-placeholder: var(--genshin-light-placeholder); /* 占位符文本颜色 / Placeholder text color */
-}
-
-
-/* --------------------------------------------- */
-/* Tailwind 主题令牌 (Tailwind Theme Tokens)     */
-/* --------------------------------------------- */
-
-@theme {
-  /* 系统颜色 -> Tailwind 主题令牌 (System Colors -> Tailwind Theme Tokens) */
-  --color-primary: var(--sys-primary);
-  --color-on-primary: var(--sys-on-primary);
-  --color-primary-container: var(--sys-primary-container);
-  --color-on-primary-container: var(--sys-on-primary-container);
-  --color-secondary: var(--sys-secondary);
-  --color-on-secondary: var(--sys-on-secondary);
-  --color-secondary-container: var(--sys-secondary-container);
-  --color-on-secondary-container: var(--sys-on-secondary-container);
-  --color-tertiary: var(--sys-tertiary);
-  --color-on-tertiary: var(--sys-on-tertiary);
-  --color-tertiary-container: var(--sys-tertiary-container);
-  --color-on-tertiary-container: var(--sys-on-tertiary-container);
-  --color-error: var(--sys-error);
-  --color-on-error: var(--sys-on-error);
-  --color-error-container: var(--sys-error-container);
-  --color-on-error-container: var(--sys-on-error-container);
-  --color-background: var(--sys-background);
-  --color-on-background: var(--sys-on-background);
-  --color-surface: var(--sys-surface);
-  --color-on-surface: var(--sys-on-surface);
-  --color-surface-variant: var(--sys-surface-variant);
-  --color-on-surface-variant: var(--sys-on-surface-variant);
-  --color-outline: var(--sys-outline);
-  --color-shadow: var(--sys-shadow);
-  --color-placeholder: var(--sys-placeholder); /* 占位符文本颜色 / Placeholder text color */
-
-  /* 增强的颜色层级 (Enhanced Color Hierarchy) */
-  --color-surface-1: var(--m3-light-surface-1);
-  --color-surface-2: var(--m3-light-surface-2);
-  --color-surface-3: var(--m3-light-surface-3);
-  --color-elevation-1: var(--m3-light-elevation-1);
-  --color-elevation-2: var(--m3-light-elevation-2);
-  --color-elevation-3: var(--m3-light-elevation-3);
-
-  /* 间距 (Spacing) */
-  --spacing-gap: 8px;
-
-  /* 过渡时间函数 (Transition Timing Function) */
-  --ease-short: 0.2s ease-out;
-  --ease-medium: 0.3s ease-out;
-  --ease-long: 0.4s ease-out;
+@plugin "@headlessui/tailwindcss" {
+  prefix: "ui";
 }
 
 /* --------------------------------------------- */
@@ -315,8 +25,6 @@
     padding: 0;
     overflow: hidden;
     font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
-    background-color: var(--color-background);
-    color: var(--color-on-background);
   }
 
   /* 增强的焦点可见性，用于无障碍访问 (Enhanced Focus Visibility for Accessibility) */
@@ -328,25 +36,8 @@
 
   /* 高对比度模式支持 (High Contrast Mode Support) */
   @media (prefers-contrast: high) {
-    :root {
-      --m3-light-on-surface: #000000;
-      --m3-light-on-surface-variant: #222222;
-      --m3-light-outline: #000000;
-    }
-    
-    [data-theme="genshin-light"] {
-      --sys-on-surface: #000000;
-      --sys-on-surface-variant: #222222;
-      --sys-outline: #000000;
-    }
-  }
-
-  /* 减少动画支持 (Reduced Motion Support) */
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
+    *:focus-visible {
+      outline-width: 3px;
     }
   }
 
@@ -372,7 +63,6 @@
   /* --- 统一的散文样式容器 (Unified Prose Styling Container) --- */
   .prose-styling-container,
   .markdown-body {
-    background-color: transparent !important;
     font-size: 16px;
     line-height: 1.6;
     color: var(--color-on-surface-variant);
@@ -554,11 +244,9 @@
 /* --------------------------------------------- */
 
 @layer components {
-  /* 所有以下组件样式都将使用新的系统变量 (All component styles below will now use the new system variables) */
-  
   /* --- 表单元素 (Form Elements) --- */
   .form-input, .form-select {
-      @apply p-2 rounded border bg-surface-variant text-on-surface-variant w-full;
+      @apply p-2 rounded border bg-base-200 text-base-content w-full;
       border-color: var(--color-outline);
     }
 
@@ -570,17 +258,17 @@
     @apply opacity-0 w-0 h-0;
   }
   .slider {
-    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-surface-variant transition-all duration-400;
+    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-base-300 transition-all duration-400;
   }
   .slider:before {
-    @apply absolute h-5 w-5 left-1 bottom-1 bg-outline transition-all duration-400;
+    @apply absolute h-5 w-5 left-1 bottom-1 bg-base-content transition-all duration-400;
     content: "";
   }
   input:checked + .slider {
     @apply bg-primary;
   }
   input:checked + .slider:before {
-    @apply bg-white transform translate-x-5;
+    @apply bg-primary-content transform translate-x-5;
   }
   .slider.round {
     @apply rounded-full;
@@ -591,30 +279,35 @@
 
   /* --- 聊天输入面板 (Chat Input Panel) --- */
   .chat-input-panel {
-      @apply p-4 border-t;
-      border-color: var(--color-outline);
+      @apply px-4 pb-4 flex-shrink-0;
+      background-color: var(--color-surface);
+      border-top: 1px solid var(--color-outline);
     }
   .chat-textarea {
-      @apply w-full p-4 rounded-3xl border bg-surface resize-none font-sans text-on-surface transition-all duration-200;
+      @apply w-full p-5 rounded-3xl border bg-base-100 resize-none font-sans text-base-content transition-all duration-200;
       border-color: var(--color-outline);
+      min-height: 80px;
     }
   .chat-textarea:focus {
-    @apply outline-hidden border-primary shadow-[0_0_0_2px_var(--color-primary-container)];
+    @apply outline-hidden;
   }
   .send-button {
-    @apply w-10 h-10 rounded-full bg-primary text-on-primary border-none flex items-center justify-center cursor-pointer;
+    @apply w-10 h-10 rounded-full bg-primary text-primary-content border-none flex items-center justify-center cursor-pointer;
   }
   .send-button:hover {
-    @apply bg-primary-container text-on-primary-container;
+    @apply bg-primary/90 transform scale-105 shadow-md;
+  }
+  .send-button:active {
+    @apply bg-primary/80 transform scale-95;
   }
   .send-button:disabled {
-    @apply bg-surface-variant text-on-surface-variant cursor-not-allowed;
+    @apply bg-base-300 text-base-content cursor-not-allowed transform-none;
   }
   .send-button.stop-button {
-    @apply bg-error text-on-error;
+    @apply bg-error text-error-content;
   }
   .send-button.stop-button:hover {
-    @apply bg-error-container text-on-error-container;
+    @apply bg-error/90 transform scale-105;
   }
 
   /* --- 消息气泡 (Message Bubble) --- */
@@ -622,63 +315,63 @@
     @apply max-w-4xl w-full mx-auto px-4;
   }
   .message-bubble.user {
-    @apply bg-transparent text-on-surface-variant;
+    @apply bg-transparent text-base-content;
   }
   .message-bubble.assistant {
-    @apply bg-transparent text-on-surface-variant;
+    @apply bg-transparent text-base-content;
   }
   .message-bubble .content {
     @apply p-3 rounded-lg;
   }
   .retry-button {
-      @apply mt-2 bg-transparent border text-on-surface-variant px-2.5 py-1 rounded-md text-sm;
+      @apply mt-2 bg-transparent border text-base-content px-2.5 py-1 rounded-md text-sm;
       border-color: var(--color-outline);
     }
   .retry-button:hover {
-      @apply bg-primary-container text-on-primary-container;
+      @apply bg-primary text-primary-content;
       border-color: var(--color-primary);
     }
 
   /* --- Agent 选择器模态框 (Agent Selector Modal) --- */
   .modal-content {
-    @apply bg-surface p-5;
+    @apply bg-base-100 p-5;
   }
   .modal-header {
       @apply flex justify-between items-center border-b pb-2.5;
       border-color: var(--color-outline);
     }
   .modal-title {
-    @apply m-0 text-on-surface;
+    @apply m-0 text-base-content;
   }
   .close-button {
-    @apply cursor-pointer text-on-surface-variant;
+    @apply cursor-pointer text-base-content;
   }
   .agent-list-button {
-      @apply w-full text-left p-3 bg-transparent border rounded-lg cursor-pointer text-on-surface transition-colors duration-200;
+      @apply w-full text-left p-3 bg-transparent border rounded-lg cursor-pointer text-base-content transition-colors duration-200;
       border-color: var(--color-outline);
     }
   .agent-list-button:hover {
-      @apply bg-surface-variant;
+      @apply bg-base-200;
       border-color: var(--color-primary);
     }
   .agent-list-button.active {
-      @apply bg-primary-container text-on-primary-container font-bold;
+      @apply bg-primary text-primary-content font-bold;
       border-color: var(--color-primary);
     }
 
   /* --- 引用下拉框 (Reference Dropdown) --- */
   .reference-dropdown {
-      @apply absolute bottom-full mb-2 w-full max-h-60 overflow-y-auto bg-surface border rounded-xl shadow-md z-10;
+      @apply absolute bottom-full mb-2 w-full max-h-60 overflow-y-auto bg-base-100 border rounded-xl shadow-md z-10;
       border-color: var(--color-outline);
     }
   .reference-item {
-    @apply p-3 cursor-pointer text-on-surface mb-1;
+    @apply p-3 cursor-pointer text-base-content mb-1;
   }
   .reference-item:hover {
-    @apply bg-surface-variant;
+    @apply bg-base-200;
   }
   .reference-item.active {
-    @apply bg-primary-container text-on-primary-container;
+    @apply bg-primary text-primary-content;
   }
 
   /* --- 会话历史面板 (Session History Panel) --- */
@@ -686,31 +379,31 @@
     @apply p-3 border border-transparent rounded-lg cursor-pointer;
   }
   .session-item:hover {
-    @apply bg-surface-variant;
+    @apply bg-base-200;
   }
   .session-item.active {
-      @apply bg-primary-container text-on-primary-container font-bold;
+      @apply bg-primary text-primary-content font-bold;
       border-color: var(--color-primary);
     }
   .session-name {
     @apply font-semibold text-primary text-sm;
   }
   .session-item.active .session-name {
-    @apply text-on-primary-container;
+    @apply text-primary-content;
   }
   .session-details {
-    @apply text-sm text-on-surface-variant;
+    @apply text-sm text-base-content;
   }
   .delete-button {
-    @apply bg-transparent border-none text-on-surface-variant cursor-pointer;
+    @apply bg-transparent border-none text-base-content cursor-pointer;
   }
   .delete-button:hover {
-    @apply bg-error-container text-on-error-container;
+    @apply bg-error text-error-content;
   }
 
   /* --- 工具调用卡片 (Tool Call Card) --- */
   .tool-call-card {
-      @apply border rounded-lg my-2 bg-surface-variant text-on-surface-variant text-sm;
+      @apply border rounded-lg my-2 bg-base-200 text-base-content text-sm;
       border-color: var(--color-outline);
     }
   .tool-call-header {
@@ -723,7 +416,7 @@
 
   /* --- 头部操作按钮 (Header Action Button) --- */
   .btn-header-action {
-    @apply p-1.5 rounded-lg cursor-pointer font-medium transition-colors duration-200 bg-transparent text-on-surface-variant border-none hover:bg-surface-variant disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply p-1.5 rounded-lg cursor-pointer font-medium transition-colors duration-200 bg-transparent text-base-content border-none hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-header-action svg {
     @apply w-5 h-5;
@@ -735,33 +428,15 @@
 /* --------------------------------------------- */
 
 @layer components {
-  /* 增强的按钮悬停效果 (Enhanced Button Hover Effects) */
-  .send-button {
-    @apply w-10 h-10 rounded-full bg-primary text-on-primary border-none flex items-center justify-center cursor-pointer transition-all duration-200;
-  }
-  .send-button:hover {
-    @apply bg-primary/90 transform scale-105 shadow-md;
-  }
-  .send-button:active {
-    @apply bg-primary/80 transform scale-95;
-  }
-  .send-button:disabled {
-    @apply bg-surface-variant text-on-surface-variant cursor-not-allowed transform-none;
-  }
-  .send-button.stop-button {
-    @apply bg-error text-on-error;
-  }
-  .send-button.stop-button:hover {
-    @apply bg-error/90 transform scale-105;
-  }
-
   /* 增强的表单输入交互 (Enhanced Form Input Interactions) */
   .form-input, .form-select {
-    @apply p-2 rounded border bg-surface-variant text-on-surface-variant w-full transition-colors duration-200;
-    border-color: var(--color-outline);
+    @apply transition-colors duration-200;
   }
-  .form-input:focus, .form-select:focus {
-    @apply border-primary shadow-[0_0_0_2px_var(--color-primary-container)];
+  .form-input:focus {
+    @apply border-primary shadow-[0_0_0_2px_var(--color-primary)];
+  }
+  .form-select:focus {
+    @apply border-primary/70;
   }
   .form-input:hover, .form-select:hover {
     @apply border-primary/70;
@@ -769,18 +444,17 @@
 
   /* 增强的列表项交互 (Enhanced List Item Interactions) */
   .agent-list-button, .session-item, .reference-item {
-    transition: all var(--ease-medium);
+    transition: all 0.3s ease-out;
   }
   .agent-list-button:hover, .session-item:hover, .reference-item:hover {
     transform: translateY(-1px);
-    box-shadow: var(--color-elevation-1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   /* 增强的焦点状态 (Enhanced Focus States) */
   .btn-header-action:focus-visible,
   .send-button:focus-visible,
   .form-input:focus-visible,
-  .form-select:focus-visible,
   .agent-list-button:focus-visible,
   .session-item:focus-visible,
   .reference-item:focus-visible {
@@ -793,77 +467,5 @@
   .session-item.active,
   .reference-item.active {
     @apply transform scale-[1.02] shadow-md;
-  }
-}
-
-/* --------------------------------------------- */
-/* 媒体查询 (Media Queries)                      */
-/* --------------------------------------------- */
-
-/* 减少动画支持 (Reduced Motion Support) */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    transform: none !important;
-  }
-}
-
-/* 高对比度模式增强 (High Contrast Mode Enhancements) */
-@media (prefers-contrast: high) {
-  :root {
-    --m3-light-outline: #000000;
-    --m3-light-on-surface-variant: #000000;
-    --m3-dark-outline: #FFFFFF;
-    --m3-dark-on-surface-variant: #FFFFFF;
-  }
-  
-  .form-input, .form-select {
-    border-width: 2px;
-  }
-  
-  .btn-primary, .btn-secondary {
-    border: 2px solid currentColor;
-  }
-
-  /* 深色主题的高对比度增强 (Enhanced dark theme for high contrast) */
-  [data-theme="m3-dark"] {
-    --sys-outline: #FFFFFF;
-    --sys-on-surface-variant: #FFFFFF;
-  }
-}
-
-/* 深色主题特定的无障碍增强 (Dark theme specific accessibility enhancements) */
-@media (prefers-color-scheme: dark) {
-  /* 确保深色模式下焦点指示器可见 (Ensure focus indicators are visible in dark mode) */
-  *:focus-visible {
-    outline-color: #4A90E2; /* 更亮的蓝色，提高深色模式下的可见性 / Brighter blue for better visibility in dark mode */
-  }
-
-  /* 增强文本选择可见性 (Enhance text selection visibility) */
-  ::selection {
-    background-color: rgba(74, 144, 226, 0.3);
-    color: #FFFFFF;
-  }
-
-  /* 提高深色模式下滚动条可见性 (Improve scrollbar visibility in dark mode) */
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-  }
-}
-
-/* 减少透明度以提高可读性 (Reduced transparency for better readability) */
-@media (prefers-reduced-transparency: reduce) {
-  .modal-content,
-  .reference-dropdown,
-  .tool-call-card {
-    background-color: var(--color-surface) !important;
-    backdrop-filter: none !important;
   }
 }

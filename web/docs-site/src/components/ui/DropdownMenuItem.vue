@@ -1,15 +1,18 @@
 <template>
-  <button
-    type="button"
-    class="block w-full text-left px-4 py-2 text-sm transition-colors duration-150 bg-transparent border-none text-on-surface hover:bg-surface-variant hover:text-on-surface-variant"
-    role="menuitem"
-    tabindex="-1"
-    @click="$emit('click', $event)"
-  >
-    <slot></slot>
-  </button>
+  <MenuItem v-slot="{ active, disabled }">
+    <button
+      type="button"
+      class="menu-item text-base-content ui-active:bg-primary ui-active:text-primary-content ui-disabled:opacity-50 ui-disabled:cursor-not-allowed"
+      :class="{ 'active': active }"
+      :disabled="disabled"
+      @click="$emit('click', $event)"
+    >
+      <slot></slot>
+    </button>
+  </MenuItem>
 </template>
 
 <script setup>
+import { MenuItem } from '@headlessui/vue'
 defineEmits(['click']);
 </script>

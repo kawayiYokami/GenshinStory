@@ -1,6 +1,24 @@
 <template>
-  <div class="flex flex-col h-full">
-    <div class="flex flex-row items-center gap-3 pb-4 border-b border-m3-border-soft">
+  <div class="flex flex-col h-full max-w-3xl w-full mx-auto">
+    <!-- 搜索栏 -->
+    <div v-if="isMobile" class="mobile-header">
+      <div class="search-container">
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="在当前游戏内搜索..."
+          class="form-input h-12 px-4 text-base focus:border-primary focus:outline-none"
+          @keyup.enter="performSearch"
+        />
+      </div>
+      <button @click="performSearch" class="search-button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+      </button>
+    </div>
+
+    <div v-if="!isMobile" class="flex flex-row items-center gap-3 pb-4 border-b border-m3-border-soft">
       <input
         type="text"
         v-model="searchQuery"
@@ -31,6 +49,7 @@
         </li>
       </ul>
     </div>
+
   </div>
 </template>
 
@@ -40,6 +59,7 @@ import { useAppStore } from "@/features/app/stores/app";
 import { useDataStore } from "@/features/app/stores/data";
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { storeToRefs } from 'pinia';
+import { useResponsive } from '@/composables/useResponsive';
 
 // --- 类型定义 ---
 // 目录索引中的条目
@@ -68,6 +88,10 @@ const appStore = useAppStore();
 const dataStore = useDataStore();
 const docViewerStore = useDocumentViewerStore();
 const { isLoading, error, indexData: catalogIndex } = storeToRefs(dataStore);
+
+// --- Responsive ---
+const { isMobile } = useResponsive();
+
 
 const searchQuery = ref('');
 const isSearching = ref(false); // 搜索过程状态
@@ -114,7 +138,7 @@ async function performSearch() {
 
   try {
     const queryBigrams = getBigrams(searchQuery.value);
-    
+
     // 1. 并行从 dataStore 获取所有需要的分片
     const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentDomain || '', bigram[0]));
     const chunks = await Promise.all(chunkPromises);
@@ -149,7 +173,7 @@ async function performSearch() {
         finalResults.push(item);
       }
     });
-    
+
     results.value = finalResults;
   } catch (e) {
     error.value = e instanceof Error ? e.message : '搜索时发生未知错误';
@@ -169,4 +193,80 @@ watch(() => appStore.currentDomain, (newDomain) => {
     dataStore.fetchIndex(newDomain);
   }
 }, { immediate: true });
+
 </script>
+
+<style scoped>
+.mobile-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.drawer-toggle {
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+  border: none;
+  border-radius: 50%;
+  padding: 0.5rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+.search-container {
+  flex: 1;
+}
+
+.search-button {
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+}
+
+/* Scrollbar hover effect - hide by default, show on hover */
+:deep(.overflow-y-auto::-webkit-scrollbar) {
+  width: 6px;
+}
+
+:deep(.overflow-y-auto::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:deep(.overflow-y-auto::-webkit-scrollbar-thumb) {
+  background-color: transparent;
+  border-radius: 3px;
+  transition: background-color 0.3s ease-in-out;
+}
+
+:deep(.overflow-y-auto:hover::-webkit-scrollbar-thumb) {
+  background-color: #c1c1c1;
+}
+
+/* Firefox scrollbar */
+:deep(.overflow-y-auto) {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease-in-out;
+}
+
+:deep(.overflow-y-auto:hover) {
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+/* --- Mobile Styles --- */
+@media (max-width: 799px) {
+  .drawer-toggle {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+}
+</style>

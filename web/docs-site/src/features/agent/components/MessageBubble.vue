@@ -1,20 +1,16 @@
 <template>
-  <div :class="['message-wrapper', message.role === 'user' ? 'user-wrapper' : 'assistant-wrapper']">
-      <button v-if="message.role === 'user'" class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
+  <div :class="['chat', message.role === 'user' ? 'chat-end' : 'chat-start']">
+      <button v-if="message.role === 'user'" class="delete-from-here-button btn btn-circle btn-ghost btn-xs" @click="handleDeleteFromHere" title="从此处删除后续对话">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
       </button>
       <div :class="[
-        'message',
-        message.role,
-        'message-bubble',
-        {
-          'bg-primary-container': message.role === 'user',
-        }
+        'chat-bubble',
+        message.role === 'user' ? 'chat-bubble-primary' : 'bg-transparent'
       ]">
         <div :class="['content', { 'tool-content': message.tool_calls || message.type === 'tool_result' }]">
         <!-- DEBUG: Raw Content View -->
         <pre v-if="showRawContent" class="raw-content-debug">{{ message }}</pre>
-        
+
         <!-- Simplified Rendering Pipeline -->
         <template v-else>
           <!-- User message, now handles text, images, or both -->
@@ -39,7 +35,7 @@
               {{ message.content }}
             </template>
           </div>
-  
+
           <!-- Assistant message lifecycle -->
           <template v-if="message.role === 'assistant'">
             <!-- State 1 & 2 are now merged. We either show the streaming text or the final markdown. -->
@@ -62,7 +58,7 @@
                 />
               </div>
             </template>
-  
+
             <!-- Other message types (no animation) -->
             <div v-else-if="message.type === 'tool_status'" class="tool-status">{{ message.content }}</div>
             <ToolResultCard v-else-if="message.type === 'tool_result'" :content="message.content" />
@@ -200,7 +196,7 @@ const handleDocClick = (path) => {
 };
 </script>
 
-<style scoped lang="postcss">
+<style scoped>
 .user-content-wrapper {
   display: flex;
   flex-direction: column;
@@ -208,8 +204,7 @@ const handleDocClick = (path) => {
 }
 .content-part .text-part {
   margin: 0;
-  white-space: pre-wrap; /* Preserve line breaks in text */
-  color: var(--color-on-surface); /* Ensure consistent text color */
+  white-space: pre-wrap;
 }
 .content-part .image-part {
   max-width: 100%;
@@ -218,46 +213,22 @@ const handleDocClick = (path) => {
   object-fit: contain;
 }
 
-.message-wrapper {
+.chat {
   position: relative;
-  padding: 0 !important; /* EXPLICITLY SET to 0 */
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  padding: 8px 0;
 }
 
-.message-wrapper.assistant-wrapper {
-  justify-content: flex-start;
-  align-self: flex-start;
-}
-
-.message-wrapper.user-wrapper {
-  justify-content: flex-end;
-  align-self: flex-end;
-}
-
-.message {
-  border-radius: 12px;
-  max-width: 100%;
-  width: fit-content;
-  padding: 8px 12px; /* ADDED - This is now the single source of padding */
-}
-.message .content {
+.chat-bubble .content {
   word-wrap: break-word;
   font-size: 1rem;
-  padding: 0 !important; /* EXPLICITLY SET to 0 */
-  border-radius: 12px;
 }
-.message .content.tool-content {
+.chat-bubble .content.tool-content {
   padding: 4px;
 }
 
 .tool-status {
   font-style: italic;
-  color: var(--color-on-surface-variant);
   padding: 8px 12px;
-  background-color: var(--color-surface-variant);
-  border-radius: 8px;
   margin: 4px 0;
 }
 .error-container {
@@ -266,7 +237,6 @@ const handleDocClick = (path) => {
   gap: 12px;
 }
 .error-text {
-  color: var(--color-error);
   font-style: italic;
   flex-grow: 1;
 }
@@ -276,59 +246,35 @@ const handleDocClick = (path) => {
   word-break: break-all;
   font-family: monospace;
   font-size: 0.8rem;
-  color: var(--color-on-surface);
-  background-color: var(--color-surface-variant);
   padding: 10px;
   border-radius: 4px;
   margin: 0;
 }
 
-:deep(.markdown-body) {
-  background-color: transparent !important;
-  padding: 0;
-  color: var(--color-on-surface-variant);
-}
-:deep(.markdown-body pre) {
-  background-color: transparent !important;
-}
+
 
 :deep(.internal-doc-link) {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
-  color: var(--color-primary);
 }
 
 :deep(.internal-doc-link:hover) {
     text-decoration: none;
 }
 
-
 .delete-from-here-button {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-outline);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--color-on-surface-variant);
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms ease-in-out;
-  flex-shrink: 0;
 }
 
-.message-wrapper:hover .delete-from-here-button {
+.chat:hover .delete-from-here-button {
   opacity: 0.8;
   pointer-events: auto;
 }
 
 .delete-from-here-button:hover {
   opacity: 1;
-  background-color: var(--color-error-container);
-  color: var(--color-on-error-container);
 }
 </style>

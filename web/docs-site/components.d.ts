@@ -13,8 +13,10 @@ declare module 'vue' {
     FormInput: typeof import('./src/components/forms/FormInput.vue')['default']
     FormSelect: typeof import('./src/components/forms/FormSelect.vue')['default']
     MarkdownRenderer: typeof import('./src/components/ui/MarkdownRenderer.vue')['default']
+    NavigationDrawer: typeof import('./src/components/NavigationDrawer.vue')['default']
     ResizablePanes: typeof import('./src/components/ResizablePanes.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    VirtualList: typeof import('./src/components/ui/VirtualList.vue')['default']
   }
 }

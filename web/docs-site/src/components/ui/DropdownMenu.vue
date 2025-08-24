@@ -1,8 +1,8 @@
 <template>
-  <div class="relative inline-block text-left" ref="dropdownRef">
-    <div @click="toggleDropdown">
+  <Menu as="div" class="relative inline-block text-left">
+    <MenuButton as="template">
       <slot name="trigger"></slot>
-    </div>
+    </MenuButton>
 
     <transition
       enter-active-class="transition duration-100 ease-out"
@@ -12,58 +12,15 @@
       leave-from-class="transform scale-100 opacity-100"
       leave-to-class="transform scale-95 opacity-0"
     >
-      <div
-        v-if="isOpen"
-        class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-surface shadow-md focus:outline-none"
-        role="menu"
-        aria-orientation="vertical"
-        aria-labelledby="menu-button"
-        tabindex="-1"
+      <MenuItems
+        class="absolute right-0 z-10 mt-2 w-56 origin-top-right menu dropdown-content bg-base-200 text-base-content shadow-lg rounded-box focus:outline-none border border-base-300"
       >
-        <div class="py-1" role="none">
-          <slot></slot>
-        </div>
-      </div>
+        <slot></slot>
+      </MenuItems>
     </transition>
-  </div>
+  </Menu>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
-
-const props = defineProps({
-  open: {
-    type: Boolean,
-    default: false
-  }
-});
-
-const emit = defineEmits(['update:open']);
-
-const isOpen = ref(props.open);
-const dropdownRef = ref(null);
-
-watch(() => props.open, (newValue) => {
-  isOpen.value = newValue;
-});
-
-const toggleDropdown = () => {
-  isOpen.value = !isOpen.value;
-  emit('update:open', isOpen.value);
-};
-
-const handleClickOutside = (event) => {
-  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
-    isOpen.value = false;
-    emit('update:open', false);
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
+import { Menu, MenuButton, MenuItems } from '@headlessui/vue'
 </script>

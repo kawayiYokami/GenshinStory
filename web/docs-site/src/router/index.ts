@@ -6,9 +6,12 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            // Redirect will be handled by the beforeEach guard
-            name: 'root',
-            component: { template: '<div>Loading...</div>' }
+            redirect: '/home'  // 修改重定向目标
+        },
+        {
+            path: '/home',
+            name: 'Home',
+            component: () => import('@/views/HomeView.vue')
         },
         // --- V2 Three-Pane Layout Routes ---
         {
@@ -20,7 +23,6 @@ const router = createRouter({
                     name: 'v2-agent',
                     meta: { functionPane: 'AgentChatView' },
                     components: {
-                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
                         detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
                 },
@@ -29,7 +31,6 @@ const router = createRouter({
                     name: 'v2-category',
                     meta: { functionPane: 'ItemListView' },
                     components: {
-                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
                         function: () => import('@/features/docs/views/ItemListView.vue'),
                         detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
@@ -41,6 +42,16 @@ const router = createRouter({
                     components: {
                         nav: () => import('@/features/navigation/components/CategoryNav.vue'),
                         function: () => import('@/features/search/views/SearchViewV2.vue'),
+                        detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
+                    }
+                },
+                {
+                    path: 'settings',
+                    name: 'v2-settings',
+                    meta: { functionPane: 'SettingsView' },
+                    components: {
+                        nav: () => import('@/features/navigation/components/CategoryNav.vue'),
+                        function: () => import('@/features/settings/views/SettingsView.vue'),
                         detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
                 }
@@ -72,7 +83,7 @@ router.beforeEach(async (to, from, next) => {
     if (to.name === 'root') {
         const defaultDomain = appStore.availableDomains[0]?.id;
         if (defaultDomain) {
-            return next({ path: `/domain/${defaultDomain}/search` });
+            return next({ path: `/domain/${defaultDomain}/agent` });
         } else {
             // Handle case where no domains are available
             return next({ name: 'NotFound' });

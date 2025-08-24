@@ -1,6 +1,39 @@
 import { defineStore } from 'pinia';
 
-export type ThemeName = 'm3-light' | 'm3-dark' | 'genshin-light';
+// List of popular DaisyUI themes for the selector
+export type ThemeName = 
+  | 'light' 
+  | 'dark' 
+  | 'cupcake' 
+  | 'bumblebee' 
+  | 'emerald' 
+  | 'corporate' 
+  | 'synthwave' 
+  | 'retro' 
+  | 'cyberpunk' 
+  | 'valentine' 
+  | 'halloween' 
+  | 'garden' 
+  | 'forest' 
+  | 'aqua' 
+  | 'lofi' 
+  | 'pastel' 
+  | 'fantasy' 
+  | 'wireframe' 
+  | 'black' 
+  | 'luxury' 
+  | 'dracula' 
+  | 'cmyk' 
+  | 'autumn' 
+  | 'business' 
+  | 'acid' 
+  | 'lemonade' 
+  | 'night' 
+  | 'coffee' 
+  | 'winter' 
+  | 'dim' 
+  | 'nord' 
+  | 'sunset';
 
 interface ThemeState {
   currentTheme: ThemeName;
@@ -8,15 +41,15 @@ interface ThemeState {
 
 /**
  * Manages the application's theme state.
- * Allows switching between different themes like 'light', 'dark', or brand-specific themes.
+ * Uses DaisyUI's built-in themes for consistent styling.
  */
 export const useThemeStore = defineStore('theme', {
   state: (): ThemeState => ({
     /**
      * The current theme of the application.
-     * Defaults to 'm3-light'.
+     * Defaults to 'light'.
      */
-    currentTheme: (localStorage.getItem('app-theme') as ThemeName) || 'm3-light',
+    currentTheme: (localStorage.getItem('app-theme') as ThemeName) || 'light',
   }),
   actions: {
     /**

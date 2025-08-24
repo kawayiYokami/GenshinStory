@@ -1,30 +1,21 @@
 <template>
   <div class="chat-input-panel">
-      <div v-if="attachedReferences.length > 0" class="attachment-container">
-        <div v-for="(ref, index) in attachedReferences" :key="ref.path" class="attachment-item reference-item">
-          <span class="icon">📄</span>
-          <span class="name">{{ ref.name }}</span>
-          <button @click="removeReference(index)" class="remove-btn">&times;</button>
-        </div>
+    <!-- 主要输入区域 -->
+    <div class="input-area">
+      <!-- 状态指示器（极简） -->
+      <div v-if="isLoading || isProcessing" class="status-indicator">
+        <div class="thinking-dot"></div>
+        <div class="thinking-dot"></div>
+        <div class="thinking-dot"></div>
       </div>
-      <div v-if="attachedImages.length > 0" class="attachment-container image-preview-container">
-        <div v-for="(image, index) in attachedImages" :key="index" class="attachment-item image-preview-item">
-          <img :src="image" alt="Image preview" />
-          <button @click="removeImage(index)" class="remove-btn">&times;</button>
-        </div>
-      </div>
-      <div class="relative flex items-center">
-        <ReferenceDropdown
-          ref="dropdownRef"
-          :items="referenceItems"
-          :visible="showDropdown"
-          @select="handleReferenceSelect"
-        />
+
+      <!-- 文本输入区 -->
+      <div class="input-wrapper">
         <textarea
           ref="textareaRef"
           :value="modelValue"
           @input="handleInput"
-          placeholder="请输入您的问题或指令... (@ 引用, Ctrl+V 粘贴图片)"
+          placeholder="输入消息... (@ 引用文档, Ctrl+V 粘贴图片)"
           @keydown.enter.exact.prevent="handleKeyDown"
           @keydown.up.prevent="handleKeyDown"
           @keydown.down.prevent="handleKeyDown"
@@ -33,30 +24,198 @@
           :disabled="isLoading"
           @paste="handlePaste"
           maxlength="10000"
-          class="chat-textarea flex-grow placeholder:text-placeholder"
+          class="chat-textarea"
+          rows="1"
         ></textarea>
+
+        <!-- 发送/停止按钮 -->
         <button
           @click="isLoading ? stopAgent() : handleSend()"
           :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0 && attachedReferences.length === 0)"
-          :class="['send-button', { 'stop-button': isLoading }]"
-          :title="isLoading ? '打断' : '发送'"
-          class="absolute right-2 bottom-2"
+          class="send-button"
+          :title="isLoading ? '停止生成' : '发送消息'"
         >
-          <svg v-if="isLoading" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          <StopIcon v-if="isLoading" class="w-5 h-5" />
+          <PaperAirplaneIcon v-else class="w-5 h-5" />
+        </button>
+      </div>
+
+      <!-- 附件预览区 -->
+      <div v-if="hasAttachments" class="attachment-preview">
+        <div v-for="(ref, index) in attachedReferences" :key="ref.path" class="attachment-chip">
+          <DocumentTextIcon class="w-4 h-4" />
+          <span class="truncate">{{ ref.name }}</span>
+          <button @click="removeReference(index)" class="remove-chip">
+            <XMarkIcon class="w-3 h-3" />
+          </button>
+        </div>
+        <div v-for="(image, index) in attachedImages" :key="index" class="attachment-chip">
+          <PhotoIcon class="w-4 h-4" />
+          <span>图片 {{ index + 1 }}</span>
+          <button @click="removeImage(index)" class="remove-chip">
+            <XMarkIcon class="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+      <!-- 左侧工具组 -->
+      <div class="tool-group">
+        <!-- AI 供应商选择 -->
+        <div class="dropdown dropdown-top dropdown-end">
+          <div tabindex="0" role="button" class="tool-button">
+            <CubeIcon class="w-5 h-5" />
+            <span>{{ activeConfig?.name || 'AI' }}</span>
+            <ChevronUpIcon class="w-4 h-4 ml-1" />
+          </div>
+          <ul tabindex="0" class="dropdown-content menu p-2 shadow rounded-box w-48 bg-base-200 border border-base-300 mb-1 max-h-60 overflow-y-auto">
+            <li v-for="config in configs" :key="config.id">
+              <a @click="handleConfigChange(config.id)">
+                <div class="flex items-center justify-between">
+                  <span>{{ config.name }}</span>
+                  <span v-if="config.id === activeConfigId" class="text-xs opacity-70">✓</span>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 模型选择 -->
+        <div class="dropdown dropdown-top dropdown-end">
+          <div tabindex="0" role="button" class="tool-button">
+            <SparklesIcon class="w-5 h-5" />
+            <span>{{ currentModel || 'Model' }}</span>
+            <ChevronUpIcon class="w-4 h-4 ml-1" />
+          </div>
+          <ul tabindex="0" class="dropdown-content menu p-2 shadow rounded-box w-52 bg-base-200 border border-base-300 mb-1">
+            <li v-if="!activeConfig?.availableModels || activeConfig.availableModels.length === 0" class="disabled">
+              <span class="text-xs opacity-70">请先设置有效的 API Key</span>
+            </li>
+            <li v-for="model in activeConfig?.availableModels || []" :key="model">
+              <a @click="handleModelChange(model)"
+                 :class="{ 'active': model === currentModel }">
+                <div class="flex items-center justify-between">
+                  <span>{{ model }}</span>
+                  <span v-if="model === currentModel" class="text-xs opacity-70">✓</span>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 右侧工具组 -->
+      <div class="tool-group">
+        <!-- 调试按钮 (仅在开发模式下显示) -->
+        <button
+          v-if="isDevMode"
+          @click="toggleDebugPanel"
+          class="tool-button"
+          title="调试面板"
+        >
+          <WrenchIcon class="w-5 h-5" />
+        </button>
+
+        <!-- 新建会话 -->
+        <div class="dropdown dropdown-top dropdown-end">
+          <div tabindex="0" role="button" class="tool-button" title="新建会话">
+            <PlusCircleIcon class="w-5 h-5" />
+          </div>
+          <div tabindex="0" class="dropdown-content menu p-0 shadow-2xl rounded-box bg-base-200 border border-base-300 mb-1 w-96">
+            <!-- 当前智能体（大号显示） -->
+            <div v-if="currentAgent" class="p-4 border-b border-base-300">
+              <div class="text-sm text-base-content/70 mb-2">当前智能体</div>
+              <a @click="handleNewChatWithCurrentAgent"
+                 class="block p-4 rounded-lg bg-primary text-primary-content hover:bg-primary-focus transition-colors cursor-pointer">
+                <div class="text-xl font-bold mb-1">{{ currentAgent.name }}</div>
+                <div class="text-sm opacity-90">{{ currentAgent.description }}</div>
+              </a>
+            </div>
+
+            <!-- 其他智能体网格 -->
+            <div class="p-4">
+              <div class="text-sm text-base-content/70 mb-3">为以下智能体开启新会话</div>
+              <div class="grid grid-cols-2 gap-2">
+                <a v-for="agent in otherAgents"
+                   :key="agent.id"
+                   @click="handleNewChatWithAgentId(agent.id)"
+                   class="block p-3 rounded-lg bg-base-100 hover:bg-base-300 transition-colors cursor-pointer">
+                  <div class="font-semibold">{{ agent.name }}</div>
+                  <div class="text-xs text-base-content/70 mt-1 line-clamp-2">{{ agent.description }}</div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <button @click="emit('update:showHistoryPanel', true)" class="tool-button" title="历史记录">
+          <ClockIcon class="w-5 h-5" />
         </button>
       </div>
     </div>
+
+    <!-- 引用下拉框 -->
+    <ReferenceDropdown
+      ref="dropdownRef"
+      :items="referenceItems"
+      :visible="showDropdown"
+      @select="handleReferenceSelect"
+    />
+  </div>
 </template>
 
-<script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
 import { useDataStore } from '@/features/app/stores/data';
+import { useConfigStore } from '@/features/app/stores/config';
+import { useAgentStore } from '@/features/agent/stores/agentStore';
+import { useAppStore } from '@/features/app/stores/app';
+import { storeToRefs } from 'pinia';
+import type { AgentInfo } from '@/features/agent/types';
 import ReferenceDropdown from './ReferenceDropdown.vue';
 import debounce from 'lodash.debounce';
+import {
+  ChevronUpIcon,
+  PaperAirplaneIcon,
+  StopIcon,
+  CubeIcon,
+  SparklesIcon,
+  PlusCircleIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  PhotoIcon,
+  XMarkIcon,
+  WrenchIcon
+} from '@heroicons/vue/24/outline';
+import { useRouter } from 'vue-router';
 
+interface ReferenceItem {
+  path: string;
+  name: string;
+  type: string;
+}
+
+interface AttachmentItem {
+  path: string;
+  name: string;
+}
+
+// Stores
 const dataStore = useDataStore();
+const configStore = useConfigStore();
+const agentStore = useAgentStore();
+const appStore = useAppStore();
+const router = useRouter();
 
+const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
+const { fetchModels, setActiveConfig } = configStore;
+const { availableAgents, currentRoleId } = storeToRefs(agentStore);
+const { resetAgent, switchAgent } = agentStore;
+
+// Props
 const props = defineProps({
   modelValue: {
     type: String,
@@ -66,43 +225,88 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  error: {
+    type: Object,
+    default: null,
+  },
+  isProcessing: {
+    type: Boolean,
+    default: false,
+  },
+    thinkingTime: {
+    type: Number,
+    default: 0,
+  },
+  showHistoryPanel: {
+    type: Boolean,
+    default: false,
+  },
+  showRawContent: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['update:modelValue', 'send', 'stop']);
+// Emits
+const emit = defineEmits(['update:modelValue', 'send', 'stop', 'update:showHistoryPanel', 'update:showRawContent']);
 
-const textareaRef = ref(null);
-const attachedImages = ref([]);
-const attachedReferences = ref([]);
+// Local state
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const attachedImages = ref<string[]>([]);
+const attachedReferences = ref<AttachmentItem[]>([]);
+const currentModel = ref('');
+const isDevMode = import.meta.env.DEV;
+const showDebugPanel = ref(false);
 
-// --- Reference / Mention states ---
-const dropdownRef = ref(null);
+// Methods
+const toggleDebugPanel = () => {
+  emit('update:showRawContent', !props.showRawContent);
+};
+
+// Reference states
+const dropdownRef = ref<any>(null);
 const showDropdown = ref(false);
-const referenceItems = ref([]);
+const referenceItems = ref<ReferenceItem[]>([]);
 const isProcessingReference = ref(false);
 let referenceQuery = '';
 let referenceStartPos = -1;
 
+// Computed
+const hasAttachments = computed(() =>
+  attachedImages.value.length > 0 || attachedReferences.value.length > 0
+);
 
+// 当前智能体
+const currentAgent = computed(() => {
+  if (!currentRoleId.value || !appStore.currentDomain || !availableAgents.value[appStore.currentDomain]) return null;
+  return availableAgents.value[appStore.currentDomain].find((agent: AgentInfo) => agent.id === currentRoleId.value);
+});
+
+// 其他智能体（排除当前智能体）
+const otherAgents = computed(() => {
+  if (!appStore.currentDomain || !availableAgents.value[appStore.currentDomain]) return [];
+  return availableAgents.value[appStore.currentDomain].filter((agent: AgentInfo) => agent.id !== currentRoleId.value);
+});
+
+// Methods
 const adjustTextareaHeight = () => {
-  const textarea = textareaRef.value;
-  if (textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
+  if (textareaRef.value) {
+    textareaRef.value.style.height = 'auto';
+    textareaRef.value.style.height = `${Math.min(textareaRef.value.scrollHeight, 200)}px`;
   }
 };
 
-const handleInput = (event) => {
-  emit('update:modelValue', event.target.value);
+const handleInput = (event: Event) => {
+  emit('update:modelValue', (event.target as HTMLInputElement).value);
 };
 
 const handleSend = () => {
-  if (props.modelValue.trim() || attachedImages.value.length > 0 || attachedReferences.value.length > 0) {
+  if (props.modelValue.trim() || hasAttachments.value) {
     emit('send', {
       text: props.modelValue,
       images: attachedImages.value,
       references: attachedReferences.value,
     });
-    // Clear inputs after sending
     emit('update:modelValue', '');
     attachedImages.value = [];
     attachedReferences.value = [];
@@ -113,204 +317,355 @@ const stopAgent = () => {
   emit('stop');
 };
 
+// Reference handling
 const searchReferences = debounce(async (query) => {
-  console.log(`[Debug] Debounced search triggered for query: "${query}"`);
   if (query) {
     referenceItems.value = await dataStore.searchCatalog(query);
-    console.log(`[Debug] Search results for "${query}":`, referenceItems.value);
     showDropdown.value = referenceItems.value.length > 0;
   } else {
     showDropdown.value = false;
   }
 }, 300);
 
-const handleReferenceSelect = (item) => {
-  // Add to attachments instead of inserting text
+const handleReferenceSelect = (item: ReferenceItem) => {
   if (!attachedReferences.value.some(ref => ref.path === item.path)) {
     attachedReferences.value.push(item);
   }
 
-  // Clear the @-query from the textarea
   const text = props.modelValue;
   const newText = text.substring(0, referenceStartPos);
   emit('update:modelValue', newText);
 
-  // Hide dropdown and reset state
   showDropdown.value = false;
   isProcessingReference.value = false;
   referenceItems.value = [];
 
   nextTick(() => {
-    textareaRef.value.focus();
+    textareaRef.value?.focus();
   });
 };
 
-const handleKeyDown = (event) => {
-    if (showDropdown.value) {
-        switch (event.key) {
-            case 'ArrowUp':
-                dropdownRef.value?.moveUp();
-                break;
-            case 'ArrowDown':
-                dropdownRef.value?.moveDown();
-                break;
-            case 'Enter':
-                event.preventDefault(); // prevent form submission
-                dropdownRef.value?.selectActiveItem();
-                break;
-            case 'Escape':
-                showDropdown.value = false;
-                isProcessingReference.value = false;
-                break;
-            default:
-                return; // let other keys pass through
-        }
-    } else if (event.key === 'Enter') {
-        handleSend();
-    } else if (event.key === 'Backspace') {
-        const textarea = event.target;
-        const cursorPos = textarea.selectionStart;
+// Toolbar actions
 
-        // Only proceed if the cursor is at the end of the selection
-        if (textarea.selectionEnd !== cursorPos) return;
+const handleConfigChange = (configId: string) => {
+  if (configId) {
+    setActiveConfig(configId);
+  }
+};
 
-        const textBefore = props.modelValue.substring(0, cursorPos);
+const handleModelChange = (model: string) => {
+  currentModel.value = model;
+  // 保存到配置中
+  if (activeConfig.value && activeConfigId.value) {
+    configStore.updateConfig(activeConfigId.value, { modelName: model });
+  }
+};
 
-        if (textBefore.endsWith(']]')) {
-            const linkStart = textBefore.lastIndexOf('[[');
-            // Ensure we found a matching start and there's no nested [[
-            if (linkStart !== -1 && textBefore.substring(linkStart).indexOf(']]') === -1) {
-                event.preventDefault();
-                
-                const textAfter = props.modelValue.substring(cursorPos);
-                const newText = textBefore.substring(0, linkStart) + textAfter;
-                
-                emit('update:modelValue', newText);
-                
-                nextTick(() => {
-                    textarea.focus();
-                    textarea.setSelectionRange(linkStart, linkStart);
-                });
-            }
-        }
-    }
+const handleNewChat = () => {
+  resetAgent();
+};
+
+const handleNewChatWithCurrentAgent = () => {
+  resetAgent();
+};
+
+const handleNewChatWithAgentId = (agentId: string) => {
+  // 先切换到指定的智能体，然后新建会话
+  if (agentId !== currentRoleId.value) {
+    switchAgent(agentId);
+  }
+  resetAgent();
 };
 
 
-watch(() => props.modelValue, (newValue) => {
-  nextTick(adjustTextareaHeight);
-
-  const cursorPos = textareaRef.value.selectionStart;
-  const textBeforeCursor = newValue.substring(0, cursorPos);
-  
-  const lastAt = textBeforeCursor.lastIndexOf('@');
-
-  if (lastAt !== -1) {
-    const query = textBeforeCursor.substring(lastAt + 1);
-    
-    // Check for invalid characters (like whitespace) between @ and cursor
-    if (/[\s\p{P}\p{S}]/u.test(query)) {
-        if (isProcessingReference.value) {
-            console.log('[Debug] Invalid characters in query. Hiding dropdown.');
-            showDropdown.value = false;
-            isProcessingReference.value = false;
-        }
-    } else {
-        // Valid query
-        console.log('[Debug] @ pattern matched. Query:', query);
-        isProcessingReference.value = true;
-        referenceStartPos = lastAt;
-        referenceQuery = query;
-        searchReferences(referenceQuery);
+// Keyboard handling
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (showDropdown.value) {
+    switch (event.key) {
+      case 'ArrowUp':
+        dropdownRef.value?.moveUp();
+        break;
+      case 'ArrowDown':
+        dropdownRef.value?.moveDown();
+        break;
+      case 'Enter':
+        event.preventDefault();
+        dropdownRef.value?.selectActiveItem();
+        break;
+      case 'Escape':
+        showDropdown.value = false;
+        isProcessingReference.value = false;
+        break;
     }
-  } else if (isProcessingReference.value) {
-    console.log('[Debug] @ pattern lost. Hiding dropdown.');
-    showDropdown.value = false;
-    isProcessingReference.value = false;
+  } else if (event.key === 'Enter' && !event.shiftKey) {
+    handleSend();
   }
-});
+};
 
-onMounted(() => {
-  adjustTextareaHeight();
-});
+// Image paste handling
+const handlePaste = (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
 
-const handlePaste = (event) => {
-  const items = event.clipboardData.items;
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     if (item.type.indexOf('image') !== -1) {
       event.preventDefault();
       const blob = item.getAsFile();
+      if (!blob) continue;
+
       const reader = new FileReader();
       reader.onload = (e) => {
-        attachedImages.value.push(e.target.result);
+        if (e.target?.result) {
+          attachedImages.value.push(e.target.result as string);
+        }
       };
       reader.readAsDataURL(blob);
     }
   }
 };
 
-const removeImage = (index) => {
+const removeImage = (index: number) => {
   attachedImages.value.splice(index, 1);
 };
 
-const removeReference = (index) => {
+const removeReference = (index: number) => {
   attachedReferences.value.splice(index, 1);
 };
 
-// Expose focus method for parent component
-const focus = () => {
-  textareaRef.value?.focus();
-};
+// Watchers
+// 同步模型名称
+watch(() => activeConfig.value?.modelName, (newModelName) => {
+  if (newModelName && newModelName !== currentModel.value) {
+    currentModel.value = newModelName;
+  }
+}, { immediate: true });
+
+watch(() => props.modelValue, (newValue) => {
+  nextTick(adjustTextareaHeight);
+
+  const cursorPos = textareaRef.value?.selectionStart || 0;
+  const textBeforeCursor = newValue.substring(0, cursorPos);
+  const lastAt = textBeforeCursor.lastIndexOf('@');
+
+  if (lastAt !== -1) {
+    const query = textBeforeCursor.substring(lastAt + 1);
+    if (/[\s\p{P}\p{S}]/u.test(query)) {
+      if (isProcessingReference.value) {
+        showDropdown.value = false;
+        isProcessingReference.value = false;
+      }
+    } else {
+      isProcessingReference.value = true;
+      referenceStartPos = lastAt;
+      referenceQuery = query;
+      searchReferences(referenceQuery);
+    }
+  } else if (isProcessingReference.value) {
+    showDropdown.value = false;
+    isProcessingReference.value = false;
+  }
+});
+
+// Lifecycle
+onMounted(() => {
+  adjustTextareaHeight();
+});
 
 defineExpose({
   adjustTextareaHeight,
-  focus,
+  focus: () => textareaRef.value?.focus(),
 });
-
 </script>
 
 <style scoped>
-.attachment-container {
+.chat-input-panel {
   display: flex;
-  gap: 8px;
-  padding: 0 8px 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-base-100);
+  border-radius: 0.5rem;
 }
-.attachment-item {
-  position: relative;
+
+/* 输入区域 */
+.input-area {
   display: flex;
-  align-items: center;
-  background-color: var(--m3-surface-variant);
-  color: var(--m3-on-surface-variant);
-  border-radius: 16px;
-  padding: 4px 8px;
-  font-size: 0.9em;
+  flex-direction: column;
+  gap: 0.5rem;
 }
-.reference-item .icon {
-  margin-right: 6px;
+
+/* 状态指示器 */
+.status-indicator {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
 }
-.image-preview-item img {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-.remove-btn {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 20px;
-  height: 20px;
+
+.thinking-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background-color: var(--m3-error);
-  color: var(--m3-on-error);
-  border: none;
-  cursor: pointer;
+  background-color: var(--color-primary);
+  animation: pulse 1.4s ease-in-out infinite both;
+}
+
+.thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+.thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes pulse {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 输入框包装器 */
+.input-wrapper {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 14px;
-  line-height: 1;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-base-200);
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+}
+
+.input-wrapper:focus-within {
+  background: var(--color-base-300);
+}
+
+.chat-textarea {
+  flex: 1;
+  min-height: 24px;
+  max-height: 200px;
   padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-base-content);
+}
+
+.chat-textarea::placeholder {
+  color: var(--color-base-content-50);
+}
+
+.send-button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.send-button:hover:not(:disabled) {
+  background: var(--color-primary-focus);
+  transform: scale(1.05);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 附件预览 */
+.attachment-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+}
+
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-base-200);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  max-width: 200px;
+}
+
+.attachment-chip .truncate {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-chip {
+  color: var(--color-base-content-50);
+  transition: color 0.2s;
+}
+
+.remove-chip:hover {
+  color: var(--color-error);
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.5rem;
+}
+
+.tool-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tool-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  color: var(--color-base-content);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tool-button:hover {
+  background: var(--color-base-200);
+}
+
+.tool-button .agent-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dropdown menu active state */
+.dropdown-content li.active a {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+/* 文本截断 */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
