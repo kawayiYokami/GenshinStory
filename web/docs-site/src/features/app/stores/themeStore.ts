@@ -1,39 +1,19 @@
 import { defineStore } from 'pinia';
 
-// List of popular DaisyUI themes for the selector
-export type ThemeName = 
-  | 'light' 
-  | 'dark' 
-  | 'cupcake' 
-  | 'bumblebee' 
-  | 'emerald' 
-  | 'corporate' 
-  | 'synthwave' 
-  | 'retro' 
-  | 'cyberpunk' 
-  | 'valentine' 
-  | 'halloween' 
-  | 'garden' 
-  | 'forest' 
-  | 'aqua' 
-  | 'lofi' 
-  | 'pastel' 
-  | 'fantasy' 
-  | 'wireframe' 
-  | 'black' 
-  | 'luxury' 
-  | 'dracula' 
-  | 'cmyk' 
-  | 'autumn' 
-  | 'business' 
-  | 'acid' 
-  | 'lemonade' 
-  | 'night' 
-  | 'coffee' 
-  | 'winter' 
-  | 'dim' 
-  | 'nord' 
-  | 'sunset';
+// List of curated DaisyUI themes for the selector
+export type ThemeName =
+  | 'light'
+  | 'dark'
+  | 'cupcake'
+  | 'dracula'
+  | 'autumn'
+  | 'winter'
+  | 'night'
+  // Custom themes based on character color schemes
+  | 'zhongli'
+  | 'furina'
+  | 'nahida'
+  | 'hutao';
 
 interface ThemeState {
   currentTheme: ThemeName;
@@ -60,6 +40,17 @@ export const useThemeStore = defineStore('theme', {
     setTheme(themeName: ThemeName) {
       this.currentTheme = themeName;
       localStorage.setItem('app-theme', themeName);
+      // Update the DOM to reflect the new theme
+      document.documentElement.setAttribute('data-theme', themeName);
     },
+
+    /**
+     * Initializes the theme on app startup.
+     * Applies the theme stored in localStorage or the default theme.
+     */
+    initTheme() {
+      const storedTheme = localStorage.getItem('app-theme') as ThemeName || this.currentTheme;
+      document.documentElement.setAttribute('data-theme', storedTheme);
+    }
   },
 });

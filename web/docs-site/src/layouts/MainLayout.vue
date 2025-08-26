@@ -3,7 +3,7 @@
     <input id="nav-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex flex-col h-screen">
       <!-- Navbar -->
-      <div class="navbar bg-white/30 backdrop-blur-md border-b border-base-300 text-base-content w-full">
+      <div class="navbar bg-base-100/70 backdrop-blur-lg backdrop-saturate-150 border-b border-base-300/50 text-base-content w-full shadow-sm supports-[backdrop-filter]:bg-base-100/60">
         <div class="flex-none lg:hidden">
           <label for="nav-drawer" aria-label="open sidebar" class="btn btn-square btn-ghost">
             <Bars3Icon class="h-6 w-6" />
@@ -25,21 +25,30 @@
         <!-- 右侧：域名下拉菜单和设置 -->
         <div class="flex items-center gap-4">
           <!-- 域名下拉菜单 -->
-          <div class="dropdown dropdown-end">
+          <div class="dropdown">
             <div tabindex="0" role="button" class="btn btn-ghost text-xl font-bold">
               {{ currentDomainName }}
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
-            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-32 p-2 shadow">
-              <li v-for="domain in domains" :key="domain.id">
-                <a @click="switchDomain(domain.id)"
-                   :class="{ 'active': domain.id === appStore.currentDomain }">
-                  {{ domain.name }}
-                </a>
-              </li>
-            </ul>
+            <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-32 shadow-xl border-0">
+              <div class="max-h-60 overflow-y-auto">
+                <ul class="p-2 space-y-1">
+                  <li v-for="domain in domains" :key="domain.id">
+                    <a @click="switchDomain(domain.id)"
+                       class="px-3 py-2 rounded-lg transition-colors flex items-center justify-between"
+                       :class="{
+                         'bg-primary text-primary-content': domain.id === appStore.currentDomain,
+                         'hover:bg-base-200': domain.id !== appStore.currentDomain
+                       }">
+                      <span class="truncate">{{ domain.name }}</span>
+                      <span v-if="domain.id === appStore.currentDomain" class="text-xs font-bold">✓</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div class="hidden lg:block">
@@ -74,7 +83,7 @@
       <label for="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
       <div class="bg-base-200 text-base-content min-h-full w-80 flex flex-col">
         <!-- 自定义头部 - 域名在右边 -->
-        <div class="p-4 flex justify-between items-center border-b border-base-300">
+        <div class="p-4 flex justify-between items-center border-b border-base-300/50 bg-base-200/80 backdrop-blur-md">
           <label for="nav-drawer" aria-label="close sidebar" class="btn btn-square btn-ghost btn-sm lg:hidden">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

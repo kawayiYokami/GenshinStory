@@ -1,16 +1,16 @@
 <template>
-  <div class="flex flex-col gap-2 p-3 card bg-base-100 shadow-lg">
+  <div class="flex flex-col gap-2 card bg-base-200 shadow-lg">
     <!-- 主要输入区域 -->
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col gap-2 px-4 pt-3">
       <!-- 状态指示器（极简） -->
-      <div v-if="isLoading || isProcessing" class="flex gap-1 px-3 py-1">
+      <div v-if="isLoading || isProcessing" class="flex gap-1 py-1">
         <div class="thinking-dot"></div>
         <div class="thinking-dot"></div>
         <div class="thinking-dot"></div>
       </div>
 
       <!-- 文本输入区 -->
-      <div class="flex items-end gap-2 p-3 bg-base-200 rounded-xl transition-all duration-200 focus-within:bg-base-300">
+      <div class="flex items-end gap-2 p-3 bg-base-300 rounded-xl transition-all duration-200 focus-within:bg-base-300/80">
         <textarea
           ref="textareaRef"
           :value="modelValue"
@@ -41,7 +41,7 @@
       </div>
 
       <!-- 附件预览区 -->
-      <div v-if="hasAttachments" class="flex flex-wrap gap-2 px-3">
+      <div v-if="hasAttachments" class="flex flex-wrap gap-2">
         <div v-for="(ref, index) in attachedReferences" :key="ref.path" class="badge badge-neutral gap-1.5 max-w-[200px]">
           <DocumentTextIcon class="w-4 h-4" />
           <span class="truncate">{{ ref.name }}</span>
@@ -60,49 +60,62 @@
     </div>
 
     <!-- 工具栏 -->
-    <div class="flex justify-between items-center px-2">
+    <div class="flex justify-between items-center px-4 pb-3">
       <!-- 左侧工具组 -->
       <div class="flex gap-1">
         <!-- AI 供应商选择 -->
-        <div class="dropdown dropdown-top dropdown-end">
+        <div class="dropdown dropdown-top">
           <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-xs gap-1">
             <CubeIcon class="w-4 h-4" />
-            <span>{{ activeConfig?.name || 'AI' }}</span>
+            <span class="truncate max-w-[60px]">{{ activeConfig?.name || 'AI' }}</span>
             <ChevronUpIcon class="w-3 h-3" />
           </div>
-          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg rounded-box w-48 bg-base-200 border border-base-300 mb-1 max-h-60 overflow-y-auto z-10">
-            <li v-for="config in configs" :key="config.id">
-              <a @click="handleConfigChange(config.id)">
-                <div class="flex items-center justify-between">
-                  <span>{{ config.name }}</span>
-                  <span v-if="config.id === activeConfigId" class="text-xs opacity-70">✓</span>
-                </div>
-              </a>
-            </li>
-          </ul>
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-64 shadow-xl border-0">
+            <div class="max-h-60 overflow-y-auto">
+              <ul class="p-2 space-y-1">
+                <li v-for="config in configs" :key="config.id">
+                  <a @click="handleConfigChange(config.id)"
+                     class="px-3 py-2 rounded-lg transition-colors flex items-center justify-between"
+                     :class="{
+                       'bg-primary text-primary-content': config.id === activeConfigId,
+                       'hover:bg-base-200': config.id !== activeConfigId
+                     }">
+                    <span class="truncate">{{ config.name }}</span>
+                    <span v-if="config.id === activeConfigId" class="text-xs font-bold">✓</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <!-- 模型选择 -->
-        <div class="dropdown dropdown-top dropdown-end">
+        <div class="dropdown dropdown-top">
           <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-xs gap-1">
             <SparklesIcon class="w-4 h-4" />
-            <span>{{ currentModel || 'Model' }}</span>
+            <span class="truncate max-w-[80px]">{{ currentModel || 'Model' }}</span>
             <ChevronUpIcon class="w-3 h-3" />
           </div>
-          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg rounded-box w-52 bg-base-200 border border-base-300 mb-1 z-10">
-            <li v-if="!activeConfig?.availableModels || activeConfig.availableModels.length === 0" class="disabled">
-              <span class="text-xs opacity-70">请先设置有效的 API Key</span>
-            </li>
-            <li v-for="model in activeConfig?.availableModels || []" :key="model">
-              <a @click="handleModelChange(model)"
-                 :class="{ 'active': model === currentModel }">
-                <div class="flex items-center justify-between">
-                  <span>{{ model }}</span>
-                  <span v-if="model === currentModel" class="text-xs opacity-70">✓</span>
-                </div>
-              </a>
-            </li>
-          </ul>
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-80 shadow-xl border-0">
+            <div class="max-h-64 overflow-y-auto">
+              <ul class="p-3 space-y-2">
+                <li v-if="!activeConfig?.availableModels || activeConfig.availableModels.length === 0">
+                  <div class="p-3 opacity-70 text-center">请先设置有效的 API Key</div>
+                </li>
+                <li v-for="model in activeConfig?.availableModels || []" :key="model">
+                  <a @click="handleModelChange(model)"
+                     class="p-3 rounded-lg transition-colors flex items-center justify-between"
+                     :class="{
+                       'bg-primary text-primary-content': model === currentModel,
+                       'hover:bg-base-200': model !== currentModel
+                     }">
+                    <span class="truncate font-medium">{{ model }}</span>
+                    <span v-if="model === currentModel" class="text-sm bg-primary-content text-primary px-2 py-1 rounded font-bold">✓ 当前</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -119,32 +132,34 @@
         </button>
 
         <!-- 新建会话 -->
-        <div class="dropdown dropdown-top dropdown-end">
+        <div class="dropdown dropdown-top">
           <div tabindex="0" role="button" class="btn btn-ghost btn-sm" title="新建会话">
             <PlusCircleIcon class="w-4 h-4" />
           </div>
-          <div tabindex="0" class="dropdown-content menu p-0 shadow-2xl rounded-box bg-base-200 border border-base-300 mb-1 w-96 z-10">
-            <!-- 当前智能体（大号显示） -->
-            <div v-if="currentAgent" class="p-4 border-b border-base-300">
-              <div class="text-sm text-base-content/70 mb-2">当前智能体</div>
-              <a @click="handleNewChatWithCurrentAgent"
-                 class="block p-4 rounded-lg bg-primary text-primary-content hover:bg-primary-focus transition-colors cursor-pointer">
-                <div class="text-xl font-bold mb-1">{{ currentAgent.name }}</div>
-                <div class="text-sm opacity-90">{{ currentAgent.description }}</div>
-              </a>
-            </div>
-
-            <!-- 其他智能体网格 -->
-            <div class="p-4">
-              <div class="text-sm text-base-content/70 mb-3">为以下智能体开启新会话</div>
-              <div class="grid grid-cols-2 gap-2">
-                <a v-for="agent in otherAgents"
-                   :key="agent.id"
-                   @click="handleNewChatWithAgentId(agent.id)"
-                   class="block p-3 rounded-lg bg-base-100 hover:bg-base-300 transition-colors cursor-pointer">
-                  <div class="font-semibold">{{ agent.name }}</div>
-                  <div class="text-xs text-base-content/70 mt-1 line-clamp-2">{{ agent.description }}</div>
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-96 shadow-xl border-0">
+            <div class="max-h-80 overflow-y-auto">
+              <!-- 当前智能体（大号显示） -->
+              <div v-if="currentAgent" class="p-4 border-b border-base-300">
+                <div class="text-sm text-base-content/70 mb-2">当前智能体</div>
+                <a @click="handleNewChatWithCurrentAgent"
+                   class="block p-4 rounded-lg bg-primary text-primary-content hover:bg-primary-focus transition-colors cursor-pointer">
+                  <div class="text-xl font-bold mb-1">{{ currentAgent.name }}</div>
+                  <div class="text-sm opacity-90">{{ currentAgent.description }}</div>
                 </a>
+              </div>
+
+              <!-- 其他智能体网格 -->
+              <div class="p-4">
+                <div class="text-sm text-base-content/70 mb-3">为以下智能体开启新会话</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <a v-for="agent in otherAgents"
+                     :key="agent.id"
+                     @click="handleNewChatWithAgentId(agent.id)"
+                     class="block p-3 rounded-lg bg-base-100 hover:bg-base-300 transition-colors cursor-pointer">
+                    <div class="font-semibold truncate">{{ agent.name }}</div>
+                    <div class="text-xs text-base-content/70 mt-1 line-clamp-2">{{ agent.description }}</div>
+                  </a>
+                </div>
               </div>
             </div>
           </div>

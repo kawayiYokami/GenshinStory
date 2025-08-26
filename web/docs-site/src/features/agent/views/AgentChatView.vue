@@ -1,8 +1,8 @@
 <template>
-  <div class="agent-chat-view w-full h-full relative">
-    <!-- 对话历史区域 - 留出输入面板空间 -->
-    <div class="history-panel w-full px-4 pt-4" ref="historyPanel" style="padding-bottom: calc(var(--input-panel-height, 120px) + 1rem);">
-      <div class="max-w-4xl mx-auto space-y-4">
+  <div class="agent-chat-view w-full h-full flex flex-col">
+    <!-- 对话历史区域 - 可滚动，隐藏滚动条 -->
+    <div class="flex-1 overflow-y-auto scrollbar-hide" ref="historyPanel">
+      <div class="max-w-4xl mx-auto space-y-1 px-4 py-4">
         <MessageBubble
           v-for="(message, index) in visibleMessages"
           :key="message.id"
@@ -17,23 +17,25 @@
       </div>
     </div>
 
-    <!-- 固定在屏幕底部的输入面板 -->
-    <div class="input-panel-fixed max-w-4xl mx-auto px-4 py-3" ref="inputPanelContainer">
-      <ChatInputPanel
-        ref="inputPanelRef"
-        v-model="userInput"
-        :is-loading="isLoading || isProcessing"
-        :error="error"
-        :is-processing="isProcessing"
-        :active-agent-name="activeAgentName"
-        :thinking-time="thinkingTime"
-        :show-history-panel="isHistoryPanelVisible"
-        :show-raw-content="showRawContent"
-        @update:show-history-panel="isHistoryPanelVisible = $event"
-        @update:show-raw-content="showRawContent = $event"
-        @send="handleSend"
-        @stop="stopAgent"
-      />
+    <!-- 输入面板 - 固定在底部 -->
+    <div class="flex-shrink-0">
+      <div class="max-w-4xl mx-auto">
+        <ChatInputPanel
+          ref="inputPanelRef"
+          v-model="userInput"
+          :is-loading="isLoading || isProcessing"
+          :error="error"
+          :is-processing="isProcessing"
+          :active-agent-name="activeAgentName"
+          :thinking-time="thinkingTime"
+          :show-history-panel="isHistoryPanelVisible"
+          :show-raw-content="showRawContent"
+          @update:show-history-panel="isHistoryPanelVisible = $event"
+          @update:show-raw-content="showRawContent = $event"
+          @send="handleSend"
+          @stop="stopAgent"
+        />
+      </div>
     </div>
 
     <!-- 模态框组件 -->
@@ -91,13 +93,11 @@ const { activeConfig } = storeToRefs(configStore);
 const userInput = ref('');
 const historyPanel = ref(null);
 const inputPanelRef = ref(null);
-const inputPanelContainer = ref(null);
 const isAgentSelectorVisible = ref(false);
 const isHistoryPanelVisible = ref(false);
 const thinkingTime = ref(0);
 const showRawContent = ref(false);
 let timerInterval = null;
-let resizeObserver = null;
 
 // --- Computed Properties ---
 const visibleMessages = computed(() => {
@@ -139,21 +139,6 @@ const handleSelectAgent = (roleId) => {
 };
 
 // --- Agent & Message Methods ---
-
-// 更新输入面板高度（添加防抖优化）
-let updateHeightTimeout = null;
-const updateInputPanelHeight = () => {
-  if (updateHeightTimeout) {
-    clearTimeout(updateHeightTimeout);
-  }
-
-  updateHeightTimeout = setTimeout(() => {
-    if (inputPanelContainer.value) {
-      const height = inputPanelContainer.value.offsetHeight;
-      document.documentElement.style.setProperty('--input-panel-height', `${height}px`);
-    }
-  }, 16); // 约60fps的更新频率
-};
 
 const toggleAgentSelector = () => {
   // This is no longer needed as the primary way to switch agents.
@@ -218,12 +203,9 @@ onMounted(() => {
   historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
 
   const scrollToBottom = () => {
-    // 滚动由master容器（SmartLayout的master区域）处理
-    // 找到真正的滚动容器
-    const scrollContainer = historyPanel.value?.closest('.master-scrollbar') ||
-                          historyPanel.value?.closest('[class*="overflow-y-auto"]');
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+    // 滚动到底部 - 现在由历史面板自身处理
+    if (historyPanel.value) {
+      historyPanel.value.scrollTo({ top: historyPanel.value.scrollHeight, behavior: 'smooth' });
     }
   };
 
@@ -237,17 +219,6 @@ onMounted(() => {
       subtree: true,
       characterData: true,
     });
-  }
-
-  // 设置ResizeObserver来监控输入面板高度变化
-  if (inputPanelContainer.value) {
-    updateInputPanelHeight(); // 初始化高度
-
-    resizeObserver = new ResizeObserver(() => {
-      updateInputPanelHeight();
-    });
-
-    resizeObserver.observe(inputPanelContainer.value);
   }
 });
 
@@ -277,30 +248,20 @@ onUnmounted(() => {
   if (mutationObserver) {
     mutationObserver.disconnect();
   }
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-  }
   if (timerInterval) {
     clearInterval(timerInterval);
-  }
-  if (updateHeightTimeout) {
-    clearTimeout(updateHeightTimeout);
   }
 });
 </script>
 
 <style scoped lang="postcss">
-/* 输入面板固定定位（仅负责定位，不添加装饰样式） */
-.input-panel-fixed {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 20;
+/* 隐藏滚动条的样式 */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
 }
 
-/* 历史面板调整 */
-.history-panel {
-  min-height: 100vh;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* WebKit */
 }
 </style>

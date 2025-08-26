@@ -1,35 +1,65 @@
 <template>
-  <div v-if="question" class="mt-4 space-y-3 rounded-lg text-on-surface-variant">
-    <p class="font-medium text-on-surface">{{ question.text }}</p>
-    <div class="flex flex-col items-start gap-2">
-      <div
-        v-for="(suggestion, index) in question.suggestions"
-        :key="index"
-        class="group flex w-full cursor-pointer items-center justify-between rounded-lg border border-outline bg-surface px-3 py-2 text-sm"
-        @click="$emit('send-suggestion', suggestion)"
-      >
-        <span class="flex items-baseline gap-2">
-          <span class="font-semibold">{{ index + 1 }}.</span>
-          <span>{{ suggestion }}</span>
-        </span>
-        <button class="ml-auto cursor-pointer rounded-full bg-surface-variant p-1.5 text-on-surface-variant opacity-0 transition-opacity duration-200 group-hover:opacity-100" @click.stop="$emit('select-suggestion', suggestion)" title="添加到输入框">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="7" x2="7" y2="17"></line><polyline points="17 17 7 17 7 7"></polyline></svg>
-        </button>
+  <div v-if="question" class="card bg-base-200 shadow-sm border border-primary/20">
+    <div class="card-body p-4">
+      <h3 class="card-title text-primary text-sm mb-3">{{ question.text }}</h3>
+      <div class="space-y-2">
+        <div
+          v-for="(suggestion, index) in question.suggestions"
+          :key="index"
+          class="group flex w-full items-center justify-between btn btn-ghost btn-sm h-auto min-h-0 p-3 normal-case text-left transition-all duration-200 hover:bg-primary/5 hover:border-primary/30"
+          @click="handleSendSuggestion(suggestion)"
+        >
+          <span class="flex items-baseline gap-2 flex-1">
+            <span class="badge badge-primary badge-xs">{{ index + 1 }}</span>
+            <span class="text-sm">{{ suggestion }}</span>
+          </span>
+          <button
+            class="btn btn-circle btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            @click.stop="handleSelectSuggestion(suggestion)"
+            :title="'添加到输入框'"
+          >
+            <ArrowDownLeftIcon class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-defineProps({
-  question: {
-    type: Object,
-    required: true,
-  },
-});
+<script setup lang="ts">
+import { ArrowDownLeftIcon } from '@heroicons/vue/24/outline';
 
-defineEmits(['select-suggestion', 'send-suggestion']);
+// 类型定义
+interface Question {
+  text: string;
+  suggestions: string[];
+}
+
+interface Props {
+  question: Question;
+}
+
+interface Emits {
+  (e: 'select-suggestion', suggestion: string): void;
+  (e: 'send-suggestion', suggestion: string): void;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+// 事件处理函数
+const handleSelectSuggestion = (suggestion: string): void => {
+  emit('select-suggestion', suggestion);
+};
+
+const handleSendSuggestion = (suggestion: string): void => {
+  emit('send-suggestion', suggestion);
+};
 </script>
 
-<style scoped lang="postcss">
+<style scoped>
+/* 保持按钮基本的过渡效果，但移除不必要的移动动画 */
+.btn {
+  transition: background-color 0.2s ease-in-out;
+}
 </style>

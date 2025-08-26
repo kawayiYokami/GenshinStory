@@ -10,7 +10,7 @@
     <!-- Modal container -->
     <div class="fixed inset-0 flex items-center justify-center p-4">
       <DialogPanel
-        class="modal modal-bottom sm:modal-middle w-full max-w-sm bg-surface text-base-content"
+        class="modal modal-bottom sm:modal-middle w-full max-w-sm bg-base-100 text-base-content"
       >
         <!-- Modal header -->
         <div class="modal-box">
@@ -46,31 +46,37 @@
   </Dialog>
 </template>
 
-<script setup>
-import { Dialog, DialogPanel } from '@headlessui/vue'
+<script setup lang="ts">
+import { Dialog, DialogPanel } from '@headlessui/vue';
 
-const props = defineProps({
-  visible: {
-    type: Boolean,
-    required: true,
-  },
-  agents: {
-    type: Array,
-    required: true,
-  },
-  selectedAgentId: {
-    type: String,
-    default: null,
-  },
+// 类型定义
+interface Agent {
+  id: string;
+  name: string;
+}
+
+interface Props {
+  visible: boolean;
+  agents: Agent[];
+  selectedAgentId?: string | null;
+}
+
+interface Emits {
+  (e: 'close'): void;
+  (e: 'select-agent', agentId: string): void;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  selectedAgentId: null
 });
 
-const emit = defineEmits(['close', 'select-agent']);
+const emit = defineEmits<Emits>();
 
-const closeModal = () => {
+const closeModal = (): void => {
   emit('close');
 };
 
-const selectAgent = (agentId) => {
+const selectAgent = (agentId: string): void => {
   emit('select-agent', agentId);
 };
 </script>

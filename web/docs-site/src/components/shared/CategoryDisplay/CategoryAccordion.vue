@@ -10,7 +10,7 @@
         {{ category.name }}
         <span class="text-xs text-base-content/70 ml-2">({{ category.items.length }})</span>
       </div>
-      <div class="collapse-content">
+      <div class="collapse-content bg-transparent">
         <!-- 分页导航 -->
         <PaginationControls
           v-if="category.items.length > pageSize"
@@ -22,11 +22,12 @@
         />
 
         <!-- 分页显示内容 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-transparent">
           <ItemCard
             v-for="item in getPaginatedItems(category.name)"
             :key="item.id"
             :item="item"
+            :class="'bg-base-100'"
             @click="handleItemClick"
           />
         </div>

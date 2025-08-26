@@ -11,26 +11,35 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
       </svg>
     </div>
-    <ul
+    <div
       tabindex="0"
-      class="dropdown-content menu p-2 shadow rounded-box w-52 bg-base-200 border border-base-300 max-h-60 overflow-y-auto"
+      :class="`dropdown-content bg-base-100 rounded-box z-[1] ${width} shadow-xl border-0`"
     >
-      <li v-if="placeholder && !modelValue" class="disabled">
-        <span>{{ placeholder }}</span>
-      </li>
-      <li
-        v-for="option in options"
-        :key="option.value"
-        :class="{ 'disabled': option.disabled }"
-      >
-        <a
-          @click="handleSelect(option)"
-          :class="{ 'active': modelValue === option.value }"
-        >
-          {{ option.label }}
-        </a>
-      </li>
-    </ul>
+      <div class="max-h-60 overflow-y-auto">
+        <ul class="p-2 space-y-1">
+          <li v-if="placeholder && !modelValue">
+            <div class="px-3 py-2 text-base-content/50">{{ placeholder }}</div>
+          </li>
+          <li
+            v-for="option in options"
+            :key="option.value"
+          >
+            <a
+              @click="handleSelect(option)"
+              :class="{
+                'bg-primary text-primary-content': modelValue === option.value,
+                'hover:bg-base-200': modelValue !== option.value && !option.disabled,
+                'opacity-50 cursor-not-allowed': option.disabled
+              }"
+              class="px-3 py-2 rounded-lg transition-colors flex items-center justify-between"
+            >
+              <span class="truncate">{{ option.label }}</span>
+              <span v-if="modelValue === option.value" class="text-xs font-bold">✓</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -48,6 +57,7 @@ interface Props {
   options: Option[]
   placeholder?: string
   disabled?: boolean
+  width?: string
 }
 
 interface Emits {
@@ -56,7 +66,8 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  disabled: false
+  disabled: false,
+  width: 'w-52'
 })
 
 const emit = defineEmits<Emits>()

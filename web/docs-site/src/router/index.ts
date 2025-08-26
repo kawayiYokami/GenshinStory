@@ -13,6 +13,16 @@ const router = createRouter({
             name: 'Home',
             component: () => import('@/views/HomeView.vue')
         },
+        {
+            path: '/dropdown-test',
+            name: 'DropdownTest',
+            component: () => import('@/views/DropdownTest.vue')
+        },
+        {
+            path: '/theme-showcase',
+            name: 'ThemeShowcase',
+            component: () => import('@/views/ThemeShowcase.vue')
+        },
         // --- V2 Three-Pane Layout Routes ---
         {
             path: '/domain/:domain',

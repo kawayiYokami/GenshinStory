@@ -4,7 +4,7 @@
     <div v-if="showDebugInfo" class="text-xs text-base-content/50">
       当前页: {{ currentPage }}
     </div>
-    
+
     <!-- 页码按钮 -->
     <div class="join">
       <template v-for="page in pageNumbers" :key="page">

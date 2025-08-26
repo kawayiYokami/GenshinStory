@@ -1,8 +1,8 @@
 <template>
-  <div class="search-view w-full h-full relative">
-    <!-- 搜索结果区域 - 留出搜索栏空间 -->
-    <div class="search-results w-full px-4 pt-4" ref="resultsPanel" style="padding-bottom: calc(var(--search-panel-height, 80px) + 1rem);">
-      <div class="max-w-3xl mx-auto">
+  <div class="search-view w-full h-full flex flex-col">
+    <!-- 搜索结果区域 - 可滚动，隐藏滚动条 -->
+    <div class="flex-1 overflow-y-auto scrollbar-hide" ref="resultsPanel">
+      <div class="max-w-3xl mx-auto px-4 pt-4">
         <!-- 状态显示 -->
         <div v-if="isLoading" class="flex items-center justify-center py-8">
           <span class="loading loading-spinner loading-md"></span>
@@ -42,22 +42,23 @@
       </div>
     </div>
 
-    <!-- 固定在屏幕底部的搜索栏 -->
-    <div class="search-panel-fixed max-w-3xl mx-auto px-4 py-3" ref="searchPanelContainer">
-      <div class="flex flex-col gap-2 p-3 card bg-base-100 shadow-lg">
-        <!-- 移动端搜索栏 -->
-        <div v-if="isMobile" class="flex items-center gap-3">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="在当前游戏内搜索..."
-            class="input input-bordered flex-1"
-            @keyup.enter="performSearch"
-          />
-          <button @click="performSearch" class="btn btn-primary btn-square">
-            <MagnifyingGlassIcon class="w-5 h-5" />
-          </button>
-        </div>
+    <!-- 搜索栏 - 固定在底部 -->
+    <div class="flex-shrink-0">
+      <div class="max-w-3xl mx-auto px-4 py-3">
+        <div class="flex flex-col gap-2 p-3 card bg-base-200 shadow-lg">
+          <!-- 移动端搜索栏 -->
+          <div v-if="isMobile" class="flex items-center gap-3">
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="在当前游戏内搜索..."
+              class="input input-bordered flex-1"
+              @keyup.enter="performSearch"
+            />
+            <button @click="performSearch" class="btn btn-primary btn-square">
+              <MagnifyingGlassIcon class="w-5 h-5" />
+            </button>
+          </div>
 
         <!-- 桌面端搜索栏 -->
         <div v-else class="flex gap-3">

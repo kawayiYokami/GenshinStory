@@ -1,7 +1,7 @@
 <template>
   <div
     @click="handleClick"
-    class="card card-compact bg-base-100 shadow cursor-pointer hover:shadow-md transition-shadow"
+    class="card card-compact shadow cursor-pointer hover:shadow-md transition-shadow"
   >
     <div class="card-body">
       <h3 class="card-title text-sm">{{ item.name }}</h3>

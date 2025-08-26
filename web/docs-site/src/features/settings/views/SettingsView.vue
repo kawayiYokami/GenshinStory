@@ -10,7 +10,7 @@
       </div>
 
       <!-- Domain Section -->
-      <div class="card card-border bg-surface shadow-xl mb-6">
+      <div class="card card-border bg-base-200 shadow-xl mb-6">
         <div class="card-body">
           <h2 class="card-title mb-6">知识领域</h2>
           <div class="flex flex-wrap gap-2">
@@ -32,7 +32,7 @@
       </div>
 
       <!-- AI Configuration Section -->
-      <div class="card card-border bg-surface shadow-xl mb-6">
+      <div class="card card-border bg-base-200 shadow-xl mb-6">
         <div class="card-body">
           <h2 class="card-title mb-6">AI 配置</h2>
 
@@ -223,24 +223,9 @@
       </div>
 
       <!-- Theme Section -->
-      <div class="card card-border bg-surface shadow-xl mb-6">
+      <div class="card card-border bg-base-200 shadow-xl mb-6">
         <div class="card-body">
-          <h2 class="card-title mb-6">主题设置</h2>
-          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <button
-              v-for="theme in themes"
-              :key="theme.name"
-              @click="setTheme(theme.name)"
-              class="btn btn-sm"
-              :class="[
-                theme.name === themeStore.currentTheme
-                  ? 'btn-primary'
-                  : 'btn-outline'
-              ]"
-            >
-              {{ theme.label }}
-            </button>
-          </div>
+          <ThemePreview />
         </div>
       </div>
 
@@ -261,6 +246,7 @@ import type { ThemeName } from '@/features/app/stores/themeStore';
 import logger from '@/features/app/services/loggerService';
 import { useResponsive } from '@/composables/useResponsive';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
+import ThemePreview from '@/components/ui/ThemePreview.vue';
 
 // Stores
 const configStore = useConfigStore();
@@ -305,42 +291,6 @@ const maxTokensOptions = [
 // Local state
 const isDevMode = import.meta.env.DEV;
 
-// Theme and domain options
-const themes = [
-  { name: 'light', label: '浅色' },
-  { name: 'dark', label: '深色' },
-  { name: 'cupcake', label: '纸杯蛋糕' },
-  { name: 'bumblebee', label: '大黄蜂' },
-  { name: 'emerald', label: '翡翠' },
-  { name: 'corporate', label: '企业' },
-  { name: 'synthwave', label: '合成波' },
-  { name: 'retro', label: '复古' },
-  { name: 'cyberpunk', label: '赛博朋克' },
-  { name: 'valentine', label: '情人节' },
-  { name: 'halloween', label: '万圣节' },
-  { name: 'garden', label: '花园' },
-  { name: 'forest', label: '森林' },
-  { name: 'aqua', label: '水族' },
-  { name: 'lofi', label: '低保真' },
-  { name: 'pastel', label: '马卡龙' },
-  { name: 'fantasy', label: '奇幻' },
-  { name: 'wireframe', label: '线框' },
-  { name: 'black', label: '黑色' },
-  { name: 'luxury', label: '奢华' },
-  { name: 'dracula', label: '德古拉' },
-  { name: 'cmyk', label: 'CMYK' },
-  { name: 'autumn', label: '秋天' },
-  { name: 'business', label: '商务' },
-  { name: 'acid', label: '酸味' },
-  { name: 'lemonade', label: '柠檬水' },
-  { name: 'night', label: '夜晚' },
-  { name: 'coffee', label: '咖啡' },
-  { name: 'winter', label: '冬天' },
-  { name: 'dim', label: '昏暗' },
-  { name: 'nord', label: '诺德' },
-  { name: 'sunset', label: '日落' },
-];
-
 const domains = [
   { id: 'gi', name: '原神' },
   { id: 'hsr', name: '星穹铁道' },
@@ -380,15 +330,12 @@ const handleRenameConfig = () => {
   }
 };
 
-const handleSelectConfig = (id: string) => {
+const handleSelectConfig = (value: string | number) => {
+  const id = String(value);
   logger.log(`--- UI: Config <select> changed. New ID selected: ${id}. Calling setActiveConfig. ---`);
   if (id) {
     setActiveConfig(id);
   }
-};
-
-const setTheme = (themeName: string) => {
-  themeStore.setTheme(themeName as ThemeName);
 };
 
 const switchDomain = (domain: string) => {
