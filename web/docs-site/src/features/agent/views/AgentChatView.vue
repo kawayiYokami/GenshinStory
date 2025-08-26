@@ -1,22 +1,24 @@
 <template>
-  <div class="agent-chat-view relative max-w-4xl w-full mx-auto h-full flex flex-col">
-    <!-- Conversation History - 占据全屏高度 -->
-    <div class="history-panel h-full flex flex-col w-full" ref="historyPanel">
-          <MessageBubble
-            v-for="(message, index) in visibleMessages"
-            :key="message.id"
-            :message="message"
-            :show-raw-content="showRawContent"
-            :is-last-message="index === visibleMessages.length - 1"
-            @select-suggestion="handleSuggestionSelected"
-            @send-suggestion="handleSendSuggestionSelected"
-            @delete-from-here="handleDeleteFrom"
-            @retry="handleRetry"
-          />
+  <div class="agent-chat-view w-full h-full relative">
+    <!-- 对话历史区域 - 留出输入面板空间 -->
+    <div class="history-panel w-full px-4 pt-4" ref="historyPanel" style="padding-bottom: calc(var(--input-panel-height, 120px) + 1rem);">
+      <div class="max-w-4xl mx-auto space-y-4">
+        <MessageBubble
+          v-for="(message, index) in visibleMessages"
+          :key="message.id"
+          :message="message"
+          :show-raw-content="showRawContent"
+          :is-last-message="index === visibleMessages.length - 1"
+          @select-suggestion="handleSuggestionSelected"
+          @send-suggestion="handleSendSuggestionSelected"
+          @delete-from-here="handleDeleteFrom"
+          @retry="handleRetry"
+        />
+      </div>
     </div>
 
-    <!-- 悬浮的输入面板 -->
-    <div class="input-panel-container">
+    <!-- 固定在屏幕底部的输入面板 -->
+    <div class="input-panel-fixed max-w-4xl mx-auto px-4 py-3" ref="inputPanelContainer">
       <ChatInputPanel
         ref="inputPanelRef"
         v-model="userInput"
@@ -89,11 +91,13 @@ const { activeConfig } = storeToRefs(configStore);
 const userInput = ref('');
 const historyPanel = ref(null);
 const inputPanelRef = ref(null);
+const inputPanelContainer = ref(null);
 const isAgentSelectorVisible = ref(false);
 const isHistoryPanelVisible = ref(false);
 const thinkingTime = ref(0);
 const showRawContent = ref(false);
 let timerInterval = null;
+let resizeObserver = null;
 
 // --- Computed Properties ---
 const visibleMessages = computed(() => {
@@ -135,6 +139,21 @@ const handleSelectAgent = (roleId) => {
 };
 
 // --- Agent & Message Methods ---
+
+// 更新输入面板高度（添加防抖优化）
+let updateHeightTimeout = null;
+const updateInputPanelHeight = () => {
+  if (updateHeightTimeout) {
+    clearTimeout(updateHeightTimeout);
+  }
+
+  updateHeightTimeout = setTimeout(() => {
+    if (inputPanelContainer.value) {
+      const height = inputPanelContainer.value.offsetHeight;
+      document.documentElement.style.setProperty('--input-panel-height', `${height}px`);
+    }
+  }, 16); // 约60fps的更新频率
+};
 
 const toggleAgentSelector = () => {
   // This is no longer needed as the primary way to switch agents.
@@ -199,8 +218,8 @@ onMounted(() => {
   historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
 
   const scrollToBottom = () => {
-    // 滚动现在由外层容器（SmartLayout的master区域）处理
-    // 我们需要找到真正的滚动容器
+    // 滚动由master容器（SmartLayout的master区域）处理
+    // 找到真正的滚动容器
     const scrollContainer = historyPanel.value?.closest('.master-scrollbar') ||
                           historyPanel.value?.closest('[class*="overflow-y-auto"]');
     if (scrollContainer) {
@@ -218,6 +237,17 @@ onMounted(() => {
       subtree: true,
       characterData: true,
     });
+  }
+
+  // 设置ResizeObserver来监控输入面板高度变化
+  if (inputPanelContainer.value) {
+    updateInputPanelHeight(); // 初始化高度
+
+    resizeObserver = new ResizeObserver(() => {
+      updateInputPanelHeight();
+    });
+
+    resizeObserver.observe(inputPanelContainer.value);
   }
 });
 
@@ -247,33 +277,30 @@ onUnmounted(() => {
   if (mutationObserver) {
     mutationObserver.disconnect();
   }
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
   if (timerInterval) {
     clearInterval(timerInterval);
+  }
+  if (updateHeightTimeout) {
+    clearTimeout(updateHeightTimeout);
   }
 });
 </script>
 
 <style scoped lang="postcss">
-/* --- Input Panel Container (悬浮) --- */
-.input-panel-container {
+/* 输入面板固定定位（仅负责定位，不添加装饰样式） */
+.input-panel-fixed {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, var(--color-base-100) 85%, transparent);
-  padding: 1rem 0 0.5rem;
-  pointer-events: none; /* 允许点击穿透到下层 */
-  z-index: 10;
+  z-index: 20;
 }
 
-.input-panel-container > * {
-  pointer-events: auto; /* 恢复输入面板的交互 */
-  background: var(--color-base-100);
-  border-radius: 0.5rem;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--color-base-300);
-  max-width: 55em; /* 与 max-w-3xl 保持一致 */
-  margin: 0 auto;
+/* 历史面板调整 */
+.history-panel {
+  min-height: 100vh;
 }
-
 </style>

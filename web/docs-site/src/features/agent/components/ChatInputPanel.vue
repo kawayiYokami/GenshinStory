@@ -1,16 +1,16 @@
 <template>
-  <div class="chat-input-panel">
+  <div class="flex flex-col gap-2 p-3 card bg-base-100 shadow-lg">
     <!-- 主要输入区域 -->
-    <div class="input-area">
+    <div class="flex flex-col gap-2">
       <!-- 状态指示器（极简） -->
-      <div v-if="isLoading || isProcessing" class="status-indicator">
+      <div v-if="isLoading || isProcessing" class="flex gap-1 px-3 py-1">
         <div class="thinking-dot"></div>
         <div class="thinking-dot"></div>
         <div class="thinking-dot"></div>
       </div>
 
       <!-- 文本输入区 -->
-      <div class="input-wrapper">
+      <div class="flex items-end gap-2 p-3 bg-base-200 rounded-xl transition-all duration-200 focus-within:bg-base-300">
         <textarea
           ref="textareaRef"
           :value="modelValue"
@@ -24,7 +24,7 @@
           :disabled="isLoading"
           @paste="handlePaste"
           maxlength="10000"
-          class="chat-textarea"
+          class="flex-1 min-h-[24px] max-h-[200px] p-0 bg-transparent border-none outline-none resize-none text-sm leading-6 text-base-content placeholder:text-base-content/50"
           rows="1"
         ></textarea>
 
@@ -32,7 +32,7 @@
         <button
           @click="isLoading ? stopAgent() : handleSend()"
           :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0 && attachedReferences.length === 0)"
-          class="send-button"
+          class="btn btn-circle btn-primary btn-sm w-8 h-8 min-h-8"
           :title="isLoading ? '停止生成' : '发送消息'"
         >
           <StopIcon v-if="isLoading" class="w-5 h-5" />
@@ -41,18 +41,18 @@
       </div>
 
       <!-- 附件预览区 -->
-      <div v-if="hasAttachments" class="attachment-preview">
-        <div v-for="(ref, index) in attachedReferences" :key="ref.path" class="attachment-chip">
+      <div v-if="hasAttachments" class="flex flex-wrap gap-2 px-3">
+        <div v-for="(ref, index) in attachedReferences" :key="ref.path" class="badge badge-neutral gap-1.5 max-w-[200px]">
           <DocumentTextIcon class="w-4 h-4" />
           <span class="truncate">{{ ref.name }}</span>
-          <button @click="removeReference(index)" class="remove-chip">
+          <button @click="removeReference(index)" class="btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:text-error">
             <XMarkIcon class="w-3 h-3" />
           </button>
         </div>
-        <div v-for="(image, index) in attachedImages" :key="index" class="attachment-chip">
+        <div v-for="(image, index) in attachedImages" :key="index" class="badge badge-neutral gap-1.5">
           <PhotoIcon class="w-4 h-4" />
           <span>图片 {{ index + 1 }}</span>
-          <button @click="removeImage(index)" class="remove-chip">
+          <button @click="removeImage(index)" class="btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:text-error">
             <XMarkIcon class="w-3 h-3" />
           </button>
         </div>
@@ -60,17 +60,17 @@
     </div>
 
     <!-- 工具栏 -->
-    <div class="toolbar">
+    <div class="flex justify-between items-center px-2">
       <!-- 左侧工具组 -->
-      <div class="tool-group">
+      <div class="flex gap-1">
         <!-- AI 供应商选择 -->
         <div class="dropdown dropdown-top dropdown-end">
-          <div tabindex="0" role="button" class="tool-button">
-            <CubeIcon class="w-5 h-5" />
+          <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-xs gap-1">
+            <CubeIcon class="w-4 h-4" />
             <span>{{ activeConfig?.name || 'AI' }}</span>
-            <ChevronUpIcon class="w-4 h-4 ml-1" />
+            <ChevronUpIcon class="w-3 h-3" />
           </div>
-          <ul tabindex="0" class="dropdown-content menu p-2 shadow rounded-box w-48 bg-base-200 border border-base-300 mb-1 max-h-60 overflow-y-auto">
+          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg rounded-box w-48 bg-base-200 border border-base-300 mb-1 max-h-60 overflow-y-auto z-10">
             <li v-for="config in configs" :key="config.id">
               <a @click="handleConfigChange(config.id)">
                 <div class="flex items-center justify-between">
@@ -84,12 +84,12 @@
 
         <!-- 模型选择 -->
         <div class="dropdown dropdown-top dropdown-end">
-          <div tabindex="0" role="button" class="tool-button">
-            <SparklesIcon class="w-5 h-5" />
+          <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-xs gap-1">
+            <SparklesIcon class="w-4 h-4" />
             <span>{{ currentModel || 'Model' }}</span>
-            <ChevronUpIcon class="w-4 h-4 ml-1" />
+            <ChevronUpIcon class="w-3 h-3" />
           </div>
-          <ul tabindex="0" class="dropdown-content menu p-2 shadow rounded-box w-52 bg-base-200 border border-base-300 mb-1">
+          <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg rounded-box w-52 bg-base-200 border border-base-300 mb-1 z-10">
             <li v-if="!activeConfig?.availableModels || activeConfig.availableModels.length === 0" class="disabled">
               <span class="text-xs opacity-70">请先设置有效的 API Key</span>
             </li>
@@ -107,23 +107,23 @@
       </div>
 
       <!-- 右侧工具组 -->
-      <div class="tool-group">
+      <div class="flex gap-1">
         <!-- 调试按钮 (仅在开发模式下显示) -->
         <button
           v-if="isDevMode"
           @click="toggleDebugPanel"
-          class="tool-button"
+          class="btn btn-ghost btn-sm"
           title="调试面板"
         >
-          <WrenchIcon class="w-5 h-5" />
+          <WrenchIcon class="w-4 h-4" />
         </button>
 
         <!-- 新建会话 -->
         <div class="dropdown dropdown-top dropdown-end">
-          <div tabindex="0" role="button" class="tool-button" title="新建会话">
-            <PlusCircleIcon class="w-5 h-5" />
+          <div tabindex="0" role="button" class="btn btn-ghost btn-sm" title="新建会话">
+            <PlusCircleIcon class="w-4 h-4" />
           </div>
-          <div tabindex="0" class="dropdown-content menu p-0 shadow-2xl rounded-box bg-base-200 border border-base-300 mb-1 w-96">
+          <div tabindex="0" class="dropdown-content menu p-0 shadow-2xl rounded-box bg-base-200 border border-base-300 mb-1 w-96 z-10">
             <!-- 当前智能体（大号显示） -->
             <div v-if="currentAgent" class="p-4 border-b border-base-300">
               <div class="text-sm text-base-content/70 mb-2">当前智能体</div>
@@ -151,8 +151,8 @@
         </div>
 
         <!-- 历史记录 -->
-        <button @click="emit('update:showHistoryPanel', true)" class="tool-button" title="历史记录">
-          <ClockIcon class="w-5 h-5" />
+        <button @click="emit('update:showHistoryPanel', true)" class="btn btn-ghost btn-sm" title="历史记录">
+          <ClockIcon class="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -479,34 +479,12 @@ defineExpose({
 </script>
 
 <style scoped>
-.chat-input-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: var(--color-base-100);
-  border-radius: 0.5rem;
-}
-
-/* 输入区域 */
-.input-area {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-/* 状态指示器 */
-.status-indicator {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-}
-
+/* 思考点动画（DaisyUI没有提供） */
 .thinking-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--color-primary);
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background-color: hsl(var(--p));
   animation: pulse 1.4s ease-in-out infinite both;
 }
 
@@ -524,148 +502,12 @@ defineExpose({
   }
 }
 
-/* 输入框包装器 */
-.input-wrapper {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: var(--color-base-200);
-  border-radius: 0.75rem;
-  transition: all 0.2s;
-}
-
-.input-wrapper:focus-within {
-  background: var(--color-base-300);
-}
-
-.chat-textarea {
-  flex: 1;
-  min-height: 24px;
-  max-height: 200px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  resize: none;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--color-base-content);
-}
-
-.chat-textarea::placeholder {
-  color: var(--color-base-content-50);
-}
-
-.send-button {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.send-button:hover:not(:disabled) {
-  background: var(--color-primary-focus);
-  transform: scale(1.05);
-}
-
-.send-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 附件预览 */
-.attachment-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0 0.75rem;
-}
-
-.attachment-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.5rem;
-  background: var(--color-base-200);
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  max-width: 200px;
-}
-
-.attachment-chip .truncate {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.remove-chip {
-  color: var(--color-base-content-50);
-  transition: color 0.2s;
-}
-
-.remove-chip:hover {
-  color: var(--color-error);
-}
-
-/* 工具栏 */
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 0.5rem;
-}
-
-.tool-group {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.tool-button {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
-  background: transparent;
-  border: none;
-  border-radius: 0.5rem;
-  color: var(--color-base-content);
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tool-button:hover {
-  background: var(--color-base-200);
-}
-
-.tool-button .agent-name {
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Dropdown menu active state */
-.dropdown-content li.active a {
-  background: var(--color-primary);
-  color: var(--color-primary-content);
-}
-
-/* 文本截断 */
+/* 文本截断（Tailwind已有，但保留以防兼容性问题） */
 .line-clamp-2 {
+  overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 </style>

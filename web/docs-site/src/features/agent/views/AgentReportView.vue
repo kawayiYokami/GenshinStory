@@ -9,7 +9,7 @@
         <p>尚未发送任何请求。</p>
       </div>
     </div>
-    
+
     <DocumentViewer v-if="docViewerStore.isVisible" />
   </div>
 </template>
@@ -39,7 +39,7 @@ const formattedRequest = computed(() => {
 .main-content {
   flex: 1;
   padding: 1rem;
-  @apply transition-all duration-300 ease-in-out;
+  transition: all 0.3s ease-in-out;
   width: 100%;
   height: 100%;
 }

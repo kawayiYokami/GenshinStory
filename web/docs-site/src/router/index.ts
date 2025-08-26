@@ -38,10 +38,10 @@ const router = createRouter({
                 {
                     path: 'search',
                     name: 'v2-search',
-                    meta: { functionPane: 'SearchViewV2' },
+                    meta: { functionPane: 'SearchView' },
                     components: {
                         nav: () => import('@/features/navigation/components/CategoryNav.vue'),
-                        function: () => import('@/features/search/views/SearchViewV2.vue'),
+                        function: () => import('@/features/search/views/SearchView.vue'),
                         detail: () => import('@/features/docs/views/DetailPlaceholder.vue')
                     }
                 },
@@ -107,7 +107,7 @@ router.beforeEach(async (to, from, next) => {
             }
         }
     }
-    
+
     next();
 });
 

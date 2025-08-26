@@ -122,7 +122,7 @@ import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import SmartLayout from '@/components/SmartLayout.vue';
 import DocumentViewer from '@/features/docs/components/DocumentViewer.vue';
 import ItemListView from '@/features/docs/views/ItemListView.vue';
-import SearchViewV2 from '@/features/search/views/SearchViewV2.vue';
+import SearchView from '@/features/search/views/SearchView.vue';
 import AgentChatView from '@/features/agent/views/AgentChatView.vue';
 import SettingsView from '@/features/settings/views/SettingsView.vue';
 import NavigationIcon from '@/components/NavigationIcon.vue';
@@ -152,7 +152,7 @@ useTheme();
 // 组件映射
 const componentMap = {
   'ItemListView': ItemListView,
-  'SearchViewV2': SearchViewV2,
+  'SearchView': SearchView,
   'AgentChatView': AgentChatView,
   'SettingsView': SettingsView
 };

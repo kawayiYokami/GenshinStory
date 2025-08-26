@@ -80,7 +80,7 @@
     font-weight: 600;
     line-height: 1.25;
   }
-  
+
   .prose-styling-container h1, .markdown-body h1 {
     font-size: 2em;
     padding-bottom: 0.3em;
@@ -166,7 +166,7 @@
     margin-top: 0;
     margin-bottom: 1em;
   }
-  
+
   .prose-styling-container ul ul, .markdown-body ul ul,
   .prose-styling-container ul ol, .markdown-body ul ol,
   .prose-styling-container ol ol, .markdown-body ol ol,
