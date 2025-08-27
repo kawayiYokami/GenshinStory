@@ -25,10 +25,10 @@ export function useTheme() {
    */
   const applyTheme = (themeName: string) => {
     const root = document.documentElement;
-    
+
     // 设置主题属性
     root.setAttribute('data-theme', themeName);
-    
+
     // 设置布局相关的CSS自定义属性
     root.style.setProperty('--navbar-height', `${LAYOUT_CONFIG.navbarHeight}px`);
     root.style.setProperty('--function-pane-max-width', `${LAYOUT_CONFIG.functionPaneMaxWidth}px`);
@@ -49,6 +49,16 @@ export function useTheme() {
    * 监听主题变化并自动应用
    */
   watch(currentTheme, (newTheme) => {
+    // 添加主题过渡类
+    const root = document.documentElement;
+    root.classList.add('theme-transitioning');
+
+    // 应用新主题
     applyTheme(newTheme);
+
+    // 在过渡完成后移除过渡类
+    setTimeout(() => {
+      root.classList.remove('theme-transitioning');
+    }, LAYOUT_CONFIG.transitionDuration);
   });
 }

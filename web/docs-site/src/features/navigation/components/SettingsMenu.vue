@@ -99,7 +99,7 @@ const domains = ref([
 ]);
 
 const setTheme = (themeName: ThemeName) => {
-  themeStore.setTheme(themeName);
+  themeStore.setThemeWithTransition(themeName);
 };
 
 const switchDomain = (domain: string) => {

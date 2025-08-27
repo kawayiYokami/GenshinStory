@@ -103,7 +103,7 @@ const currentTheme = computed(() => themeStore.currentTheme)
 
 const selectTheme = (themeName: ThemeName) => {
   console.log('Theme selected:', themeName)
-  themeStore.setTheme(themeName)
+  themeStore.setThemeWithTransition(themeName)
 }
 </script>
 
