@@ -1,5 +1,10 @@
 <template>
   <div class="max-w-3xl w-full mx-auto p-4">
+    <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
+      <div class="form-control w-full max-w-xs">
+        <input type="text" placeholder="在当前结果中过滤..." class="input input-bordered input-sm w-full" v-model="filterKeyword" />
+      </div>
+    </Teleport>
     <!-- 加载状态 -->
     <div v-if="isLoading" class="p-5 text-function-pane">正在加载...</div>
     <div v-else-if="error" class="p-5 text-error">{{ error }}</div>
@@ -95,11 +100,18 @@ const containerRef = ref<HTMLElement>();
 const pageSize = ref(16); // 每页显示16个
 const expandedCategories = ref<Record<string, number>>({}); // 记录每个分类展开的页数
 const currentPage = ref<Record<string, number>>({}); // 记录每个分类的当前页码
+const isMounted = ref(false); // 用于标记组件是否挂载
+const filterKeyword = ref(''); // 过滤关键字
 
 // 获取特定子分类的当前页码
 const getCurrentPage = (subCategory: string) => {
   return currentPage.value[subCategory] || 1;
 };
+
+// 检查navbar-content-target元素是否可用
+const isNavbarContentTargetAvailable = computed(() => {
+  return isMounted.value && typeof document !== 'undefined' && document.getElementById('navbar-content-target') !== null;
+});
 
 // --- Computed ---
 const category = computed(() => {
@@ -108,14 +120,21 @@ const category = computed(() => {
     : route.params.categoryName;
 });
 
+const categoryTypeMap: Record<string, string> = {
+  quest: 'questchapter',
+};
+
 // 获取当前分类下的所有文档（包括子目录）
 const categoryItems = computed(() => {
   if (!category.value || fullIndex.value.length === 0) {
     return [];
   }
 
+  const categoryId = category.value.toLowerCase();
+  const targetType = categoryTypeMap[categoryId] || categoryId;
+
   return fullIndex.value.filter(item =>
-    item.type.toLowerCase() === category.value.toLowerCase()
+    item.type.toLowerCase() === targetType
   );
 });
 
@@ -146,7 +165,19 @@ const subCategories = computed(() => {
 // 获取特定子分类的项目
 const getSubCategoryItems = (subCategory: string) => {
   // 直接从索引中获取，O(1) 复杂度
-  return subCategoryIndex.value.get(subCategory) || [];
+  const items = subCategoryIndex.value.get(subCategory) || [];
+
+  // 如果没有过滤关键字，直接返回所有项目
+  if (!filterKeyword.value) {
+    return items;
+  }
+
+  // 根据过滤关键字筛选项目
+  const keyword = filterKeyword.value.toLowerCase();
+  return items.filter(item =>
+    item.name.toLowerCase().includes(keyword) ||
+    (item.type && item.type.toLowerCase().includes(keyword))
+  );
 };
 
 // 获取分页后的项目
@@ -218,11 +249,19 @@ const changePage = (subCategory: string, page: number) => {
 };
 
 // --- Watchers ---
+onMounted(() => {
+  isMounted.value = true;
+});
+
 watch(() => appStore.currentDomain, (newDomain) => {
   if (newDomain) {
     dataStore.fetchIndex(newDomain);
   }
 }, { immediate: true });
+
+onMounted(() => {
+  isMounted.value = true;
+});
 
 
 </script>

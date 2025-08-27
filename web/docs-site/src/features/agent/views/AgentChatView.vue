@@ -1,5 +1,14 @@
 <template>
   <div class="agent-chat-view w-full h-full flex flex-col">
+    <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
+      <div class="flex items-center gap-4">
+        <span class="text-lg font-bold">{{ activeAgentName }}</span>
+        <div class="h-4 border-l border-base-content/30"></div>
+        <button @click="handleNewSession" class="btn btn-ghost btn-sm" title="新会话">
+          <PlusIcon class="w-4 h-4" />
+        </button>
+      </div>
+    </Teleport>
     <!-- 对话历史区域 - 可滚动，隐藏滚动条 -->
     <div class="flex-1 overflow-y-auto scrollbar-hide" ref="historyPanel">
       <div class="max-w-4xl mx-auto space-y-1 px-4 py-4">
@@ -71,6 +80,9 @@ import AgentSelectorModal from '@/features/agent/components/AgentSelectorModal.v
 import MessageBubble from '@/features/agent/components/MessageBubble.vue';
 import SessionHistoryPanel from '@/features/agent/components/SessionHistoryPanel.vue';
 
+// Import icons
+import { PlusIcon } from '@heroicons/vue/24/outline';
+
 // Import composables
 import { useResponsive } from '@/composables/useResponsive';
 
@@ -97,6 +109,7 @@ const isAgentSelectorVisible = ref(false);
 const isHistoryPanelVisible = ref(false);
 const thinkingTime = ref(0);
 const showRawContent = ref(false);
+const isMounted = ref(false); // 用于跟踪组件是否挂载
 let timerInterval = null;
 
 // --- Computed Properties ---
@@ -199,6 +212,7 @@ const handleHistoryPanelClick = async (event) => {
 let mutationObserver = null;
 
 onMounted(() => {
+  isMounted.value = true; // 设置组件挂载状态
   // fetchAvailableAgents(currentDomain.value); // This is now handled by MainLayout's orchestrator
   historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
 
@@ -242,6 +256,18 @@ watch([isLoading, isProcessing], ([newIsLoading, newIsProcessing]) => {
     timerInterval = null;
   }
 });
+
+// 添加计算属性检查navbar-content-target元素是否可用
+const isNavbarContentTargetAvailable = computed(() => {
+  return isMounted.value && typeof document !== 'undefined' && document.getElementById('navbar-content-target') !== null;
+});
+
+// 添加新会话处理函数
+const handleNewSession = async () => {
+  if (currentRoleId.value) {
+    await agentStore.startNewChatWithAgent(currentRoleId.value);
+  }
+};
 
 onUnmounted(() => {
   historyPanel.value?.removeEventListener('click', handleHistoryPanelClick);

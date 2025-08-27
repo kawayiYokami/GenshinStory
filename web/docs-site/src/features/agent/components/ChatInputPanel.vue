@@ -131,44 +131,7 @@
           <WrenchIcon class="w-4 h-4" />
         </button>
 
-        <!-- 新建会话 -->
-        <div class="dropdown dropdown-top">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-sm" title="新建会话">
-            <PlusCircleIcon class="w-4 h-4" />
-          </div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-96 shadow-xl border-0">
-            <div class="max-h-80 overflow-y-auto">
-              <!-- 当前智能体（大号显示） -->
-              <div v-if="currentAgent" class="p-4 border-b border-base-300">
-                <div class="text-sm text-base-content/70 mb-2">当前智能体</div>
-                <a @click="handleNewChatWithCurrentAgent"
-                   class="block p-4 rounded-lg bg-primary text-primary-content hover:bg-primary-focus transition-colors cursor-pointer">
-                  <div class="text-xl font-bold mb-1">{{ currentAgent.name }}</div>
-                  <div class="text-sm opacity-90">{{ currentAgent.description }}</div>
-                </a>
-              </div>
-
-              <!-- 其他智能体网格 -->
-              <div class="p-4">
-                <div class="text-sm text-base-content/70 mb-3">为以下智能体开启新会话</div>
-                <div class="grid grid-cols-2 gap-2">
-                  <a v-for="agent in otherAgents"
-                     :key="agent.id"
-                     @click="handleNewChatWithAgentId(agent.id)"
-                     class="block p-3 rounded-lg bg-base-100 hover:bg-base-300 transition-colors cursor-pointer">
-                    <div class="font-semibold truncate">{{ agent.name }}</div>
-                    <div class="text-xs text-base-content/70 mt-1 line-clamp-2">{{ agent.description }}</div>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 历史记录 -->
-        <button @click="emit('update:showHistoryPanel', true)" class="btn btn-ghost btn-sm" title="历史记录">
-          <ClockIcon class="w-4 h-4" />
-        </button>
+        
       </div>
     </div>
 
@@ -228,7 +191,7 @@ const router = useRouter();
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
 const { availableAgents, currentRoleId } = storeToRefs(agentStore);
-const { resetAgent, switchAgent } = agentStore;
+
 
 // Props
 const props = defineProps({
@@ -263,7 +226,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'send', 'stop', 'update:showHistoryPanel', 'update:showRawContent']);
+const emit = defineEmits(['update:modelValue', 'send', 'stop', 'update:showRawContent']);
 
 // Local state
 const textareaRef = ref<HTMLTextAreaElement | null>(null);

@@ -1,5 +1,19 @@
 <template>
-  <div class="search-view w-full h-full flex flex-col">
+  <div class="search-view w-full h-full flex flex-col bg-base-100">
+    <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
+      <div class="flex items-center gap-2 w-full max-w-md">
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="在当前知识领域内搜索..."
+          class="input input-bordered input-sm w-full"
+          @keyup.enter="performSearch"
+        />
+        <button @click="performSearch" class="btn btn-ghost btn-sm" :disabled="isSearching || isLoading" title="搜索">
+          <MagnifyingGlassIcon class="w-4 h-4" />
+        </button>
+      </div>
+    </Teleport>
     <!-- 搜索结果区域 - 可滚动，隐藏滚动条 -->
     <div class="flex-1 overflow-y-auto scrollbar-hide" ref="resultsPanel">
       <div class="max-w-3xl mx-auto px-4 pt-4">
@@ -37,42 +51,7 @@
         <div v-else class="flex flex-col items-center justify-center py-12 text-base-content/60">
           <MagnifyingGlassIcon class="w-16 h-16 mb-4 opacity-30" />
           <p class="text-lg font-medium mb-2">开始搜索</p>
-          <p class="text-sm">在下方输入框中输入关键词开始搜索</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 搜索栏 - 固定在底部 -->
-    <div class="flex-shrink-0">
-      <div class="max-w-3xl mx-auto px-4 py-3">
-        <div class="flex flex-col gap-2 p-3 card bg-base-200 shadow-lg">
-          <!-- 移动端搜索栏 -->
-          <div v-if="isMobile" class="flex items-center gap-3">
-            <input
-              type="text"
-              v-model="searchQuery"
-              placeholder="在当前游戏内搜索..."
-              class="input input-bordered flex-1"
-              @keyup.enter="performSearch"
-            />
-            <button @click="performSearch" class="btn btn-primary btn-square">
-              <MagnifyingGlassIcon class="w-5 h-5" />
-            </button>
-          </div>
-
-        <!-- 桌面端搜索栏 -->
-        <div v-else class="flex gap-3">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="在当前游戏内搜索..."
-            class="input input-bordered flex-1"
-            @keyup.enter="performSearch"
-          />
-          <button @click="performSearch" class="btn btn-primary gap-2">
-            <MagnifyingGlassIcon class="w-5 h-5" />
-            搜索
-          </button>
+          <p class="text-sm">在上方输入框中输入关键词开始搜索</p>
         </div>
       </div>
     </div>
@@ -134,6 +113,7 @@ const searchQuery = ref('');
 const isSearching = ref(false); // 搜索过程状态
 const results = ref<CatalogItem[]>([]); // 结果现在是完整的目录条目
 const hasSearched = ref(false);
+const isMounted = ref(false); // 添加isMounted变量定义
 
 // --- 索引数据存储 ---
 // 搜索分片缓存现在由 dataStore 管理
@@ -252,6 +232,7 @@ const updateSearchPanelHeight = () => {
 };
 
 onMounted(() => {
+  isMounted.value = true;
   // 设置ResizeObserver来监控搜索面板高度变化
   if (searchPanelContainer.value) {
     updateSearchPanelHeight(); // 初始化高度
@@ -271,6 +252,11 @@ onUnmounted(() => {
   if (updateHeightTimeout) {
     clearTimeout(updateHeightTimeout);
   }
+});
+
+// 添加计算属性检查navbar-content-target元素是否可用
+const isNavbarContentTargetAvailable = computed(() => {
+  return isMounted.value && typeof document !== 'undefined' && document.getElementById('navbar-content-target') !== null;
 });
 
 </script>
@@ -323,3 +309,5 @@ onUnmounted(() => {
   scrollbar-color: hsl(var(--bc) / 0.2) transparent;
 }
 </style>
+le>
+le>
