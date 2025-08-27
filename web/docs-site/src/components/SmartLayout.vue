@@ -127,7 +127,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   top: var(--navbar-height);
   width: min(var(--detail-pane-width), 100vw - 2rem); /* 不超过屏幕宽度，留出边距 */
   max-width: 100%; /* 确保不会超出 */
-  height: calc(100vh - var(--navbar-height));
+  height: calc(100dvh - var(--navbar-height));
   background-color: var(--color-surface);
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
   z-index: var(--overlay-z-index);

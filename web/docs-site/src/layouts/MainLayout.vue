@@ -1,7 +1,7 @@
 web\docs-site\src\layouts\MainLayout.vue<template>
   <div class="bg-base-100 drawer mx-auto lg:drawer-open">
     <input id="drawer" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content flex flex-col h-screen">
+    <div class="drawer-content flex flex-col" :style="{ height: '100dvh' }">
       <!-- Navbar -->
       <div class="navbar bg-base-100/70 backdrop-blur-lg backdrop-saturate-150 border-b border-base-300/50 text-base-content w-full shadow-sm supports-[backdrop-filter]:bg-base-100/60">
         <div class="flex-none lg:hidden">
