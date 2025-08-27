@@ -1,4 +1,5 @@
 <template>
+  <!-- 智能体聊天视图组件：负责协调聊天界面的各个部分 -->
   <div class="agent-chat-view w-full h-full flex flex-col">
     <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
       <AgentNavbarContent
@@ -25,7 +26,7 @@
           ref="inputPanelRef"
           v-model="userInput"
           :is-loading="isLoading || isProcessing"
-          :error="error"
+          :error="error as any"
           :is-processing="isProcessing"
           :active-agent-name="activeAgentName"
           :thinking-time="thinkingTime"
@@ -41,25 +42,27 @@
     <AgentChatModals
       :is-agent-selector-visible="isAgentSelectorVisible"
       :available-agents="availableAgents"
-      :current-role-id="currentRoleId"
-      :current-domain="currentDomain"
+      :current-role-id="currentRoleId || ''"
+      :current-domain="currentDomain || ''"
       @toggle-agent-selector="toggleAgentSelector"
       @select-agent="handleSelectAgent"
     />
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 /**
- * AgentChatView 组件
+ * 智能体聊天视图组件
+ * @description 这是智能体聊天界面的主要视图组件，负责协调聊天界面的各个部分
+ * @author yokami
  *
- * 这是智能体聊天界面的主要视图组件，负责协调聊天界面的各个部分：
+ * 主要功能：
  * - 顶部导航栏内容
  * - 聊天历史记录面板
  * - 聊天输入面板
  * - 相关模态框
  *
- * 该组件使用了组合式API (Composition API) 和 Pinia 状态管理。
+ * 使用组合式API (Composition API) 和 Pinia 状态管理
  */
 
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
@@ -105,7 +108,7 @@ const { isMobile } = useResponsive();
  */
 const agentStore = useAgentStore();
 const { isLoading, isProcessing, error, activeAgentName, availableAgents, currentRoleId } = storeToRefs(agentStore);
-const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache, retryLastTurn, updateActiveAgentName } = agentStore;
+const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache, retryLastTurn } = agentStore;
 
 /**
  * 配置状态存储
@@ -120,13 +123,17 @@ const { activeConfig } = storeToRefs(configStore);
  * 用于管理组件内部的状态
  */
 const userInput = ref(''); // 用户输入的内容
-const historyPanelRef = ref(null); // 聊天历史面板的引用
-const inputPanelRef = ref(null); // 输入面板的引用
+const historyPanelRef = ref<{ historyPanel: HTMLElement } | null>(null); // 聊天历史面板的引用
+const inputPanelRef = ref<{
+  $el: HTMLElement;
+  focus: () => void;
+  adjustTextareaHeight: () => void
+} | null>(null); // 输入面板的引用
 const isAgentSelectorVisible = ref(false); // 智能体选择器是否可见
 const thinkingTime = ref(0); // 思考时间计数器
 const showRawContent = ref(false); // 是否显示原始内容
 const isMounted = ref(false); // 用于跟踪组件是否挂载
-let timerInterval = null; // 计时器间隔引用
+let timerInterval: ReturnType<typeof setInterval> | null = null; // 计时器间隔引用
 
 // --- Computed Properties ---
 /**
@@ -146,7 +153,7 @@ const visibleMessages = computed(() => {
  * 当用户点击建议问题时，将建议文本添加到输入框中
  * @param {string} suggestionText - 建议的文本内容
  */
-const handleSuggestionSelected = (suggestionText) => {
+const handleSuggestionSelected = (suggestionText: string) => {
   if (userInput.value.trim() !== '') {
     userInput.value += '\n';
   }
@@ -163,7 +170,7 @@ const handleSuggestionSelected = (suggestionText) => {
  * 当用户点击建议问题的发送按钮时，直接发送建议文本
  * @param {string} suggestionText - 建议的文本内容
  */
-const handleSendSuggestionSelected = (suggestionText) => {
+const handleSendSuggestionSelected = (suggestionText: string) => {
   sendMessage(suggestionText);
 };
 
@@ -172,7 +179,7 @@ const handleSendSuggestionSelected = (suggestionText) => {
  * 从指定消息开始删除后续所有消息
  * @param {string} messageId - 消息ID
  */
-const handleDeleteFrom = (messageId) => {
+const handleDeleteFrom = (messageId: string) => {
   agentStore.deleteMessagesFrom(messageId);
 };
 
@@ -189,7 +196,7 @@ const handleRetry = () => {
  * 切换当前使用的智能体
  * @param {string} roleId - 智能体ID
  */
-const handleSelectAgent = (roleId) => {
+const handleSelectAgent = (roleId: string) => {
   switchAgent(roleId);
   isAgentSelectorVisible.value = false;
 };
@@ -210,7 +217,7 @@ const toggleAgentSelector = () => {
  * 处理用户发送消息的逻辑，包括验证配置、停止当前加载等
  * @param {Object} payload - 发送的消息负载，包含文本和图片
  */
-const handleSend = async (payload) => {
+const handleSend = async (payload: string | { text: string; images?: string[]; references?: any[] }) => {
   // The payload from ChatInputPanel is now an object: { text, images }
   const messageToSend = payload;
 
@@ -305,8 +312,10 @@ watch([isLoading, isProcessing], ([newIsLoading, newIsProcessing]) => {
     }, 1000);
   } else {
     // Stop timer when loading ends
-    clearInterval(timerInterval);
-    timerInterval = null;
+    if (timerInterval !== null) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
   }
 });
 
@@ -333,12 +342,13 @@ const handleNewSession = async () => {
  * 清理计时器等资源
  */
 onUnmounted(() => {
-  if (timerInterval) {
+  if (timerInterval !== null) {
     clearInterval(timerInterval);
   }
 });
 </script>
 
 <style scoped lang="postcss">
+/* 样式区域：负责组件样式 */
 /* 隐藏滚动条的样式已在ChatHistoryPanel中定义 */
 </style>

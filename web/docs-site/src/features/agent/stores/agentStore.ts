@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Agent Store 模块
+ * @description 智能代理系统的核心状态管理模块，负责管理会话、消息和代理状态
+ * @author yokami
+ */
+
 import { defineStore, storeToRefs } from 'pinia';
 import { ref, computed, watch, nextTick } from 'vue';
 import { nanoid } from 'nanoid';
@@ -8,10 +14,10 @@ import type { Ref } from 'vue';
 import type { LogEntry } from '@/features/app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
 
-// --- Import types from new module ---
+// --- 导入类型定义 ---
 import type { MessageContentPart, Message, Session, AgentInfo, Command } from '../types';
 
-// --- Import managers and services from new modules ---
+// --- 导入管理器和服务模块 ---
 import { MessageManagerImpl } from './messageManager';
 import { SessionManagerImpl, type SessionManager } from '@/features/agent/services/sessionManager';
 import { PersistenceManagerImpl, sessionsStore, lastUsedRolesStore, forceClearAgentCache } from './persistence';
@@ -90,18 +96,42 @@ export const useAgentStore = defineStore('agent', () => {
   const persistState = persistenceManager.persistState(sessions, activeSessionIds);
 
   // --- Original Store Actions (refactored to use managers/services) ---
+  /**
+   * 切换到指定会话
+   * @description 切换到指定ID的会话，加载会话数据
+   * @param {string} sessionId 要切换到的会话ID
+   * @return {Promise<void>}
+   */
   async function switchSession(sessionId: string): Promise<void> {
     await sessionManager.switchSession(sessionId, currentDomain.value);
   }
 
+  /**
+   * 删除指定会话
+   * @description 删除指定ID的会话，如果删除的是当前会话则创建新会话
+   * @param {string} sessionId 要删除的会话ID
+   */
   function deleteSession(sessionId: string): void {
     sessionManager.deleteSession(sessionId, currentDomain.value, startNewSession);
   }
 
+  /**
+   * 重命名会话
+   * @description 修改指定会话的名称
+   * @param {string} sessionId 要重命名的会话ID
+   * @param {string} newName 新的会话名称
+   */
   function renameSession(sessionId: string, newName: string): void {
     sessionManager.renameSession(sessionId, newName);
   }
 
+  /**
+   * 获取指定域的可用代理列表
+   * @description 从服务器获取指定域的可用代理列表，包含缓存机制
+   * @param {string} domain 域名
+   * @return {Promise<string | null>} 当前激活的角色ID
+   * @throws {Error} 当获取代理列表失败时抛出异常
+   */
   async function fetchAvailableAgents(domain: string): Promise<string | null> {
     if (_isFetchingAgents.value[domain] || availableAgents.value[domain]?.length > 0) {
       return activeRoleId.value[domain];
@@ -133,6 +163,14 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  /**
+   * 创建新会话
+   * @description 在指定域中创建新的聊天会话，加载系统提示词
+   * @param {string} domain 域名
+   * @param {string | null} roleIdToLoad 要加载的角色ID
+   * @return {Promise<void>}
+   * @throws {Error} 当创建会话失败时抛出异常
+   */
   async function startNewSession(domain: string, roleIdToLoad: string | null): Promise<void> {
     await sessionManager.startNewSession(
       domain,
@@ -160,6 +198,13 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  /**
+   * 切换域上下文
+   * @description 切换到指定域，加载对应的代理和会话数据
+   * @param {string} domain 要切换到的域名
+   * @return {Promise<void>}
+   * @throws {Error} 当切换域失败时抛出异常
+   */
   async function switchDomainContext(domain: string): Promise<void> {
     await sessionManager.switchDomainContext(
       domain,
@@ -257,6 +302,13 @@ export const useAgentStore = defineStore('agent', () => {
     );
   }
 
+  /**
+   * 发送消息到当前会话
+   * @description 处理文本、图片和引用文档，构建消息内容并发送
+   * @param {string | { text: string; images?: string[]; references?: any[] }} payload 消息负载，可以是纯文本或包含图片和引用的复合内容
+   * @return {Promise<void>}
+   * @throws {Error} 当发送消息失败时抛出异常
+   */
   async function sendMessage(payload: string | { text: string; images?: string[]; references?: any[] }): Promise<void> {
     // 重置"无工具调用"重试计数器
     // This should be handled by AgentService
@@ -329,6 +381,11 @@ export const useAgentStore = defineStore('agent', () => {
     agentService.startTurn();
   }
 
+  /**
+   * 重置代理
+   * @description 停止当前会话并创建新的会话
+   * @return {Promise<void>}
+   */
   async function resetAgent(): Promise<void> {
     logger.log("Agent Store: 重置 Agent... (将开启新会话)");
     if(currentDomain.value) {

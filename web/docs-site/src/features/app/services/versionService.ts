@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 版本检查服务模块
+ * @description 负责检查服务器数据版本，管理本地缓存清理
+ * @author yokami
+ */
 import localforage from 'localforage';
 import { sessionsStore, lastUsedRolesStore } from '@/features/agent/stores/persistence';
 
@@ -7,8 +12,9 @@ const catalogStore = localforage.createInstance({ name: "catalogTreeCache" });
 const DATA_VERSION_KEY = 'dataVersion'; // 定义用于 localStorage 的键，避免魔法字符串
 
 /**
- * 清除所有应用数据相关的 localforage 实例。
- * @returns {Promise<void[]>} 当所有清除操作完成时解析的 Promise。
+ * 清除所有应用数据相关的 localforage 实例
+ * @description 清理会话、角色和目录树缓存
+ * @return {Promise<void[]>} 当所有清除操作完成时解析的 Promise
  */
 async function clearAllDataCaches(): Promise<void[]> {
   console.log("检测到新数据版本，正在清除本地缓存...");
@@ -21,8 +27,11 @@ async function clearAllDataCaches(): Promise<void[]> {
 }
 
 /**
- * 检查服务器数据版本，并在必要时清除本地缓存。
- * 该函数应在应用初始化时调用。
+ * 检查服务器数据版本，并在必要时清除本地缓存
+ * @description 比较服务器版本和本地版本，如果不匹配则清除所有缓存
+ * 该函数应在应用初始化时调用
+ * @return {Promise<void>}
+ * @throws {Error} 当版本检查失败时抛出异常
  */
 export async function checkVersion(): Promise<void> {
   try {

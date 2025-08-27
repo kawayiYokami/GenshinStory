@@ -1,4 +1,5 @@
 <template>
+  <!-- 智能布局容器：支持并排和覆盖两种布局模式 -->
   <div class="smart-layout-container" :class="{ 'detail-open': showDetail && isSplitMode }">
     <!-- Master 区域（功能区） -->
     <div class="flex flex-col h-full overflow-y-auto overflow-x-hidden items-center master-scrollbar" :class="{ 'master-pane-split': showDetail && isSplitMode }">
@@ -43,18 +44,34 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 智能布局组件
+ * @description 提供响应式布局，支持并排和覆盖两种模式，自动根据屏幕宽度切换
+ * @author yokami
+ */
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { LAYOUT_CONFIG, shouldUseOverlayLayout } from '@/features/app/configs/layoutConfig';
 
+/**
+ * 组件属性接口
+ */
 interface Props {
+  /** 是否显示详情面板 */
   showDetail: boolean;
+  /** 详情面板的ARIA标签 */
   detailAriaLabel?: string;
 }
 
+/**
+ * 组件属性定义
+ */
 const props = withDefaults(defineProps<Props>(), {
   detailAriaLabel: '详情面板'
 });
 
+/**
+ * 组件事件定义
+ */
 const emit = defineEmits<{
   'update:showDetail': [value: boolean];
   'close': [];
@@ -63,33 +80,56 @@ const emit = defineEmits<{
 // 响应式窗口宽度
 const windowWidth = ref(window.innerWidth);
 
-// 监听窗口大小变化
-const handleResize = () => {
+/**
+ * 监听窗口大小变化
+ * @description 响应窗口大小变化事件，更新窗口宽度状态
+ * @param {Event} e 窗口大小变化事件
+ */
+const handleResize = (e: Event) => {
   windowWidth.value = window.innerWidth;
 };
 
+/**
+ * 组件挂载时的生命周期钩子
+ * @description 添加窗口大小变化和键盘事件监听器
+ */
 onMounted(() => {
   window.addEventListener('resize', handleResize);
   document.addEventListener('keydown', handleKeydown);
 });
 
+/**
+ * 组件卸载时的生命周期钩子
+ * @description 清理事件监听器
+ */
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   document.removeEventListener('keydown', handleKeydown);
 });
 
-// 计算布局模式
+/**
+ * 计算布局模式
+ * @description 根据窗口宽度计算使用并排模式还是覆盖模式
+ * @return {boolean} 是否使用并排模式
+ */
 const isSplitMode = computed(() => {
   return !shouldUseOverlayLayout(windowWidth.value);
 });
 
-// 关闭详情面板
+/**
+ * 关闭详情面板
+ * @description 关闭详情面板并触发相应事件
+ */
 const closeDetail = () => {
   emit('update:showDetail', false);
   emit('close');
 };
 
-// 监听ESC键关闭
+/**
+ * 监听ESC键关闭
+ * @description 监听键盘事件，当按下ESC键时关闭详情面板
+ * @param {KeyboardEvent} e 键盘事件
+ */
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && props.showDetail) {
     closeDetail();
@@ -98,6 +138,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 </script>
 
 <style scoped>
+/* 样式区域：负责组件样式 */
 .smart-layout-container {
   display: grid;
   grid-template-columns: 1fr 0fr;

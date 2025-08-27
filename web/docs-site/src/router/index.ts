@@ -1,6 +1,15 @@
+/**
+ * @fileoverview 应用程序路由配置文件
+ * @description 定义Vue路由配置，包括路由守卫和页面导航逻辑
+ * @author yokami
+ */
 import { createRouter, createWebHashHistory } from 'vue-router';
 import { useAppStore } from '@/features/app/stores/app';
 
+/**
+ * 创建Vue路由实例
+ * @description 配置路由历史模式和路由表，支持三面板布局
+ */
 const router = createRouter({
     history: createWebHashHistory(import.meta.env.BASE_URL),
     routes: [
@@ -23,7 +32,7 @@ const router = createRouter({
             name: 'ThemeShowcase',
             component: () => import('@/views/ThemeShowcase.vue')
         },
-        // --- V2 Three-Pane Layout Routes ---
+        // --- V2 三面板布局路由 ---
         {
             path: '/domain/:domain',
             component: () => import('@/layouts/MainLayout.vue'),
@@ -67,7 +76,7 @@ const router = createRouter({
                 }
             ]
         },
-        // Add a catch-all route for 404 pages
+        // 添加404页面的捕获所有路由
         {
             path: '/:pathMatch(.*)*',
             name: 'NotFound',
@@ -76,7 +85,13 @@ const router = createRouter({
     ]
 });
 
-// Global navigation guard to update domain state based on URL
+/**
+ * 全局导航守卫
+ * @description 根据URL更新域名状态，处理域名验证和重定向
+ * @param {RouteLocationNormalized} to 目标路由
+ * @param {RouteLocationNormalized} from 来源路由
+ * @param {NavigationGuardNext} next 下一步回调函数
+ */
 router.beforeEach(async (to, from, next) => {
     console.log('--- Router Navigation ---');
     console.log('From:', { path: from.path, name: from.name });
@@ -84,18 +99,18 @@ router.beforeEach(async (to, from, next) => {
 
     const appStore = useAppStore();
 
-    // Ensure domains are loaded before any route logic
+    // 在任何路由逻辑之前确保域名已加载
     if (appStore.availableDomains.length === 0) {
         await appStore.loadDomains();
     }
 
-    // Handle root redirect after domains are loaded
+    // 在域名加载后处理根重定向
     if (to.name === 'root') {
         const defaultDomain = appStore.availableDomains[0]?.id;
         if (defaultDomain) {
             return next({ path: `/domain/${defaultDomain}/agent` });
         } else {
-            // Handle case where no domains are available
+            // 处理没有可用域名的情况
             return next({ name: 'NotFound' });
         }
     }
@@ -108,7 +123,7 @@ router.beforeEach(async (to, from, next) => {
                 appStore.setCurrentDomain(domain);
             }
         } else {
-            // If domain in URL is invalid, redirect to a default valid one
+            // 如果URL中的域名无效，重定向到默认的有效域名
             const defaultDomain = appStore.availableDomains[0]?.id;
             if (defaultDomain) {
                 return next({ path: `/domain/${defaultDomain}/search` });

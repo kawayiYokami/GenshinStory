@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 代理API服务类
+ * @description 负责与AI API进行通信，处理API调用和流式响应
+ * @author yokami
+ */
 import type { ComputedRef } from 'vue';
 import openaiService from '../../../lib/openai/openaiService';
 import logger from '../../app/services/loggerService';
@@ -5,10 +10,20 @@ import { createPacedStream } from '../../../lib/streaming/streamingService';
 import type { Message } from '../types';
 import type { MessageManager } from '../stores/messageManager';
 
+/**
+ * 代理API服务类
+ * @description 提供与AI API交互的功能，包括消息格式化、API调用和流式响应处理
+ */
 export class AgentApiService {
   private activeConfig: ComputedRef<any>;
   private messageManager: MessageManager;
 
+  /**
+   * 构造函数
+   * @description 初始化API服务，设置消息管理器和配置引用
+   * @param {MessageManager} messageManager 消息管理器
+   * @param {ComputedRef<any>} activeConfig 活跃配置
+   */
   constructor(
     messageManager: MessageManager,
     activeConfig: ComputedRef<any>
@@ -17,6 +32,12 @@ export class AgentApiService {
     this.activeConfig = activeConfig;
   }
 
+  /**
+   * 格式化消息用于API调用
+   * @description 将内部消息格式转换为API兼容格式，过滤掉UI专用消息类型
+   * @param {Message[]} history 消息历史记录
+   * @return {any[]} 格式化后的消息数组
+   */
   private formatMessagesForApi(history: Message[]): any[] {
     const uiOnlyTypes = ['tool_status', 'tool_result', 'error'];
     return history
@@ -47,6 +68,14 @@ export class AgentApiService {
       });
   }
 
+  /**
+   * 调用AI API
+   * @description 向AI API发送聊天完成请求
+   * @param {Message[]} history 消息历史记录
+   * @param {AbortSignal} signal 中止信号
+   * @return {Promise<any>} API响应结果
+   * @throws {Error} 当API调用失败或配置无效时抛出异常
+   */
   public async callApi(history: Message[], signal: AbortSignal): Promise<any> {
     if (!this.activeConfig.value?.apiUrl || !this.activeConfig.value?.apiKey) {
       const errorMsg = "没有激活的有效AI配置。请在设置中选择或创建一个配置。";
@@ -73,6 +102,14 @@ export class AgentApiService {
     }
   }
 
+  /**
+   * 处理流式响应
+   * @description 处理AI API的流式响应，逐步构建助手消息
+   * @param {any} openaiStream OpenAI流式响应
+   * @param {AbortSignal} abortSignal 中止信号
+   * @return {Promise<Message | null>} 创建的助手消息
+   * @throws {Error} 当处理流式响应失败时抛出异常
+   */
   public async handleStream(openaiStream: any, abortSignal: AbortSignal): Promise<Message | null> {
     let assistantMessage: Message | null = null;
     let messageId: string | null = null;

@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 会话管理服务模块
+ * @description 负责管理聊天会话的创建、切换、删除等操作
+ * @author yokami
+ */
 import { ref, type Ref } from 'vue';
 import { nanoid } from 'nanoid';
 import localforage from 'localforage';
@@ -8,18 +13,34 @@ import type { Session, AgentInfo } from '@/features/agent/types';
 const MAX_SESSIONS_PER_DOMAIN = 10;
 
 // --- SessionManager 类型定义 ---
+/**
+ * 会话管理器接口
+ * @description 定义会话管理器的所有操作方法
+ */
 export interface SessionManager {
+  /** 检查会话是否为空 */
   isSessionEmpty(session: Session | null): boolean;
+  /** 切换到指定会话 */
   switchSession(sessionId: string, currentDomain: string | null): Promise<void>;
+  /** 删除指定会话 */
   deleteSession(sessionId: string, currentDomain: string | null, startNewSession: (domain: string, roleIdToLoad: string | null) => Promise<void>): void;
+  /** 重命名会话 */
   renameSession(sessionId: string, newName: string): void;
+  /** 开始新会话 */
   startNewSession(domain: string, roleIdToLoad: string | null, availableAgents: Ref<{ [key: string]: AgentInfo[] }>, activeRoleId: Ref<{ [key: string]: string | null }>, activeAgentName: Ref<string>, lastUsedRolesStore: LocalForage, sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): Promise<void>;
+  /** 切换域上下文 */
   switchDomainContext(domain: string, fetchAvailableAgents: (domain: string) => Promise<string | null>, startNewSession: (domain: string, roleIdToLoad: string | null) => Promise<void>, availableAgents: Ref<{ [key: string]: AgentInfo[] }>, activeRoleId: Ref<{ [key: string]: string | null }>, activeAgentName: Ref<string>, sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): Promise<void>;
+  /** 使用指定代理开始新聊天 */
   startNewChatWithAgent(roleId: string, currentDomain: string | null, currentSession: Session | null, isLoading: Ref<boolean>, stop: () => void, fetchAvailableAgents: (domain: string) => Promise<string | null>, startNewSession: (domain: string, roleIdToLoad: string | null) => Promise<void>, availableAgents: Ref<{ [key: string]: AgentInfo[] }>, activeRoleId: Ref<{ [key: string]: string | null }>, activeAgentName: Ref<string>, lastUsedRolesStore: LocalForage, sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): Promise<string | null>;
+  /** 切换代理 */
   switchAgent(roleId: string, currentDomain: string | null, currentSession: Session | null, isLoading: Ref<boolean>, stop: () => void, fetchAvailableAgents: (domain: string) => Promise<string | null>, startNewSession: (domain: string, roleIdToLoad: string | null) => Promise<void>, availableAgents: Ref<{ [key: string]: AgentInfo[] }>, activeRoleId: Ref<{ [key: string]: string | null }>, activeAgentName: Ref<string>, lastUsedRolesStore: LocalForage, sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): Promise<void>;
 }
 
 // --- SessionManager 实现 ---
+/**
+ * 会话管理器实现类
+ * @description 实现会话管理器接口，提供具体的会话管理功能
+ */
 export class SessionManagerImpl implements SessionManager {
   private sessions: Ref<{ [key: string]: Session }>;
   private activeSessionIds: Ref<{ [key: string]: string | null }>;
@@ -28,6 +49,16 @@ export class SessionManagerImpl implements SessionManager {
   private lastUsedRolesStore: LocalForage;
   private availableAgents: Ref<{ [key: string]: AgentInfo[] }>;
 
+  /**
+   * 构造函数
+   * @description 初始化会话管理器，设置必要的引用
+   * @param {Ref<{ [key: string]: Session }>} sessions 会话存储
+   * @param {Ref<{ [key: string]: string | null }>} activeSessionIds 活跃会话ID存储
+   * @param {Ref<{ [key: string]: string | null }>} activeRoleId 活跃角色ID存储
+   * @param {Ref<string>} activeAgentName 活跃代理名称
+   * @param {LocalForage} lastUsedRolesStore 最后使用角色存储
+   * @param {Ref<{ [key: string]: AgentInfo[] }>} availableAgents 可用代理存储
+   */
   constructor(
     sessions: Ref<{ [key: string]: Session }>,
     activeSessionIds: Ref<{ [key: string]: string | null }>,
