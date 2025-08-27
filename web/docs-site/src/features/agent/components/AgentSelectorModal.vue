@@ -17,7 +17,7 @@
           <h3 class="text-lg font-bold">选择一个角色</h3>
           <button
             @click="closeModal"
-            class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+            class="close-btn absolute right-2 top-2"
           >
             ✕
           </button>

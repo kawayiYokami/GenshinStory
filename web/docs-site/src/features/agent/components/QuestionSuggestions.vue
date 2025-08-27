@@ -6,7 +6,7 @@
         <div
           v-for="(suggestion, index) in question.suggestions"
           :key="index"
-          class="group flex w-full items-center justify-between btn btn-ghost btn-sm h-auto min-h-0 p-3 normal-case text-left transition-all duration-200 hover:bg-primary/5 hover:border-primary/30"
+          class="question-suggestion-btn"
           @click="handleSendSuggestion(suggestion)"
         >
           <span class="flex items-baseline gap-2 flex-1">
@@ -14,7 +14,7 @@
             <span class="text-sm">{{ suggestion }}</span>
           </span>
           <button
-            class="btn btn-circle btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            class="question-suggestion-select-btn"
             @click.stop="handleSelectSuggestion(suggestion)"
             :title="'添加到输入框'"
           >

@@ -1,30 +1,22 @@
 <template>
   <div class="agent-chat-view w-full h-full flex flex-col">
     <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
-      <div class="flex items-center gap-4">
-        <span class="text-lg font-bold">{{ activeAgentName }}</span>
-        <div class="h-4 border-l border-base-content/30"></div>
-        <button @click="handleNewSession" class="btn btn-ghost btn-sm" title="新会话">
-          <PlusIcon class="w-4 h-4" />
-        </button>
-      </div>
+      <AgentNavbarContent
+        :active-agent-name="activeAgentName"
+        @new-session="handleNewSession"
+      />
     </Teleport>
+
     <!-- 对话历史区域 - 可滚动，隐藏滚动条 -->
-    <div class="flex-1 overflow-y-auto scrollbar-hide" ref="historyPanel">
-      <div class="max-w-4xl mx-auto space-y-1 px-4 py-4">
-        <MessageBubble
-          v-for="(message, index) in visibleMessages"
-          :key="message.id"
-          :message="message"
-          :show-raw-content="showRawContent"
-          :is-last-message="index === visibleMessages.length - 1"
-          @select-suggestion="handleSuggestionSelected"
-          @send-suggestion="handleSendSuggestionSelected"
-          @delete-from-here="handleDeleteFrom"
-          @retry="handleRetry"
-        />
-      </div>
-    </div>
+    <ChatHistoryPanel
+      :show-raw-content="showRawContent"
+      :visible-messages="visibleMessages"
+      @select-suggestion="handleSuggestionSelected"
+      @send-suggestion="handleSendSuggestionSelected"
+      @delete-from="handleDeleteFrom"
+      @retry="handleRetry"
+      ref="historyPanelRef"
+    />
 
     <!-- 输入面板 - 固定在底部 -->
     <div class="flex-shrink-0">
@@ -46,18 +38,30 @@
     </div>
 
     <!-- 模态框组件 -->
-    <AgentSelectorModal
-      :visible="isAgentSelectorVisible"
-      :agents="availableAgents[currentDomain] || []"
-      :selected-agent-id="currentRoleId"
-      @close="toggleAgentSelector"
+    <AgentChatModals
+      :is-agent-selector-visible="isAgentSelectorVisible"
+      :available-agents="availableAgents"
+      :current-role-id="currentRoleId"
+      :current-domain="currentDomain"
+      @toggle-agent-selector="toggleAgentSelector"
       @select-agent="handleSelectAgent"
     />
-
   </div>
 </template>
 
 <script setup>
+/**
+ * AgentChatView 组件
+ *
+ * 这是智能体聊天界面的主要视图组件，负责协调聊天界面的各个部分：
+ * - 顶部导航栏内容
+ * - 聊天历史记录面板
+ * - 聊天输入面板
+ * - 相关模态框
+ *
+ * 该组件使用了组合式API (Composition API) 和 Pinia 状态管理。
+ */
+
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
@@ -70,8 +74,9 @@ import logger from '@/features/app/services/loggerService';
 
 // Import components
 import ChatInputPanel from '@/features/agent/components/ChatInputPanel.vue';
-import AgentSelectorModal from '@/features/agent/components/AgentSelectorModal.vue';
-import MessageBubble from '@/features/agent/components/MessageBubble.vue';
+import AgentNavbarContent from '@/features/agent/components/AgentNavbarContent.vue';
+import ChatHistoryPanel from '@/features/agent/components/ChatHistoryPanel.vue';
+import AgentChatModals from '@/features/agent/components/AgentChatModals.vue';
 
 // Import icons
 import { PlusIcon } from '@heroicons/vue/24/outline';
@@ -80,31 +85,54 @@ import { PlusIcon } from '@heroicons/vue/24/outline';
 import { useResponsive } from '@/composables/useResponsive';
 
 // --- Stores ---
+/**
+ * 应用状态存储
+ * 用于获取当前域信息
+ */
 const appStore = useAppStore();
 const { currentDomain } = storeToRefs(appStore);
 
 // --- Responsive ---
+/**
+ * 响应式工具
+ * 用于检测设备是否为移动设备
+ */
 const { isMobile } = useResponsive();
 
-
+/**
+ * 智能体状态存储
+ * 包含聊天消息、加载状态、错误信息等
+ */
 const agentStore = useAgentStore();
 const { isLoading, isProcessing, error, activeAgentName, availableAgents, currentRoleId } = storeToRefs(agentStore);
 const { sendMessage, stopAgent, resetAgent, fetchAvailableAgents, switchAgent, initializeStoreFromCache, retryLastTurn, updateActiveAgentName } = agentStore;
 
+/**
+ * 配置状态存储
+ * 用于获取当前AI配置信息
+ */
 const configStore = useConfigStore();
 const { activeConfig } = storeToRefs(configStore);
 
 // --- Local UI State ---
-const userInput = ref('');
-const historyPanel = ref(null);
-const inputPanelRef = ref(null);
-const isAgentSelectorVisible = ref(false);
-const thinkingTime = ref(0);
-const showRawContent = ref(false);
+/**
+ * 本地UI状态变量
+ * 用于管理组件内部的状态
+ */
+const userInput = ref(''); // 用户输入的内容
+const historyPanelRef = ref(null); // 聊天历史面板的引用
+const inputPanelRef = ref(null); // 输入面板的引用
+const isAgentSelectorVisible = ref(false); // 智能体选择器是否可见
+const thinkingTime = ref(0); // 思考时间计数器
+const showRawContent = ref(false); // 是否显示原始内容
 const isMounted = ref(false); // 用于跟踪组件是否挂载
-let timerInterval = null;
+let timerInterval = null; // 计时器间隔引用
 
 // --- Computed Properties ---
+/**
+ * 计算属性：可见消息列表
+ * 过滤掉隐藏的消息和系统/工具消息，只显示用户和智能体的对话
+ */
 const visibleMessages = computed(() => {
   return agentStore.orderedMessages.filter(m => {
     // 过滤掉所有 is_hidden 的消息，以及所有纯粹的系统/工具消息
@@ -113,7 +141,11 @@ const visibleMessages = computed(() => {
 });
 
 // --- Event Handlers from Child Components ---
-
+/**
+ * 事件处理函数：处理建议选择
+ * 当用户点击建议问题时，将建议文本添加到输入框中
+ * @param {string} suggestionText - 建议的文本内容
+ */
 const handleSuggestionSelected = (suggestionText) => {
   if (userInput.value.trim() !== '') {
     userInput.value += '\n';
@@ -126,41 +158,70 @@ const handleSuggestionSelected = (suggestionText) => {
   });
 };
 
+/**
+ * 事件处理函数：处理建议发送
+ * 当用户点击建议问题的发送按钮时，直接发送建议文本
+ * @param {string} suggestionText - 建议的文本内容
+ */
 const handleSendSuggestionSelected = (suggestionText) => {
   sendMessage(suggestionText);
 };
 
+/**
+ * 事件处理函数：删除消息
+ * 从指定消息开始删除后续所有消息
+ * @param {string} messageId - 消息ID
+ */
 const handleDeleteFrom = (messageId) => {
   agentStore.deleteMessagesFrom(messageId);
 };
 
+/**
+ * 事件处理函数：重试
+ * 重新发送最后一条消息
+ */
 const handleRetry = () => {
   retryLastTurn();
 };
 
+/**
+ * 事件处理函数：选择智能体
+ * 切换当前使用的智能体
+ * @param {string} roleId - 智能体ID
+ */
 const handleSelectAgent = (roleId) => {
   switchAgent(roleId);
   isAgentSelectorVisible.value = false;
 };
 
 // --- Agent & Message Methods ---
-
+/**
+ * 方法：切换智能体选择器
+ * 控制智能体选择器模态框的显示/隐藏
+ */
 const toggleAgentSelector = () => {
   // This is no longer needed as the primary way to switch agents.
   // Kept for the modal's close button functionality if reused.
   isAgentSelectorVisible.value = !isAgentSelectorVisible.value;
 };
 
+/**
+ * 方法：处理消息发送
+ * 处理用户发送消息的逻辑，包括验证配置、停止当前加载等
+ * @param {Object} payload - 发送的消息负载，包含文本和图片
+ */
 const handleSend = async (payload) => {
   // The payload from ChatInputPanel is now an object: { text, images }
   const messageToSend = payload;
 
+  // 验证AI配置是否完整
   if (!activeConfig.value || !activeConfig.value.apiUrl || !activeConfig.value.apiKey) {
     alert("请先完成当前AI配置，API URL 和 API Key 不能为空。");
     // Future improvement: emit an event to the config panel to make it visible
     return;
   }
 
+  // 如果当前正在加载，先停止智能体
   if (isLoading.value) {
     logger.log("--- UI: Sending message while loading. Stopping agent first. ---");
     stopAgent();
@@ -168,6 +229,7 @@ const handleSend = async (payload) => {
     return;
   }
 
+  // 发送消息到智能体
   // Pass the entire payload object to the store
   sendMessage(messageToSend);
 
@@ -177,63 +239,62 @@ const handleSend = async (payload) => {
   inputPanelRef.value?.adjustTextareaHeight();
 };
 
+/**
+ * 方法：重置智能体和稳定列表
+ * 用于开始新的聊天会话
+ */
 const resetAgentAndStableList = () => {
   // This function is now handled by the new-chat-dropdown in AgentConfigPanel
   // Kept here for now to avoid breaking changes if called elsewhere, but can be removed.
   // agentStore.startNewChatWithAgent(currentRoleId.value);
 };
 
-const handleHistoryPanelClick = async (event) => {
-  const target = event.target.closest('.internal-doc-link');
-  if (target && target.dataset.rawLink) {
-    event.preventDefault();
-    const rawLink = target.dataset.rawLink;
-    const result = await linkProcessorService.resolveLink(rawLink);
-    if (result.isValid) {
-      const docViewerStore = useDocumentViewerStore();
-      docViewerStore.open(result.resolvedPath);
-    } else {
-      alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
-    }
-  }
-}
-
-
 // --- Lifecycle & Watchers ---
-
-let mutationObserver = null;
-
+/**
+ * 生命周期钩子：组件挂载时执行
+ * 初始化组件状态，设置滚动监听器等
+ */
 onMounted(() => {
   isMounted.value = true; // 设置组件挂载状态
   // fetchAvailableAgents(currentDomain.value); // This is now handled by MainLayout's orchestrator
-  historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
 
+  /**
+   * 滚动到底部函数
+   * 确保最新的消息始终可见
+   */
   const scrollToBottom = () => {
     // 滚动到底部 - 现在由历史面板自身处理
-    if (historyPanel.value) {
-      historyPanel.value.scrollTo({ top: historyPanel.value.scrollHeight, behavior: 'smooth' });
+    if (historyPanelRef.value?.historyPanel) {
+      historyPanelRef.value.historyPanel.scrollTo({ top: historyPanelRef.value.historyPanel.scrollHeight, behavior: 'smooth' });
     }
   };
 
+  // We still need the mutation observer for scrolling
+  let mutationObserver = null;
   mutationObserver = new MutationObserver(() => {
     scrollToBottom();
   });
 
-  if (historyPanel.value) {
-    mutationObserver.observe(historyPanel.value, {
+  if (historyPanelRef.value?.historyPanel) {
+    mutationObserver.observe(historyPanelRef.value.historyPanel, {
       childList: true,
       subtree: true,
       characterData: true,
     });
   }
+
+  // Clean up observer on unmount
+  onUnmounted(() => {
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+    }
+  });
 });
 
-// This watcher is redundant and was causing race conditions.
-// The MainLayout component is now the single source of truth for orchestrating domain changes.
-// watch(currentDomain, (newDomain) => {
-//   fetchAvailableAgents(newDomain);
-// });
-
+/**
+ * 监听器：监听加载状态变化
+ * 当加载状态改变时，控制思考时间计时器
+ */
 watch([isLoading, isProcessing], ([newIsLoading, newIsProcessing]) => {
   const newValue = newIsLoading || newIsProcessing;
   if (newValue) {
@@ -249,23 +310,29 @@ watch([isLoading, isProcessing], ([newIsLoading, newIsProcessing]) => {
   }
 });
 
-// 添加计算属性检查navbar-content-target元素是否可用
+/**
+ * 计算属性：检查navbar-content-target元素是否可用
+ * 用于确定是否可以将内容传送到导航栏
+ */
 const isNavbarContentTargetAvailable = computed(() => {
   return isMounted.value && typeof document !== 'undefined' && document.getElementById('navbar-content-target') !== null;
 });
 
-// 添加新会话处理函数
+/**
+ * 事件处理函数：处理新会话
+ * 开始一个新的聊天会话
+ */
 const handleNewSession = async () => {
   if (currentRoleId.value) {
     await agentStore.startNewChatWithAgent(currentRoleId.value);
   }
 };
 
+/**
+ * 生命周期钩子：组件卸载时执行
+ * 清理计时器等资源
+ */
 onUnmounted(() => {
-  historyPanel.value?.removeEventListener('click', handleHistoryPanelClick);
-  if (mutationObserver) {
-    mutationObserver.disconnect();
-  }
   if (timerInterval) {
     clearInterval(timerInterval);
   }
@@ -273,13 +340,5 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="postcss">
-/* 隐藏滚动条的样式 */
-.scrollbar-hide {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none; /* WebKit */
-}
+/* 隐藏滚动条的样式已在ChatHistoryPanel中定义 */
 </style>

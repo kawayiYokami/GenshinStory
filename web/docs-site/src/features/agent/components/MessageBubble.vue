@@ -1,7 +1,7 @@
 <template>
   <!-- 用户消息：保持简单的气泡设计 -->
   <div v-if="message.role === 'user'" class="chat chat-end animate-fade-in" style="animation-duration: 0.3s;">
-    <button class="delete-from-here-button btn btn-circle btn-ghost btn-xs" @click="handleDeleteFromHere" title="从此处删除后续对话">
+    <button class="delete-message-btn" @click="handleDeleteFromHere" title="从此处删除后续对话">
       <TrashIcon class="w-4 h-4" />
     </button>
     <div class="chat-bubble chat-bubble-primary">

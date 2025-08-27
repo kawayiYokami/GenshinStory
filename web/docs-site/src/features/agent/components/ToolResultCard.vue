@@ -3,7 +3,7 @@
     <div class="card-body p-4">
       <div class="collapse collapse-arrow bg-base-200/50">
         <input type="checkbox" />
-        <div class="collapse-title flex items-center gap-3 min-h-0 py-3">
+        <div class="tool-result-card">
           <div class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20">
             <InformationCircleIcon class="h-4 w-4 text-info" />
           </div>

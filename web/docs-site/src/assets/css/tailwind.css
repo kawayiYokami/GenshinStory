@@ -510,6 +510,9 @@
   --noise: 0;
 }
 
+/* 导入自定义工具类 */
+@import './utilities.css';
+
 /* 芙宁娜主题 - 蓝色调 */
 @plugin "daisyui/theme" {
   name: "furina";
