@@ -13,9 +13,9 @@
     </div>
     <div
       tabindex="0"
-      :class="`dropdown-content bg-base-100 rounded-box z-[1] ${width} shadow-xl border-0`"
+      class="dropdown-content bg-base-100 rounded-box z-[1] min-w-[200px] shadow-xl border-0"
     >
-      <div class="max-h-60 overflow-y-auto">
+      <div class="max-h-120 overflow-y-auto">
         <ul class="p-2 space-y-1">
           <li v-if="placeholder && !modelValue">
             <div class="px-3 py-2 text-base-content/50">{{ placeholder }}</div>

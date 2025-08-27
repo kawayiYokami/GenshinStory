@@ -11,7 +11,6 @@ declare module 'vue' {
     DropdownMenu: typeof import('./src/components/ui/DropdownMenu.vue')['default']
     DropdownMenuItem: typeof import('./src/components/ui/DropdownMenuItem.vue')['default']
     FormInput: typeof import('./src/components/forms/FormInput.vue')['default']
-    FormSelect: typeof import('./src/components/forms/FormSelect.vue')['default']
     MarkdownRenderer: typeof import('./src/components/ui/MarkdownRenderer.vue')['default']
     NavigationDrawer: typeof import('./src/components/NavigationDrawer.vue')['default']
     ResizablePanes: typeof import('./src/components/ResizablePanes.vue')['default']

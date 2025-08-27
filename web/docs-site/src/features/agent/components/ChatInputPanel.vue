@@ -64,59 +64,20 @@
       <!-- 左侧工具组 -->
       <div class="flex gap-1">
         <!-- AI 供应商选择 -->
-        <div class="dropdown dropdown-top">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-xs gap-1">
-            <CubeIcon class="w-4 h-4" />
-            <span class="truncate max-w-[60px]">{{ activeConfig?.name || 'AI' }}</span>
-            <ChevronUpIcon class="w-3 h-3" />
-          </div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-64 shadow-xl border-0">
-            <div class="max-h-60 overflow-y-auto">
-              <ul class="p-2 space-y-1">
-                <li v-for="config in configs" :key="config.id">
-                  <a @click="handleConfigChange(config.id)"
-                     class="px-3 py-2 rounded-lg transition-colors flex items-center justify-between"
-                     :class="{
-                       'bg-primary text-primary-content': config.id === activeConfigId,
-                       'hover:bg-base-200': config.id !== activeConfigId
-                     }">
-                    <span class="truncate">{{ config.name }}</span>
-                    <span v-if="config.id === activeConfigId" class="text-xs font-bold">✓</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <DaisyDropdown
+          :model-value="activeConfigId || undefined"
+          :options="configOptions"
+          placeholder="选择配置"
+          @update:modelValue="value => handleConfigChange(value as string)"
+        />
 
         <!-- 模型选择 -->
-        <div class="dropdown dropdown-top">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-xs gap-1">
-            <SparklesIcon class="w-4 h-4" />
-            <span class="truncate max-w-[80px]">{{ currentModel || 'Model' }}</span>
-            <ChevronUpIcon class="w-3 h-3" />
-          </div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-80 shadow-xl border-0">
-            <div class="max-h-64 overflow-y-auto">
-              <ul class="p-3 space-y-2">
-                <li v-if="!activeConfig?.availableModels || activeConfig.availableModels.length === 0">
-                  <div class="p-3 opacity-70 text-center">请先设置有效的 API Key</div>
-                </li>
-                <li v-for="model in activeConfig?.availableModels || []" :key="model">
-                  <a @click="handleModelChange(model)"
-                     class="p-3 rounded-lg transition-colors flex items-center justify-between"
-                     :class="{
-                       'bg-primary text-primary-content': model === currentModel,
-                       'hover:bg-base-200': model !== currentModel
-                     }">
-                    <span class="truncate font-medium">{{ model }}</span>
-                    <span v-if="model === currentModel" class="text-sm bg-primary-content text-primary px-2 py-1 rounded font-bold">✓ 当前</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <DaisyDropdown
+          :model-value="currentModel || undefined"
+          :options="modelOptions"
+          placeholder="选择模型"
+          @update:modelValue="value => handleModelChange(value as string)"
+        />
       </div>
 
       <!-- 右侧工具组 -->
@@ -154,13 +115,11 @@ import { useAppStore } from '@/features/app/stores/app';
 import { storeToRefs } from 'pinia';
 import type { AgentInfo } from '@/features/agent/types';
 import ReferenceDropdown from './ReferenceDropdown.vue';
+import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
 import debounce from 'lodash.debounce';
 import {
-  ChevronUpIcon,
   PaperAirplaneIcon,
   StopIcon,
-  CubeIcon,
-  SparklesIcon,
   PlusCircleIcon,
   ClockIcon,
   DocumentTextIcon,
@@ -254,6 +213,22 @@ let referenceStartPos = -1;
 const hasAttachments = computed(() =>
   attachedImages.value.length > 0 || attachedReferences.value.length > 0
 );
+
+// 下拉框选项
+const configOptions = computed(() => {
+  return configs.value.map(config => ({
+    value: config.id,
+    label: config.name
+  }));
+});
+
+const modelOptions = computed(() => {
+  if (!activeConfig.value?.availableModels) return []
+  return activeConfig.value.availableModels.map(model => ({
+    value: model,
+    label: model
+  }))
+});
 
 // 当前智能体
 const currentAgent = computed(() => {

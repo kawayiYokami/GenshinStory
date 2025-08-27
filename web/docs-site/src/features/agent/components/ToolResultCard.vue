@@ -8,7 +8,6 @@
             <InformationCircleIcon class="h-4 w-4 text-info" />
           </div>
           <span class="font-medium text-sm">研究记录</span>
-          <div class="badge badge-info badge-xs">点击查看</div>
         </div>
         <div class="collapse-content">
           <div class="divider mt-0 mb-3"></div>
