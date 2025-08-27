@@ -7,6 +7,7 @@ import type { Config } from '@/features/app/stores/config';
  * @class OpenaiService
  * @description 管理 OpenAI 客户端实例并处理 API 调用。
  * 此服务确保 OpenAI 客户端始终配置为应用程序配置存储中的最新设置。
+ * 已修复CORS问题：移除X-Stainless-*请求头
  */
 class OpenaiService {
     private openai: OpenAI | null = null;
@@ -34,6 +35,20 @@ class OpenaiService {
             baseURL: apiUrl,
             dangerouslyAllowBrowser: true, // 客户端使用所必需。
             timeout: 300 * 1000, // 5分钟超时
+            defaultHeaders: {
+                // 移除导致CORS问题的请求头，使用null值（网上验证的有效方法）
+                'x-stainless-arch': null,
+                'x-stainless-lang': null,
+                'x-stainless-os': null,
+                'x-stainless-package-version': null,
+                'x-stainless-retry-count': null,
+                'x-stainless-runtime': null,
+                'x-stainless-runtime-version': null,
+                'x-stainless-timeout': null,
+                'x-stainless-async': null,
+                // 设置为Python客户端的User-Agent，避免被识别为浏览器客户端
+                'User-Agent': 'OpenAI/Python 1.14.3'
+            }
         });
 
         this.currentConfig = { apiKey, baseURL: apiUrl };
