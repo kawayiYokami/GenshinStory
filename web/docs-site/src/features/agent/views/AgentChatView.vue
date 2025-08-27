@@ -37,9 +37,7 @@
           :is-processing="isProcessing"
           :active-agent-name="activeAgentName"
           :thinking-time="thinkingTime"
-          :show-history-panel="isHistoryPanelVisible"
           :show-raw-content="showRawContent"
-          @update:show-history-panel="isHistoryPanelVisible = $event"
           @update:show-raw-content="showRawContent = $event"
           @send="handleSend"
           @stop="stopAgent"
@@ -56,10 +54,6 @@
       @select-agent="handleSelectAgent"
     />
 
-    <SessionHistoryPanel
-      :visible="isHistoryPanelVisible"
-      @close="isHistoryPanelVisible = false"
-    />
   </div>
 </template>
 
@@ -78,7 +72,6 @@ import logger from '@/features/app/services/loggerService';
 import ChatInputPanel from '@/features/agent/components/ChatInputPanel.vue';
 import AgentSelectorModal from '@/features/agent/components/AgentSelectorModal.vue';
 import MessageBubble from '@/features/agent/components/MessageBubble.vue';
-import SessionHistoryPanel from '@/features/agent/components/SessionHistoryPanel.vue';
 
 // Import icons
 import { PlusIcon } from '@heroicons/vue/24/outline';
@@ -106,7 +99,6 @@ const userInput = ref('');
 const historyPanel = ref(null);
 const inputPanelRef = ref(null);
 const isAgentSelectorVisible = ref(false);
-const isHistoryPanelVisible = ref(false);
 const thinkingTime = ref(0);
 const showRawContent = ref(false);
 const isMounted = ref(false); // 用于跟踪组件是否挂载

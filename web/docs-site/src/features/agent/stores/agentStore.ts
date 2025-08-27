@@ -68,7 +68,7 @@ export const useAgentStore = defineStore('agent', () => {
   watch(currentSession, (newSession) => {
     (messageManager as MessageManagerImpl).setCurrentSession(newSession || null);
   });
-  
+
   const sessionManager: SessionManager = new SessionManagerImpl(
     sessions,
     activeSessionIds,
@@ -78,14 +78,14 @@ export const useAgentStore = defineStore('agent', () => {
     availableAgents
   );
   const persistenceManager = new PersistenceManagerImpl();
-  
+
   // Create AgentService with dependencies
   const agentService = new AgentService(
     messageManager,
     currentSession,
     activeConfig
   );
-  
+
   // Create persist function
   const persistState = persistenceManager.persistState(sessions, activeSessionIds);
 
@@ -93,7 +93,7 @@ export const useAgentStore = defineStore('agent', () => {
   async function switchSession(sessionId: string): Promise<void> {
     await sessionManager.switchSession(sessionId, currentDomain.value);
   }
-  
+
   function deleteSession(sessionId: string): void {
     sessionManager.deleteSession(sessionId, currentDomain.value, startNewSession);
   }
@@ -101,7 +101,7 @@ export const useAgentStore = defineStore('agent', () => {
   function renameSession(sessionId: string, newName: string): void {
     sessionManager.renameSession(sessionId, newName);
   }
-  
+
   async function fetchAvailableAgents(domain: string): Promise<string | null> {
     if (_isFetchingAgents.value[domain] || availableAgents.value[domain]?.length > 0) {
       return activeRoleId.value[domain];
@@ -144,7 +144,7 @@ export const useAgentStore = defineStore('agent', () => {
       sessions,
       activeSessionIds
     );
-    
+
     // Add system message after session is created
     const newSessionId = activeSessionIds.value[domain];
     if (newSessionId) {
@@ -171,7 +171,7 @@ export const useAgentStore = defineStore('agent', () => {
       sessions,
       activeSessionIds
     );
-    
+
     // 确保为当前会话加载正确的系统提示词
     const sessionId = activeSessionIds.value[domain];
     if (sessionId && sessions.value[sessionId]) {
@@ -235,7 +235,7 @@ export const useAgentStore = defineStore('agent', () => {
       });
     }
   }
-  
+
   async function switchAgent(roleId: string): Promise<void> {
     const domain = currentDomain.value;
     if (!domain) return;
@@ -261,7 +261,7 @@ export const useAgentStore = defineStore('agent', () => {
     // 重置"无工具调用"重试计数器
     // This should be handled by AgentService
     // noToolCallRetries.value = 0;
-    
+
     if (!currentSession.value) {
       const initError = "没有激活的会话。";
       logger.error(initError);
@@ -313,7 +313,7 @@ export const useAgentStore = defineStore('agent', () => {
         });
       }
     }
-    
+
     if (contentPayload.length === 0) {
       logger.warn("调用 sendMessage 但负载为空。");
       return;
@@ -325,7 +325,7 @@ export const useAgentStore = defineStore('agent', () => {
                ? contentPayload[0].text!
                : contentPayload,
     });
-    
+
     agentService.startTurn();
   }
 
@@ -355,7 +355,7 @@ export const useAgentStore = defineStore('agent', () => {
     stopAgent();
     const session = currentSession.value;
     if (!session) return;
-    
+
     const index = session.messageIds.indexOf(messageId);
     if (index === -1) {
       logger.warn(`[AgentStore] 尝试从一个不存在的消息 ID 删除: ${messageId}`);
@@ -363,7 +363,7 @@ export const useAgentStore = defineStore('agent', () => {
     }
 
     const idsToRemove = session.messageIds.splice(index);
-    
+
     logger.log(`[AgentStore] 正在从 ${messageId} 开始删除 ${idsToRemove.length} 条消息。`);
     for (const id of idsToRemove) {
       delete session.messagesById[id];
@@ -386,7 +386,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   async function initializeStoreFromCache(): Promise<void> {
     await persistenceManager.initializeStoreFromCache(sessions, activeSessionIds);
-    
+
     // Set up watchers after initialization
     watch(sessions, persistState, { deep: true });
     watch(activeSessionIds, persistState, { deep: true });
@@ -403,7 +403,7 @@ export const useAgentStore = defineStore('agent', () => {
     currentSession, activeAgentName, availableAgents, currentRoleId, messagesById,
     orderedMessages, consecutiveToolErrors, consecutiveAiTurns,
     isProcessing, // Exposed from AgentService
-    
+
     // Actions
     switchDomainContext, fetchAvailableAgents, switchAgent, startNewSession,
     sendMessage, stopAgent, resetAgent,
@@ -417,6 +417,8 @@ export const useAgentStore = defineStore('agent', () => {
     // SessionManager actions (proxies or direct)
     switchSession, deleteSession, renameSession, startNewChatWithAgent,
     markAllAsSent, deleteMessagesFrom, initializeStoreFromCache,
+    // SessionManager utility methods
+    isSessionEmpty: (session: Session | null) => sessionManager.isSessionEmpty(session),
     markMessageAsRendered(messageId: string) {
       const message = messagesById.value[messageId];
       if (message && message.status === 'rendering') {

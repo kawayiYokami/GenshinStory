@@ -253,7 +253,7 @@ const currentDomainSessions = computed(() => {
 });
 
 const getSessionSummary = (session: Session): string => {
-  if (!session || session.messageIds.length === 0) return '空会话';
+  if (agentStore.isSessionEmpty(session)) return '空会话';
 
   for (const msgId of session.messageIds) {
     const msg = session.messagesById[msgId];

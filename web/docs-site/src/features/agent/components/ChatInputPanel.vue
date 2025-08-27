@@ -175,10 +175,6 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-  showHistoryPanel: {
-    type: Boolean,
-    default: false,
-  },
   showRawContent: {
     type: Boolean,
     default: false,

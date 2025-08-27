@@ -9,6 +9,7 @@ const MAX_SESSIONS_PER_DOMAIN = 10;
 
 // --- SessionManager 类型定义 ---
 export interface SessionManager {
+  isSessionEmpty(session: Session | null): boolean;
   switchSession(sessionId: string, currentDomain: string | null): Promise<void>;
   deleteSession(sessionId: string, currentDomain: string | null, startNewSession: (domain: string, roleIdToLoad: string | null) => Promise<void>): void;
   renameSession(sessionId: string, newName: string): void;
@@ -43,6 +44,10 @@ export class SessionManagerImpl implements SessionManager {
     this.availableAgents = availableAgents;
   }
 
+  isSessionEmpty(session: Session | null): boolean {
+    return !session || session.messageIds.length <= 1;
+  }
+
   async switchSession(sessionId: string, currentDomain: string | null): Promise<void> {
     if (!currentDomain || !this.sessions.value[sessionId] || this.activeSessionIds.value[currentDomain] === sessionId) return;
 
@@ -54,15 +59,38 @@ export class SessionManagerImpl implements SessionManager {
       return;
     }
 
-    this.activeSessionIds.value[currentDomain] = sessionId;
-    this.activeRoleId.value[currentDomain] = targetRoleId;
-    await this.lastUsedRolesStore.setItem(currentDomain, targetRoleId);
-    
-    this.updateActiveAgentName(currentDomain);
+    // 检查当前会话是否为空
+    const currentSessionId = this.activeSessionIds.value[currentDomain];
+    const currentSession = currentSessionId ? this.sessions.value[currentSessionId] : null;
 
-    logger.log(`[SessionManager] 已切换到会话 ${sessionId} (Agent: ${targetRoleId})。`);
+    if (this.isSessionEmpty(currentSession) && currentSession && currentSessionId !== sessionId) {
+      logger.log(`[SessionManager] 当前会话为空。正在转换到目标会话 ${sessionId}。`);
+
+      // 转换逻辑：将当前空会话转换为目标会话
+      currentSession.roleId = targetRoleId;
+      currentSession.messagesById = { ...targetSession.messagesById };
+      currentSession.messageIds = [...targetSession.messageIds];
+
+      // 删除目标会话（因为已经转换到当前会话）
+      delete this.sessions.value[sessionId];
+
+      // 更新activeRoleId
+      this.activeRoleId.value[currentDomain] = targetRoleId;
+      await this.lastUsedRolesStore.setItem(currentDomain, targetRoleId);
+
+      this.updateActiveAgentName(currentDomain);
+      logger.log(`[SessionManager] 已将空会话 ${currentSessionId} 转换为会话 ${sessionId} (Agent: ${targetRoleId})。`);
+    } else {
+      // 正常切换逻辑
+      this.activeSessionIds.value[currentDomain] = sessionId;
+      this.activeRoleId.value[currentDomain] = targetRoleId;
+      await this.lastUsedRolesStore.setItem(currentDomain, targetRoleId);
+
+      this.updateActiveAgentName(currentDomain);
+      logger.log(`[SessionManager] 已切换到会话 ${sessionId} (Agent: ${targetRoleId})。`);
+    }
   }
-  
+
   deleteSession(sessionId: string, currentDomain: string | null, startNewSession: (domain: string, roleIdToLoad: string | null) => Promise<void>): void {
     if (!currentDomain || !this.sessions.value[sessionId]) return;
 
@@ -75,7 +103,7 @@ export class SessionManagerImpl implements SessionManager {
       logger.log(`[SessionManager] 已删除会话 ${sessionId}。`);
     }
   }
-  
+
   renameSession(sessionId: string, newName: string): void {
     if (this.sessions.value[sessionId]) {
       this.sessions.value[sessionId].name = newName;
@@ -90,10 +118,10 @@ export class SessionManagerImpl implements SessionManager {
       this.activeAgentName.value = agent.name;
     }
   }
-  
+
   async startNewSession(
-    domain: string, 
-    roleIdToLoad: string | null, 
+    domain: string,
+    roleIdToLoad: string | null,
     availableAgents: Ref<{ [key: string]: AgentInfo[] }>,
     activeRoleId: Ref<{ [key: string]: string | null }>,
     activeAgentName: Ref<string>,
@@ -133,7 +161,7 @@ export class SessionManagerImpl implements SessionManager {
         messagesById: {},
         messageIds: [],
       };
-      
+
       sessions.value[newSessionId] = newSession;
       activeSessionIds.value[domain] = newSessionId;
 
@@ -195,12 +223,12 @@ export class SessionManagerImpl implements SessionManager {
   ): Promise<string | null> {
     const domain = currentDomain;
     if (!domain || !roleId) return null;
-  
+
     logger.log(`[AgentStore] 用户请求以 agent '${roleId}' 开始新聊天。`);
-    
+
     const session = currentSession;
     const isSessionEmpty = !session || session.messageIds.length <= 1;
-  
+
     if (isSessionEmpty && session) {
       logger.log(`[AgentStore] 当前会话为空。正在为新 agent 转换它。`);
       isLoading.value = true;
@@ -221,7 +249,7 @@ export class SessionManagerImpl implements SessionManager {
       return null;
     }
   }
-  
+
   async switchAgent(
     roleId: string,
     currentDomain: string | null,
