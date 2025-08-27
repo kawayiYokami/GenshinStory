@@ -54,8 +54,12 @@ const formattedTitle = computed(() => {
   const path = docViewerStore.documentPath;
   if (!path) return '';
 
-  // Extracts "三月七-1001" from "characters/三月七-1001.md"
-  const filename = path.split('/').pop().replace('.md', '');
+  // 安全获取文件名
+  const pathParts = path.split('/');
+  const lastPart = pathParts[pathParts.length - 1];
+  if (!lastPart) return '';
+
+  const filename = lastPart.replace('.md', '');
 
   // Extracts "三月七" and "1001"
   const match = filename.match(/^(.*?)-(\d+)$/);
