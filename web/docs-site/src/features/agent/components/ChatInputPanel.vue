@@ -131,7 +131,7 @@
           <WrenchIcon class="w-4 h-4" />
         </button>
 
-        
+
       </div>
     </div>
 
@@ -191,6 +191,7 @@ const router = useRouter();
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
 const { availableAgents, currentRoleId } = storeToRefs(agentStore);
+const { switchAgent, resetAgent } = agentStore;
 
 
 // Props
@@ -242,7 +243,7 @@ const toggleDebugPanel = () => {
 };
 
 // Reference states
-const dropdownRef = ref<any>(null);
+const dropdownRef = ref<InstanceType<typeof ReferenceDropdown> | null>(null);
 const showDropdown = ref(false);
 const referenceItems = ref<ReferenceItem[]>([]);
 const isProcessingReference = ref(false);

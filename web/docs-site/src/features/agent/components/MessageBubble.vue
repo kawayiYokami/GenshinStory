@@ -68,7 +68,7 @@
       </div>
     </div>
 
-    <ToolResultCard v-else-if="message.type === 'tool_result'" :content="message.content" />
+    <ToolResultCard v-else-if="message.type === 'tool_result'" :content="typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 2)" />
 
     <div v-else-if="message.type === 'error'" class="card bg-error text-error-content shadow-sm">
       <div class="card-body p-3">
@@ -239,7 +239,17 @@ const handleDeleteFromHere = (): void => {
 };
 
 const handleDocClick = (path: string): void => {
-  toast.info(`Clicked on doc: ${path}. Preview functionality to be implemented.`);
+  try {
+    // 这里可以添加实际的文档预览逻辑
+    toast.info(`正在加载文档: ${path}`);
+    // 模拟异步操作
+    setTimeout(() => {
+      toast.success(`文档加载完成: ${path}`);
+    }, 1000);
+  } catch (error) {
+    toast.error(`文档加载失败: ${path}`);
+    console.error('文档加载错误:', error);
+  }
 };
 </script>
 

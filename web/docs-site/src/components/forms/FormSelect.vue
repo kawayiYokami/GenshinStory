@@ -12,6 +12,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { VNode } from 'vue'
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue'
 
 interface Option {
@@ -38,11 +39,11 @@ defineEmits(['update:modelValue', 'change'])
 const slots = defineSlots()
 const options = computed(() => {
   if (!slots.default) return []
-  
+
   const slotContent = slots.default()
   const options: Option[] = []
-  
-  slotContent.forEach(node => {
+
+  slotContent.forEach((node: VNode) => {
     if (node.type === 'option' && node.props) {
       options.push({
         value: node.props.value,
@@ -51,7 +52,7 @@ const options = computed(() => {
       })
     }
   })
-  
+
   return options
 })
 
