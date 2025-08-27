@@ -52,6 +52,13 @@
                   </svg>
                   新建
                 </button>
+                <button
+                  @click="openNoKeyModal"
+                  class="btn btn-sm btn-secondary"
+                  title="获取免费API Key"
+                >
+                  我没有key
+                </button>
               </div>
             </div>
 
@@ -232,10 +239,23 @@
     </div>
 
   </div>
+
+  <!-- No Key Modal -->
+  <dialog id="no-key-modal" class="modal">
+    <div class="modal-box w-11/12 max-w-5xl">
+      <h3 class="text-lg font-bold">获取免费API Key</h3>
+      <div v-html="modalContent"></div>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn">关闭</button>
+        </form>
+      </div>
+    </div>
+  </dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { useConfigStore } from '@/features/app/stores/config';
@@ -296,6 +316,118 @@ const domains = [
   { id: 'hsr', name: '星穹铁道' },
 ];
 
+// Modal content
+const modalContent = ref('');
+
+// Load modal content
+const loadModalContent = async () => {
+  try {
+    const response = await fetch('/prompts/no_key_modal_content.md');
+    if (response.ok) {
+      const text = await response.text();
+      // 简单的markdown转html转换
+      let html = text.replace(/^# (.*$)/gim, '<p class="py-4">$1</p>');
+      html = html.replace(/^## (.*$)/gim, '<h4 class="card-title">$1</h4>');
+      html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+      html = html.replace(/^(?!<[hpl]).*$/gim, '<p>$&</p>');
+      html = html.replace(/<li>/g, '<ul class="list-disc pl-5"><li>').replace(/<\/li>/g, '</li></ul>');
+      modalContent.value = html;
+    } else {
+      // Fallback content if file not found
+      modalContent.value = `<p class="py-4">以下是一些获取免费API额度的地方，您可以根据需要选择：</p>
+      <div class="space-y-4">
+        <div class="card card-border bg-base-100">
+          <div class="card-body">
+            <h4 class="card-title text-info">魔塔社区</h4>
+            <p>提供免费的AI API额度，支持多种模型。</p>
+            <div class="card-actions justify-end">
+              <a href="https://www.motacommunity.com/" target="_blank" class="btn btn-sm btn-info">访问网站</a>
+            </div>
+          </div>
+        </div>
+        <div class="card card-border bg-base-100">
+          <div class="card-body">
+            <h4 class="card-title text-success">硅基流动</h4>
+            <p>提供AI模型API服务，支持多种Qwen模型。</p>
+            <div class="card-actions justify-end">
+              <a href="https://siliconflow.cn/" target="_blank" class="btn btn-sm btn-success">访问网站</a>
+            </div>
+          </div>
+        </div>
+        <div class="card card-border bg-base-100">
+          <div class="card-body">
+            <h4 class="card-title text-warning">OpenRouter</h4>
+            <p>聚合多个AI模型提供商的服务，通常有免费额度。</p>
+            <div class="card-actions justify-end">
+              <a href="https://openrouter.ai/" target="_blank" class="btn btn-sm btn-warning">访问网站</a>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 h-6 w-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <h5 class="font-bold">推荐设置</h5>
+            <p>OpenRouter推荐国外使用，推荐模型<strong>deepseekv3.1</strong>、<strong>deepseekv0324</strong>。<br>
+            魔塔社区推荐国内使用，推荐模型如<strong>Qwen3-235B-A22B-Instruct-2507</strong>、<strong>Qwen/Qwen3-Coder-30B-A3B-Instruct</strong>。<br>
+            <strong>DeepSeek</strong>作为角色扮演模型，智谱的<strong>GLM</strong>系列模型有较多免费额度可用。</p>
+          </div>
+        </div>
+      </div>`;
+    }
+  } catch (error) {
+    console.error('Failed to load modal content:', error);
+    // Use fallback content
+    modalContent.value = `<p class="py-4">以下是一些获取免费API额度的地方，您可以根据需要选择：</p>
+      <div class="space-y-4">
+        <div class="card card-border bg-base-100">
+          <div class="card-body">
+            <h4 class="card-title text-info">魔塔社区</h4>
+            <p>提供免费的AI API额度，支持多种模型。</p>
+            <div class="card-actions justify-end">
+              <a href="https://www.motacommunity.com/" target="_blank" class="btn btn-sm btn-info">访问网站</a>
+            </div>
+          </div>
+        </div>
+        <div class="card card-border bg-base-100">
+          <div class="card-body">
+            <h4 class="card-title text-success">硅基流动</h4>
+            <p>提供AI模型API服务，支持多种Qwen模型。</p>
+            <div class="card-actions justify-end">
+              <a href="https://siliconflow.cn/" target="_blank" class="btn btn-sm btn-success">访问网站</a>
+            </div>
+          </div>
+        </div>
+        <div class="card card-border bg-base-100">
+          <div class="card-body">
+            <h4 class="card-title text-warning">OpenRouter</h4>
+            <p>聚合多个AI模型提供商的服务，通常有免费额度。</p>
+            <div class="card-actions justify-end">
+              <a href="https://openrouter.ai/" target="_blank" class="btn btn-sm btn-warning">访问网站</a>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 h-6 w-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <h5 class="font-bold">推荐设置</h5>
+            <p>OpenRouter推荐国外使用，推荐模型<strong>deepseekv3.1</strong>、<strong>deepseekv0324</strong>。<br>
+            魔塔社区推荐国内使用，推荐模型如<strong>Qwen3-235B-A22B-Instruct-2507</strong>、<strong>Qwen/Qwen3-Coder-30B-A3B-Instruct</strong>。<br>
+            <strong>DeepSeek</strong>作为角色扮演模型，智谱的<strong>GLM</strong>系列模型有较多免费额度可用。</p>
+          </div>
+        </div>
+      </div>`;
+  }
+};
+
+// Load content on mount
+onMounted(() => {
+  loadModalContent();
+});
+
 // Methods
 const handleAddNewConfig = () => {
   logger.log('--- UI: AddNewConfig button clicked. ---');
@@ -343,7 +475,14 @@ const switchDomain = (domain: string) => {
     appStore.setCurrentDomain(domain);
     router.push(`/domain/${domain}/settings`);
   }
-}
+};
+
+const openNoKeyModal = () => {
+  const modal = document.getElementById('no-key-modal') as HTMLDialogElement;
+  if (modal) {
+    modal.showModal();
+  }
+};
 </script>
 
 <style scoped>
