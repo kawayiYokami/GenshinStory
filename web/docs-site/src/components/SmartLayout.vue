@@ -166,13 +166,21 @@ const handleKeydown = (e: KeyboardEvent) => {
   position: fixed;
   right: 0;
   top: var(--navbar-height);
-  width: min(var(--detail-pane-width), 100vw - 2rem); /* 不超过屏幕宽度，留出边距 */
-  max-width: 100%; /* 确保不会超出 */
+  width: 100vw; /* 移动端占满屏幕 */
+  max-width: 100%;
   height: calc(100dvh - var(--navbar-height));
   background-color: var(--color-surface);
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  box-shadow: none; /* 移除阴影，因为已经占满屏幕 */
   z-index: var(--overlay-z-index);
   animation: slideIn var(--transition-duration) ease;
+}
+
+/* 桌面端保持原有样式 */
+@media (min-width: 768px) {
+  .detail-pane-overlay {
+    width: min(var(--detail-pane-width), 100vw - 2rem);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .detail-pane-header {
