@@ -3,7 +3,7 @@
     <div
       tabindex="0"
       role="button"
-      class="btn btn-sm btn-ghost flex items-center gap-1 min-w-[120px] justify-between"
+      class="btn btn-sm btn-outline flex items-center gap-1 min-w-[120px] justify-between bg-base-100 border-base-content/20"
       :class="{ 'btn-disabled': disabled }"
     >
       <span class="truncate">{{ displayValue }}</span>
@@ -13,7 +13,7 @@
     </div>
     <div
       tabindex="0"
-      class="dropdown-content bg-base-100 rounded-box z-[1] min-w-[200px] shadow-xl border-0"
+      class="dropdown-content bg-base-100 rounded-box min-w-[200px] shadow-xl border-0"
     >
       <div class="max-h-120 overflow-y-auto">
         <ul class="p-2 space-y-1">

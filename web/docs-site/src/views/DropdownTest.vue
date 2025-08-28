@@ -18,7 +18,7 @@
         <h2 class="text-xl font-semibold mb-4">基础列表容器下拉框</h2>
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn m-1">基础列表容器</div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-64 shadow-lg border">
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box w-64 shadow-lg border">
             <ul class="p-2 space-y-1">
               <li>
                 <a class="block px-3 py-2 hover:bg-base-200 rounded-lg transition-colors">
@@ -45,7 +45,7 @@
         <h2 class="text-xl font-semibold mb-4">带滚动的列表容器</h2>
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn m-1">滚动列表容器</div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-64 shadow-lg border">
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box w-64 shadow-lg border">
             <div class="max-h-48 overflow-y-auto">
               <ul class="p-2 space-y-1">
                 <li v-for="i in 15" :key="i">
@@ -64,7 +64,7 @@
         <h2 class="text-xl font-semibold mb-4">模型选择列表容器</h2>
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn m-1">选择AI模型</div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-80 shadow-lg border">
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box w-80 shadow-lg border">
             <div class="max-h-64 overflow-y-auto">
               <ul class="p-3 space-y-2">
                 <li v-for="model in aiModels" :key="model.id">
@@ -89,7 +89,7 @@
             </svg>
             选择功能
           </div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-72 shadow-lg border">
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box w-72 shadow-lg border">
             <div class="max-h-56 overflow-y-auto">
               <ul class="p-2 space-y-1">
                 <li v-for="feature in features" :key="feature.id">
@@ -116,7 +116,7 @@
         <h2 class="text-xl font-semibold mb-4">分组列表容器</h2>
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn m-1">分组选项</div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-80 shadow-lg border">
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box w-80 shadow-lg border">
             <div class="max-h-72 overflow-y-auto">
               <div class="p-2">
                 <div v-for="group in groupedOptions" :key="group.category" class="mb-4 last:mb-0">
@@ -142,7 +142,7 @@
         <h2 class="text-xl font-semibold mb-4">超大列表容器</h2>
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn m-1">超大选择器</div>
-          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box z-[1] w-[600px] shadow-lg border">
+          <div tabindex="0" class="dropdown-content bg-base-100 rounded-box w-[600px] shadow-lg border">
             <div class="max-h-96 overflow-y-auto">
               <ul class="p-4 space-y-3">
                 <li v-for="item in largeList" :key="item.id">

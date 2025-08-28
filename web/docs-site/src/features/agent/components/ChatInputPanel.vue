@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col gap-2 card bg-base-200 shadow-lg">
+  <div class="flex flex-col gap-2 card bg-base-200 rounded-3xl">
     <!-- 主要输入区域 -->
-    <div class="flex flex-col gap-2 px-4 pt-3">
+    <div class="flex flex-col gap-2 px-2 pt-2">
       <!-- 状态指示器（极简） -->
       <div v-if="isLoading || isProcessing" class="flex gap-1 py-1">
         <div class="thinking-dot"></div>
@@ -34,11 +34,12 @@
     </div>
 
     <!-- 工具栏 -->
-    <div class="flex justify-between items-center px-4 pb-3">
+    <div class="flex justify-between items-center px-2 pb-2">
       <!-- 左侧工具组 -->
       <div class="flex gap-1">
         <!-- AI 供应商选择 -->
         <DaisyDropdown
+          class="transparent-dropdown"
           :model-value="activeConfigId || undefined"
           :options="configOptions"
           placeholder="选择配置"
@@ -47,6 +48,7 @@
 
         <!-- 模型选择 -->
         <DaisyDropdown
+          class="transparent-dropdown"
           :model-value="currentModel || undefined"
           :options="modelOptions"
           placeholder="选择模型"
@@ -230,11 +232,18 @@ const updateCurrentModel = (model: string) => {
 };
 
 const handleConfigChange = (configId: string) => {
-  // Handle config change
+  if (configId) {
+    setActiveConfig(configId);
+  }
 };
 
 const handleModelChange = (model: string) => {
-  // Handle model change
+  // 更新当前模型
+  currentModel.value = model;
+  // 保存到配置中
+  if (activeConfig.value && activeConfigId.value) {
+    configStore.updateConfig(activeConfigId.value, { modelName: model });
+  }
 };
 
 const handleSend = (payload: { text: string; images: string[]; references: AttachmentItem[] }) => {
@@ -335,5 +344,33 @@ defineExpose({
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* 无边框透明下拉框样式 */
+.transparent-dropdown :deep(.btn) {
+  background: transparent;
+  border-color: transparent;
+}
+
+.transparent-dropdown :deep(.btn:hover) {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+
+.transparent-dropdown :deep(.dropdown-content) {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.transparent-dropdown :deep(.dropdown-content li:hover) {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.transparent-dropdown :deep(.dropdown-content li[aria-selected="true"]) {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: rgb(59, 130, 246) !important;
 }
 </style>

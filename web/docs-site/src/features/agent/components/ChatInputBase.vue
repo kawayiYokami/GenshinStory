@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-end gap-2 p-3 bg-base-300 rounded-xl transition-all duration-200 focus-within:bg-base-300/80">
+  <div class="flex items-end gap-2 p-2 bg-base-200 rounded-3xl transition-all duration-200 focus-within:bg-base-200/80">
     <textarea
       ref="textareaRef"
       :value="modelValue"
