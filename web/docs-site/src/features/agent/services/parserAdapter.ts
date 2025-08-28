@@ -167,16 +167,40 @@ export function parseMultipleToolCalls(xmlString: string): {
     }
 
     const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs', 'ask']
+    
+    // 工具名称别名映射
+    const TOOL_ALIASES: Record<string, string> = {
+      'read': 'read_doc',
+      'read_file': 'read_doc',
+      'read_document': 'read_doc',
+      'open': 'read_doc',
+      'show': 'read_doc',
+      'search': 'search_docs',
+      'find': 'search_docs',
+      'list': 'list_docs',
+      'ls': 'list_docs',
+      'dir': 'list_docs',
+      'question': 'ask',
+      'query': 'ask'
+    }
 
     for (const toolName of toolNodes) {
+      let finalToolName = toolName
+      
+      // 检查是否是别名
       if (!VALID_TOOLS.includes(toolName)) {
-        errors.push(createParserError(
-          'INVALID_TOOL',
-          `无效的工具名称 "${toolName}"`,
-          'warn',
-          { tool: toolName }
-        ))
-        continue
+        if (TOOL_ALIASES[toolName]) {
+          finalToolName = TOOL_ALIASES[toolName]
+          logger.warn(`[ParserAdapter] 工具名称别名映射: ${toolName} -> ${finalToolName}`)
+        } else {
+          errors.push(createParserError(
+            'INVALID_TOOL',
+            `无效的工具名称 "${toolName}"`,
+            'warn',
+            { tool: toolName }
+          ))
+          continue
+        }
       }
 
       const toolData = result.root[toolName]
@@ -185,7 +209,7 @@ export function parseMultipleToolCalls(xmlString: string): {
       const xml = extractOriginalToolXml(xmlString, toolName)
 
       calls.push({
-        name: toolName,
+        name: finalToolName,
         params,
         xml,
       })
@@ -464,23 +488,36 @@ export function parseAskCall(xmlString: string): {
 
   const params = calls[0].params
 
+  // 自动补全 question
+  const question = params.question || '请选择'
   if (!params.question) {
-    logger.warn('[ParserAdapter] ask 调用缺少 question')
-    return null
+    logger.warn('[ParserAdapter] ask 调用缺少 question，自动补全为"请选择"')
   }
 
-  const suggestions = Array.isArray(params.suggest)
+  // 处理 suggestions，限制在2-4个之间
+  let suggestions = Array.isArray(params.suggest)
     ? params.suggest.filter((s: any) => typeof s === 'string')
     : []
 
-  if (suggestions.length < 2 || suggestions.length > 4) {
-    logger.warn(`[ParserAdapter] ask 调用建议数量错误: ${suggestions.length}`)
-    return null
+  // 如果没有 suggestions，尝试从其他字段获取
+  if (suggestions.length === 0 && params.suggestions) {
+    suggestions = Array.isArray(params.suggestions)
+      ? params.suggestions.filter((s: any) => typeof s === 'string')
+      : []
+  }
+
+  // 限制建议数量
+  if (suggestions.length > 4) {
+    logger.warn(`[ParserAdapter] ask 调用建议过多 (${suggestions.length})，只保留前4个`)
+    suggestions = suggestions.slice(0, 4)
+  } else if (suggestions.length < 2 && suggestions.length > 0) {
+    // 如果只有1个建议，这不太合理，但也可以接受
+    logger.warn(`[ParserAdapter] ask 调用建议过少 (${suggestions.length})`)
   }
 
   return {
     xml: calls[0].xml,
-    question: params.question,
+    question: question,
     suggestions,
   }
 }
