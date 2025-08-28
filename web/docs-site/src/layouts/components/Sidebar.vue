@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Cog6ToothIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { useAgentStore, type Session } from '@/features/agent/stores/agentStore';
@@ -250,6 +250,51 @@ const handleMenuToggle = (menuType: string) => {
     activeMenu.value = null
   }
 }
+
+// 页面类型判断函数
+const getPageType = (path: string): string => {
+  if (path.includes('/agent') || path.includes('/chat')) {
+    return 'agent'
+  } else if (path.includes('/search') || path.includes('/docs') || path.includes('/wiki')) {
+    return 'knowledge'
+  }
+  return 'other'
+}
+
+const getTargetMenuForPath = (path: string): string | null => {
+  const pageType = getPageType(path)
+  switch (pageType) {
+    case 'agent':
+      return 'session'
+    case 'knowledge':
+      return 'wiki'
+    default:
+      return null
+  }
+}
+
+const isPageTypeChanged = (newPath: string, oldPath: string): boolean => {
+  return getPageType(newPath) !== getPageType(oldPath)
+}
+
+// 处理路由变化
+const handleRouteChange = (newPath: string, oldPath: string) => {
+  if (isPageTypeChanged(newPath, oldPath)) {
+    const targetMenu = getTargetMenuForPath(newPath)
+    if (targetMenu && activeMenu.value !== targetMenu) {
+      activeMenu.value = targetMenu
+    }
+  }
+}
+
+// 监听路由变化
+watch(() => route.path, (newPath, oldPath) => {
+  if (oldPath) { // 避免初始加载时触发
+    nextTick(() => {
+      handleRouteChange(newPath, oldPath)
+    })
+  }
+})
 </script>
 
 <style scoped>

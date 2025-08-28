@@ -3,9 +3,7 @@
 .*
 .__pycache__/
 AnimeGameData/
-GenshinCompanion-Ele/
 turnbasedgamedata/
-notebook/
 scraper/
 logs/
 test_outputs/
