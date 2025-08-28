@@ -1,6 +1,6 @@
 <template>
   <div class="card card-compact bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
-    <div class="card-body">
+    <div class="card-body p-2">
       <div class="tool-call-card">
         <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
           <!-- Search Icon -->
