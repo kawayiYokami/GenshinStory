@@ -6,10 +6,25 @@
       </label>
     </div>
 
-    <div class="flex-1 flex justify-center items-center px-4" id="navbar-content-target"></div>
+    <div class="flex-1 flex justify-center items-center h-full p-1" id="navbar-content-target"></div>
+
+    <div class="flex-none">
+      <a @click="navigateToSearch" class="btn btn-ghost btn-square">
+        <MagnifyingGlassIcon class="h-5 w-5" />
+      </a>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Bars3Icon } from '@heroicons/vue/24/outline';
+import { Bars3Icon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const navigateToSearch = () => {
+  // 获取当前域
+  const currentDomain = localStorage.getItem('currentDomain') || 'default';
+  router.push(`/domain/${currentDomain}/search`);
+};
 </script>

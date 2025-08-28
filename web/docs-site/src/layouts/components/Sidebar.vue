@@ -4,17 +4,19 @@
     <div class="bg-base-200 text-base-content h-full w-80 grid grid-rows-[auto_1fr_auto]">
       <!-- Header -->
       <div class="p-4 flex justify-between items-center border-b border-base-300/50 bg-base-200/80 backdrop-blur-md">
-        <ul class="menu menu-horizontal bg-base-200 rounded-box gap-2">
-          <li v-for="domain in domains" :key="domain.id">
-            <a @click="switchDomain(domain.id)" :class="{ 'bg-primary text-primary-content': domain.id === appStore.currentDomain }">
-              {{ domain.name }}
-            </a>
-          </li>
-        </ul>
+        <div class="tabs tabs-border">
+          <input
+            v-for="domain in domains"
+            :key="domain.id"
+            type="radio"
+            name="domain_tabs"
+            class="tab"
+            :aria-label="domain.name"
+            :checked="domain.id === appStore.currentDomain"
+            @change="switchDomain(domain.id)"
+          />
+        </div>
         <div class="flex items-center">
-          <a @click="navigateTo(`/domain/${appStore.currentDomain}/search`)" class="btn btn-ghost btn-square">
-            <MagnifyingGlassIcon class="h-5 w-5" />
-          </a>
           <label for="drawer" aria-label="close sidebar" class="btn btn-square btn-ghost btn-sm lg:hidden">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -28,9 +30,10 @@
         <ul class="menu p-4 w-full">
           <!-- Wiki -->
           <li>
-            <details>
+            <details ref="wikiMenu" @toggle="handleMenuToggle('wiki')" :open="activeMenu === 'wiki'">
               <summary class="font-semibold">档案库</summary>
-              <ul class="mt-2">
+              <Transition name="slide" mode="out-in">
+                <ul v-if="activeMenu === 'wiki'" class="mt-2">
                 <li v-for="navItem in wikiNavigationItems" :key="navItem.id">
                   <a @click="navigateTo(getNavPath(navItem))">
                     <NavigationIcon :icon-name="navItem.id" />
@@ -38,6 +41,7 @@
                   </a>
                 </li>
               </ul>
+              </Transition>
             </details>
           </li>
 
@@ -46,15 +50,17 @@
 
           <!-- Agent List -->
           <li>
-            <details>
+            <details ref="agentMenu" @toggle="handleMenuToggle('agent')" :open="activeMenu === 'agent'">
               <summary class="font-semibold">向研究员提问</summary>
-              <ul class="mt-2 space-y-1 px-4">
+              <Transition name="slide" mode="out-in">
+                <ul v-if="activeMenu === 'agent'" class="mt-2 space-y-1 px-4">
                 <li v-for="agent in availableAgentsForCurrentDomain" :key="agent.id">
                   <a @click="handleStartChatWithAgent(agent.id)" class="block p-2 rounded-lg hover:bg-base-300">
                     {{ agent.name }}
                   </a>
                 </li>
               </ul>
+              </Transition>
             </details>
           </li>
 
@@ -63,9 +69,10 @@
 
           <!-- Session History -->
           <li>
-            <details open>
+            <details ref="sessionMenu" @toggle="handleMenuToggle('session')" :open="activeMenu === 'session'">
               <summary class="font-semibold">会话历史</summary>
-              <ul class="mt-2 space-y-1">
+              <Transition name="slide" mode="out-in">
+                <ul v-if="activeMenu === 'session'" class="mt-2 space-y-1">
                 <li v-for="session in currentDomainSessions" :key="session.id" :class="{ 'bordered': session.id === activeSessionId }" class="group">
                   <a @click="handleSwitchSession(session.id)" class="block p-2 rounded-lg relative">
                     <div class="font-semibold truncate">{{ getSessionSummary(session) }}</div>
@@ -78,6 +85,7 @@
                   </a>
                 </li>
               </ul>
+              </Transition>
             </details>
           </li>
         </ul>
@@ -99,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Cog6ToothIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { useAgentStore, type Session } from '@/features/agent/stores/agentStore';
@@ -209,6 +217,39 @@ const handleDeleteSession = (sessionId: string) => {
     emit('deleteSession', sessionId);
   }
 };
+
+// 互斥菜单管理
+const wikiMenu = ref<HTMLDetailsElement>()
+const agentMenu = ref<HTMLDetailsElement>()
+const sessionMenu = ref<HTMLDetailsElement>()
+const activeMenu = ref<string | null>('session') // 默认展开会话历史
+
+const handleMenuToggle = (menuType: string) => {
+  // 获取对应菜单元素
+  const menuMap = {
+    wiki: wikiMenu.value,
+    agent: agentMenu.value,
+    session: sessionMenu.value
+  }
+
+  const currentMenu = menuMap[menuType as keyof typeof menuMap]
+
+  // 如果当前菜单正在展开，则更新activeMenu
+  if (currentMenu && currentMenu.open) {
+    activeMenu.value = menuType
+
+    // 关闭其他菜单
+    Object.entries(menuMap).forEach(([type, menu]) => {
+      if (type !== menuType && menu && menu.open) {
+        menu.open = false
+      }
+    })
+  }
+  // 如果当前菜单正在收起，且是当前激活菜单，则清空activeMenu
+  else if (currentMenu && !currentMenu.open && activeMenu.value === menuType) {
+    activeMenu.value = null
+  }
+}
 </script>
 
 <style scoped>
@@ -252,7 +293,45 @@ li.bordered a .session-actions {
   scrollbar-color: transparent transparent; /* thumb track */
 }
 
+/* Tab transition effects */
+.tab {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab:checked {
+  transform: scale(1.05);
+}
+
 .sidebar-scrollable:hover {
    scrollbar-color: hsl(var(--bc) / 0.4) transparent;
+}
+
+/* 菜单动画 */
+.slide-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.slide-enter-from {
+  opacity: 0;
+  max-height: 0;
+}
+
+.slide-enter-to {
+  opacity: 1;
+  max-height: 500px;
+}
+
+.slide-leave-from {
+  opacity: 1;
+  max-height: 500px;
+}
+
+.slide-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 </style>

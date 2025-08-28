@@ -1,15 +1,20 @@
 <template>
   <div class="search-view w-full h-full flex flex-col bg-base-100">
     <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
-      <div class="flex items-center gap-2 w-full max-w-md">
+      <div class="relative h-full w-full max-w-md">
         <input
           type="text"
           v-model="searchQuery"
           placeholder="在当前知识领域内搜索..."
-          class="input input-bordered input-sm w-full"
+          class="input input-sm h-full w-full bg-base-300 border-none pr-10"
           @keyup.enter="performSearch"
         />
-        <button @click="performSearch" class="btn btn-ghost btn-sm" :disabled="isSearching || isLoading" title="搜索">
+        <button
+          @click="performSearch"
+          class="absolute right-2 top-1/2 transform -translate-y-1/2 btn btn-ghost btn-sm btn-circle z-10"
+          :disabled="isSearching || isLoading"
+          title="搜索"
+        >
           <MagnifyingGlassIcon class="w-4 h-4" />
         </button>
       </div>
@@ -277,6 +282,24 @@ const isNavbarContentTargetAvailable = computed(() => {
   outline: none;
   border-color: hsl(var(--bc) / 0.2);
   box-shadow: none;
+}
+
+/* 为内部按钮留出空间 */
+:deep(.input) {
+  padding-right: 2.5rem !important;
+}
+
+/* 确保内部按钮样式 */
+:deep(.input-container button) {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  z-index: 10;
+}
+
+:deep(.input-container button:hover) {
+  background-color: hsl(var(--bc) / 0.1);
 }
 
 /* 保留必要的滚动条样式（DaisyUI没有提供） */

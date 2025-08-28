@@ -1,8 +1,8 @@
 <template>
-  <div class="max-w-3xl w-full mx-auto p-4">
+  <div class="max-w-3xl h-full w-full mx-auto p-4">
     <Teleport to="#navbar-content-target" v-if="isNavbarContentTargetAvailable">
-      <div class="form-control w-full max-w-xs">
-        <input type="text" placeholder="在当前结果中过滤..." class="input input-bordered input-sm w-full" v-model="filterKeyword" />
+      <div class="form-control h-full w-full max-w-xs">
+        <input type="text" placeholder="在当前结果中过滤..." class="input input-bordered input-sm h-full w-full bg-base-300 border-none" v-model="filterKeyword" />
       </div>
     </Teleport>
     <!-- 加载状态 -->
