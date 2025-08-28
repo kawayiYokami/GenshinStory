@@ -27,7 +27,7 @@
 import { computed, onMounted, watch, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTheme } from '@/composables/useTheme';
-import { Bars3Icon, Cog6ToothIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { Menu, Settings, Plus, Edit, Trash2, Search } from 'lucide-vue-next';
 import { useAgentStore, type Session } from '@/features/agent/stores/agentStore';
 import { useAppStore } from '@/features/app/stores/app';
 import { useDataStore } from '@/features/app/stores/data';

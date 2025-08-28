@@ -15,7 +15,7 @@
 - **Headless UI** - 无样式的可访问 UI 组件
 - **DaisyUI v5+** - 基于 Tailwind CSS 的组件库
 - **Tailwind CSS v4** - 原子化 CSS 框架
-- **Heroicons** - 精美的手工制作 SVG 图标库
+- **Lucide-vue-next** - 现代化的 SVG 图标库
 
 ### 开发规范
 
@@ -38,7 +38,7 @@
 ##### 使用优先级
 1. **DaisyUI 组件类**：`btn`, `card`, `modal`, `drawer` 等语义化组件
 2. **Tailwind 工具类**：`p-4`, `flex`, `text-lg` 等原子化样式
-3. **Heroicons 图标**：`@heroicons/vue` 提供的 SVG 图标组件
+3. **Lucide 图标**：`lucide-vue-next` 提供的 SVG 图标组件
 4. **Headless UI**：`ui-*` 前缀的可访问性功能
 5. **自定义 Vue 组件**：封装复杂业务逻辑
 
@@ -49,13 +49,13 @@
   <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
       <h2 class="card-title text-primary">
-        <CubeIcon class="w-5 h-5" />
+        <Menu class="w-5 h-5" />
         {{ title }}
       </h2>
       <p class="text-base-content text-sm">{{ content }}</p>
       <div class="card-actions justify-end">
         <button class="btn btn-primary">
-          <PaperAirplaneIcon class="w-4 h-4" />
+          <Send class="w-4 h-4" />
           操作
         </button>
       </div>
@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { CubeIcon, PaperAirplaneIcon } from '@heroicons/vue/24/outline'
+import { Menu, Send } from 'lucide-vue-next'
 </script>
 ```
 
@@ -161,7 +161,7 @@ src/
 - [Tailwind CSS 官方文档](https://tailwindcss.com/)
 - [DaisyUI 官方文档](https://daisyui.com/)
 - [Headless UI 官方文档](https://headlessui.com/)
-- [Heroicons 官方文档](https://heroicons.com/)
+- [Lucide 官方文档](https://lucide.dev/)
 
 ---
 

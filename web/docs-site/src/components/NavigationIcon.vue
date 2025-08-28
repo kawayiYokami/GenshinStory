@@ -5,21 +5,21 @@
 <script setup>
 import { computed } from 'vue';
 
-// 导入所有需要的 Heroicons (Outline 版本)
+// 导入所有需要的 Lucide icons
 import {
-  ChatBubbleLeftRightIcon,
-  MagnifyingGlassIcon,
-  UserGroupIcon,
-  SparklesIcon,
-  StarIcon,
-  CubeIcon,
-  BookOpenIcon,
-  DocumentTextIcon,
-  ClockIcon,
-  ShieldCheckIcon,
-  ClipboardDocumentListIcon,
-  LightBulbIcon
-} from '@heroicons/vue/24/outline';
+  MessageCircle,
+  Search,
+  Users,
+  Sparkles,
+  Star,
+  Box,
+  BookOpen,
+  FileText,
+  Clock,
+  ShieldCheck,
+  ClipboardList,
+  Lightbulb
+} from 'lucide-vue-next';
 
 const props = defineProps({
   iconName: {
@@ -28,47 +28,47 @@ const props = defineProps({
   }
 });
 
-// 图标名称到 Heroicon 组件的映射
+// 图标名称到 Lucide 组件的映射
 const iconMap = {
   // 问答/聊天图标
-  'chat': ChatBubbleLeftRightIcon,
-  'agent': ChatBubbleLeftRightIcon,
+  'chat': MessageCircle,
+  'agent': MessageCircle,
   
   // 搜索图标
-  'search': MagnifyingGlassIcon,
+  'search': Search,
   
   // 角色/用户图标
-  'character': UserGroupIcon,
-  'characters': UserGroupIcon,
+  'character': Users,
+  'characters': Users,
   
   // 武器/光锥图标
-  'weapon': SparklesIcon,
-  'lightcones': SparklesIcon,
+  'weapon': Sparkles,
+  'lightcones': Sparkles,
   
   // 圣遗物/遗器图标
-  'relicset': StarIcon,
-  'relics': ShieldCheckIcon,
+  'relicset': Star,
+  'relics': ShieldCheck,
   
   // 材料图标
-  'material': CubeIcon,
-  'materials': CubeIcon,
+  'material': Box,
+  'materials': Box,
   
   // 书籍/文档图标
-  'book': BookOpenIcon,
-  'books': BookOpenIcon,
-  'readable': DocumentTextIcon,
-  'messages': DocumentTextIcon,
+  'book': BookOpen,
+  'books': BookOpen,
+  'readable': FileText,
+  'messages': FileText,
   
   // 任务图标
-  'quest': ClipboardDocumentListIcon,
-  'missions': ClipboardDocumentListIcon,
+  'quest': ClipboardList,
+  'missions': ClipboardList,
   
   // 其他图标
-  'miracles': LightBulbIcon,
-  'rogue_events': StarIcon
+  'miracles': Lightbulb,
+  'rogue_events': Star
 };
 
 const iconComponent = computed(() => {
-  return iconMap[props.iconName] || StarIcon; // 默认图标
+  return iconMap[props.iconName] || Star; // 默认图标
 });
 </script>

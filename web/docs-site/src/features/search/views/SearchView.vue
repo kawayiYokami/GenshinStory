@@ -15,7 +15,7 @@
           :disabled="isSearching || isLoading"
           title="搜索"
         >
-          <MagnifyingGlassIcon class="w-4 h-4" />
+          <Search class="w-4 h-4" />
         </button>
       </div>
     </Teleport>
@@ -34,12 +34,12 @@
         </div>
 
         <div v-else-if="error" class="alert alert-error">
-          <ExclamationTriangleIcon class="w-5 h-5" />
+          <TriangleAlert class="w-5 h-5" />
           <span>{{ error }}</span>
         </div>
 
         <div v-else-if="hasSearched && results.length === 0" class="flex flex-col items-center justify-center py-12 text-base-content/60">
-          <MagnifyingGlassIcon class="w-16 h-16 mb-4 opacity-30" />
+          <Search class="w-16 h-16 mb-4 opacity-30" />
           <p class="text-lg font-medium mb-2">未找到相关内容</p>
           <p class="text-sm">未找到与 "{{ searchQuery }}" 相关的内容</p>
         </div>
@@ -54,7 +54,7 @@
         </div>
 
         <div v-else class="flex flex-col items-center justify-center py-12 text-base-content/60">
-          <MagnifyingGlassIcon class="w-16 h-16 mb-4 opacity-30" />
+          <Search class="w-16 h-16 mb-4 opacity-30" />
           <p class="text-lg font-medium mb-2">开始搜索</p>
           <p class="text-sm">在上方输入框中输入关键词开始搜索</p>
         </div>
@@ -71,10 +71,10 @@ import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { storeToRefs } from 'pinia';
 import { useResponsive } from '@/composables/useResponsive';
 import {
-  MagnifyingGlassIcon,
-  ExclamationTriangleIcon,
-  ChevronRightIcon
-} from '@heroicons/vue/24/outline';
+  Search,
+  TriangleAlert,
+  ChevronRight
+} from 'lucide-vue-next';
 import { CategoryAccordion } from '@/components/shared';
 
 // --- 类型定义 ---

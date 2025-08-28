@@ -23,7 +23,7 @@
           <!-- 主要颜色带图标 -->
           <div class="flex gap-1">
             <div class="w-10 h-10 rounded bg-primary flex items-center justify-center">
-              <ArrowUpIcon class="w-5 h-5 text-primary-content" />
+              <ArrowUp class="w-5 h-5 text-primary-content" />
             </div>
             <div class="w-10 h-10 rounded bg-secondary flex items-center justify-center">
               <ArrowUpIcon class="w-5 h-5 text-secondary-content" />
@@ -78,7 +78,7 @@
 import { computed } from 'vue'
 import { useThemeStore } from '@/features/app/stores/themeStore'
 import type { ThemeName } from '@/features/app/stores/themeStore'
-import { ArrowUpIcon } from '@heroicons/vue/24/outline'
+import { ArrowUp } from 'lucide-vue-next'
 
 const themeStore = useThemeStore()
 

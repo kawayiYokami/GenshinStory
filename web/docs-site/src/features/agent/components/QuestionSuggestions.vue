@@ -18,7 +18,7 @@
             @click.stop="handleSelectSuggestion(suggestion)"
             :title="'添加到输入框'"
           >
-            <ArrowDownLeftIcon class="w-4 h-4" />
+            <CornerDownLeft class="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowDownLeftIcon } from '@heroicons/vue/24/outline';
+import { CornerDownLeft } from 'lucide-vue-next';
 
 // 类型定义
 interface Question {

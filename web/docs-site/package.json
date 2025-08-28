@@ -21,6 +21,7 @@
     "js-yaml": "^4.1.0",
     "localforage": "^1.10.0",
     "lodash.debounce": "^4.0.8",
+    "lucide-vue-next": "^0.542.0",
     "markdown-it": "^14.1.0",
     "nanoid": "^5.0.7",
     "openai": "^5.11.0",

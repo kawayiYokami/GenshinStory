@@ -82,7 +82,7 @@ import ChatHistoryPanel from '@/features/agent/components/ChatHistoryPanel.vue';
 import AgentChatModals from '@/features/agent/components/AgentChatModals.vue';
 
 // Import icons
-import { PlusIcon } from '@heroicons/vue/24/outline';
+import { Plus } from 'lucide-vue-next';
 
 // Import composables
 import { useResponsive } from '@/composables/useResponsive';

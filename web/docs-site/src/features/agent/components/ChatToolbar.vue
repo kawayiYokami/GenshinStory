@@ -28,7 +28,7 @@
         class="debug-panel-btn"
         title="调试面板"
       >
-        <WrenchIcon class="w-4 h-4" />
+        <Wrench class="w-4 h-4" />
       </button>
     </div>
   </div>
@@ -40,7 +40,7 @@ import { useConfigStore } from '@/features/app/stores/config';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 import { storeToRefs } from 'pinia';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
-import { WrenchIcon } from '@heroicons/vue/24/outline';
+import { Wrench } from 'lucide-vue-next';
 
 // Stores
 const configStore = useConfigStore();

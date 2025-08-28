@@ -1,17 +1,17 @@
 <template>
   <div v-if="hasAttachments" class="flex flex-wrap gap-2">
     <div v-for="(ref, index) in attachedReferences" :key="(ref as AttachmentItem).path" class="badge badge-neutral gap-1.5 max-w-[200px]">
-      <DocumentTextIcon class="w-4 h-4" />
+      <FileText class="w-4 h-4" />
       <span class="truncate">{{ (ref as AttachmentItem).name }}</span>
       <button @click="removeReference(index)" class="attachment-btn">
-        <XMarkIcon class="w-3 h-3" />
+        <X class="w-3 h-3" />
       </button>
     </div>
     <div v-for="(image, index) in attachedImages" :key="index" class="badge badge-neutral gap-1.5">
-      <PhotoIcon class="w-4 h-4" />
+      <Image class="w-4 h-4" />
       <span>图片 {{ index + 1 }}</span>
       <button @click="removeImage(index)" class="attachment-btn">
-        <XMarkIcon class="w-3 h-3" />
+        <X class="w-3 h-3" />
       </button>
     </div>
   </div>
@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DocumentTextIcon, PhotoIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { FileText, Image, X } from 'lucide-vue-next';
 
 interface AttachmentItem {
   path: string;

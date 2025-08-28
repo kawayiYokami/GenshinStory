@@ -24,8 +24,8 @@
       class="btn btn-circle btn-primary btn-sm w-8 h-8 min-h-8"
       :title="isLoading ? '停止生成' : '发送消息'"
     >
-      <StopIcon v-if="isLoading" class="w-5 h-5" />
-      <PaperAirplaneIcon v-else class="w-5 h-5" />
+      <Square v-if="isLoading" class="w-5 h-5" />
+      <Send v-else class="w-5 h-5" />
     </button>
   </div>
 </template>
@@ -42,15 +42,15 @@ import ReferenceDropdown from './ReferenceDropdown.vue';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
 import debounce from 'lodash.debounce';
 import {
-  PaperAirplaneIcon,
-  StopIcon,
-  PlusCircleIcon,
-  ClockIcon,
-  DocumentTextIcon,
-  PhotoIcon,
-  XMarkIcon,
-  WrenchIcon
-} from '@heroicons/vue/24/outline';
+  Send,
+  Square,
+  CirclePlus,
+  Clock,
+  FileText,
+  Image,
+  X,
+  Wrench
+} from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 
 interface ReferenceItem {

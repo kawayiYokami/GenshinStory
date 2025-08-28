@@ -37,7 +37,7 @@
       class="btn btn-sm btn-ghost"
       @click="handleClose"
     >
-      <XMarkIcon class="w-4 h-4" />
+      <X class="w-4 h-4" />
     </button>
   </div>
 </template>
@@ -45,11 +45,11 @@
 <script setup>
 import { computed } from 'vue'
 import {
-  InformationCircleIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  XMarkIcon
-} from '@heroicons/vue/24/outline'
+  Info,
+  TriangleAlert,
+  CircleCheck,
+  X
+} from 'lucide-vue-next'
 
 const props = defineProps({
   type: {
@@ -95,10 +95,10 @@ const visible = computed({
 })
 
 const iconMap = {
-  info: InformationCircleIcon,
-  success: CheckCircleIcon,
-  warning: ExclamationTriangleIcon,
-  error: ExclamationTriangleIcon
+  info: Info,
+  success: CircleCheck,
+  warning: TriangleAlert,
+  error: TriangleAlert
 }
 
 const iconComponent = computed(() => iconMap[props.type])

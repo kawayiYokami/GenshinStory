@@ -5,7 +5,7 @@
         <input type="checkbox" />
         <div class="tool-result-card p-0">
           <div class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20">
-            <InformationCircleIcon class="h-4 w-4 text-info" />
+            <Info class="h-4 w-4 text-info" />
           </div>
           <span class="font-medium text-sm">资料</span>
         </div>
@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { InformationCircleIcon } from '@heroicons/vue/24/outline';
+import { Info } from 'lucide-vue-next';
 
 interface Props {
   content?: string;

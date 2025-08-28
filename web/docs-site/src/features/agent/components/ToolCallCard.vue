@@ -4,13 +4,13 @@
       <div class="tool-call-card">
         <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
           <!-- Search Icon -->
-          <MagnifyingGlassIcon v-if="toolCall.name === 'search_docs'" class="h-4 w-4 text-primary" />
+          <Search v-if="toolCall.name === 'search_docs'" class="h-4 w-4 text-primary" />
           <!-- Read Doc Icon -->
-          <DocumentTextIcon v-else-if="toolCall.name === 'read_doc'" class="h-4 w-4 text-primary" />
+          <FileText v-else-if="toolCall.name === 'read_doc'" class="h-4 w-4 text-primary" />
           <!-- List Docs Icon -->
-          <ListBulletIcon v-else-if="toolCall.name === 'list_docs'" class="h-4 w-4 text-primary" />
+          <List v-else-if="toolCall.name === 'list_docs'" class="h-4 w-4 text-primary" />
           <!-- Default/Generic Tool Icon -->
-          <WrenchScrewdriverIcon v-else class="h-4 w-4 text-primary" />
+          <Wrench v-else class="h-4 w-4 text-primary" />
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-primary">{{ formattedToolName }}</div>
@@ -24,11 +24,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import {
-  MagnifyingGlassIcon,
-  DocumentTextIcon,
-  ListBulletIcon,
-  WrenchScrewdriverIcon
-} from '@heroicons/vue/24/outline';
+  Search,
+  FileText,
+  List,
+  Wrench
+} from 'lucide-vue-next';
 
 interface ToolCall {
   name: string;

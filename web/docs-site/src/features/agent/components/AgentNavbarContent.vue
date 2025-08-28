@@ -3,7 +3,7 @@
     <span class="text-lg font-bold">{{ activeAgentName }}</span>
     <div class="h-4 border-l border-base-content/30"></div>
     <button @click="handleNewSession" class="new-session-btn" title="新会话">
-      <PlusCircleIcon class="w-4 h-4" />
+      <MessageCirclePlus class="w-4 h-4" />
       <span class="text-sm font-medium">新会话</span>
     </button>
   </div>
@@ -19,7 +19,7 @@
 
 import { computed } from 'vue';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
-import { PlusCircleIcon } from '@heroicons/vue/24/solid';
+import { MessageCirclePlus } from 'lucide-vue-next';
 
 /**
  * 组件属性定义

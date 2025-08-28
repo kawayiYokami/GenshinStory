@@ -65,7 +65,7 @@
           class="debug-panel-btn"
           title="调试面板"
         >
-          <WrenchIcon class="w-4 h-4" />
+          <Wrench class="w-4 h-4" />
         </button>
 
 
@@ -97,13 +97,13 @@ import ChatToolbar from './ChatToolbar.vue';
 import { useReferenceHandler } from './useReferenceHandler';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
 import {
-  PaperAirplaneIcon,
-  StopIcon,
-  DocumentTextIcon,
-  PhotoIcon,
-  XMarkIcon,
-  WrenchIcon
-} from '@heroicons/vue/24/outline';
+  Send,
+  Square,
+  FileText,
+  Image,
+  X,
+  Wrench
+} from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 
 interface ReferenceItem {

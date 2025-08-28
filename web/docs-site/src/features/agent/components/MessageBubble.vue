@@ -2,7 +2,7 @@
   <!-- 用户消息：保持简单的气泡设计 -->
   <div v-if="message.role === 'user'" class="chat chat-end animate-fade-in" style="animation-duration: 0.3s;">
     <button class="delete-message-btn" @click="handleDeleteFromHere" title="从此处删除后续对话">
-      <TrashIcon class="w-4 h-4" />
+      <Trash2 class="w-4 h-4" />
     </button>
     <div class="chat-bubble chat-bubble-primary">
       <div v-if="Array.isArray(message.content)" class="space-y-2">
@@ -75,7 +75,7 @@
         <div class="flex items-center justify-between gap-3">
           <span class="flex-1 text-sm">{{ message.content }}</span>
           <button v-if="isLastMessage" @click="$emit('retry')" class="btn btn-sm btn-ghost">
-            <ArrowPathIcon class="w-4 h-4" />
+            <RefreshCw class="w-4 h-4" />
             重试
           </button>
         </div>
@@ -89,7 +89,7 @@ import { ref, watch, computed, nextTick, onMounted, watchEffect, type Ref } from
 import { useToast } from 'vue-toastification';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 import { useSmartBuffer } from '@/composables/useSmartBuffer';
-import { TrashIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
+import { Trash2, RefreshCw } from 'lucide-vue-next';
 import ToolCallCard from './ToolCallCard.vue';
 import ToolResultCard from './ToolResultCard.vue';
 import QuestionSuggestions from './QuestionSuggestions.vue';

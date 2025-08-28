@@ -79,7 +79,7 @@
                     <div class="text-xs text-base-content/70 truncate mt-1">{{ getAgentName(session.roleId) }}</div>
                     <div class="session-actions opacity-0 group-hover:opacity-100 absolute right-1 top-1/2 -translate-y-1/2">
                       <button @click.stop="handleDeleteSession(session.id)" class="session-action-btn">
-                        <TrashIcon class="h-4 w-4" />
+                        <Trash2 class="h-4 w-4" />
                       </button>
                     </div>
                   </a>
@@ -96,7 +96,7 @@
         <ul class="menu w-full">
           <li>
             <a @click="navigateTo(`/domain/${appStore.currentDomain}/settings`)">
-              <Cog6ToothIcon class="h-5 w-5" />
+              <Settings class="h-5 w-5" />
               设置
             </a>
           </li>
@@ -109,7 +109,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Cog6ToothIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { Settings, Trash2, Search } from 'lucide-vue-next';
 import { useAgentStore, type Session } from '@/features/agent/stores/agentStore';
 import { useAppStore } from '@/features/app/stores/app';
 import { useDataStore } from '@/features/app/stores/data';
