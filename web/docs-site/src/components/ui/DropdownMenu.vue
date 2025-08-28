@@ -13,7 +13,7 @@
       leave-to-class="transform scale-95 opacity-0"
     >
       <MenuItems
-        class="absolute right-0 z-10 mt-2 w-56 origin-top-right menu dropdown-content bg-base-200 text-base-content shadow-lg rounded-box focus:outline-none border border-base-300"
+        class="absolute right-0 z-10 mt-2 w-56 origin-top-right menu dropdown-content bg-base-200 text-base-content shadow-md rounded-box focus:outline-none border border-base-300"
       >
         <slot></slot>
       </MenuItems>

@@ -19,8 +19,8 @@
       ref="historyPanelRef"
     />
 
-    <!-- 输入面板 - 固定在底部 -->
-    <div class="flex-shrink-0">
+    <!-- 输入面板容器 -->
+    <div class="flex-shrink-0 pt-0 pb-4">
       <div class="max-w-4xl mx-auto">
         <ChatInputPanel
           ref="inputPanelRef"

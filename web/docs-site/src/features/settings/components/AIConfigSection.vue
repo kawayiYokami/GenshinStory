@@ -1,5 +1,5 @@
 <template>
-  <div class="card card-border bg-base-200 shadow-xl mb-6">
+  <div class="card card-border bg-base-200 shadow-md mb-6">
     <div class="card-body">
       <h2 class="card-title mb-6">AI 配置</h2>
 

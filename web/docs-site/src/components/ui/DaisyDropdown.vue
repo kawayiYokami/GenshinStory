@@ -13,7 +13,7 @@
     </div>
     <div
       tabindex="0"
-      class="dropdown-content bg-base-100 rounded-box min-w-[200px] shadow-xl border-0"
+      class="dropdown-content bg-base-100 rounded-box min-w-[200px] shadow-md border-0"
     >
       <div class="max-h-120 overflow-y-auto">
         <ul class="p-2 space-y-1">

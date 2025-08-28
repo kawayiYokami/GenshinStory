@@ -46,7 +46,7 @@
 ```vue
 <!-- 推荐：DaisyUI + Tailwind + Heroicons 组合 -->
 <template>
-  <div class="card bg-base-100 shadow-xl">
+  <div class="card bg-base-100 shadow-md">
     <div class="card-body">
       <h2 class="card-title text-primary">
         <Menu class="w-5 h-5" />

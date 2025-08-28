@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="visible"
-    class="card bg-base-100 shadow-xl border border-base-300 absolute bottom-14 left-2 z-10 w-64"
+    class="card bg-base-100 shadow-md border border-base-300 absolute bottom-14 left-2 z-10 w-64"
     role="menu"
     aria-orientation="vertical"
     aria-labelledby="menu-button"

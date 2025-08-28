@@ -11,7 +11,7 @@
       v-if="showDetail && isSplitMode"
       class="detail-pane detail-pane-split"
     >
-      <div class="card card-border h-full bg-base-100 shadow-xl">
+      <div class="card card-border h-full bg-base-100 shadow-md">
         <div class="card-body h-full p-4">
           <slot name="detail"></slot>
         </div>
@@ -33,7 +33,7 @@
         aria-modal="true"
         :aria-label="detailAriaLabel"
       >
-        <div class="card card-border h-full bg-base-100 shadow-xl">
+        <div class="card card-border h-full bg-base-100 shadow-md">
           <div class="card-body p-0 h-full">
             <slot name="detail"></slot>
           </div>

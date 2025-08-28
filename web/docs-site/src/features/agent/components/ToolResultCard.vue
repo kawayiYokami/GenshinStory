@@ -1,5 +1,5 @@
 <template>
-  <div class="card bg-base-200 border border-base-300 shadow-sm">
+  <div class="card bg-base-200 border border-base-300 shadow-xs">
     <div class="card-body p-0">
       <div class="collapse collapse-arrow bg-base-200/50 p-0">
         <input type="checkbox" />

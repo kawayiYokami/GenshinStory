@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 overflow-y-auto scrollbar-hide" ref="historyPanel">
+  <div class="overflow-y-auto scrollbar-hide min-h-[40dvh]" ref="historyPanel">
     <div class="max-w-4xl mx-auto space-y-1 px-4 py-4">
       <MessageBubble
         v-for="(message, index) in visibleMessages"

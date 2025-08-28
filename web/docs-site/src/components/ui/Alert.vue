@@ -5,7 +5,7 @@
       'alert',
       `alert-${type}`,
       { 'alert-soft': soft },
-      { 'shadow-lg': shadow }
+      { 'shadow-md': shadow }
     ]"
     role="alert"
   >

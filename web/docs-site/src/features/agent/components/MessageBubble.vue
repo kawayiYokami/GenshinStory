@@ -8,12 +8,12 @@
       <div v-if="Array.isArray(message.content)" class="space-y-2">
         <div v-for="(item, index) in message.content" :key="index">
           <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm">{{ item.text }}</p>
-          <div v-if="item.type === 'image_url' && item.image_url" class="card bg-base-100 shadow-sm">
+          <div v-if="item.type === 'image_url' && item.image_url" class="card bg-base-100 shadow-xl">
             <figure class="px-2 pt-2">
               <img :src="item.image_url.url" class="rounded-lg max-h-64 object-contain" alt="User uploaded content"/>
             </figure>
           </div>
-          <div v-if="item.type === 'doc' && item.path" class="card card-compact bg-base-100 shadow-sm border-l-4 border-primary">
+          <div v-if="item.type === 'doc' && item.path" class="card card-compact bg-base-100 shadow-xl border-l-4 border-primary">
             <div class="card-body">
               <a :href="item.path"
                  @click.prevent="handleDocClick(item.path!)"
@@ -59,7 +59,7 @@
     </template>
 
     <!-- 其他消息类型 -->
-    <div v-else-if="message.type === 'tool_status'" class="card bg-info text-info-content shadow-sm">
+    <div v-else-if="message.type === 'tool_status'" class="card bg-info text-info-content shadow-xl">
       <div class="card-body p-3">
         <div class="flex items-center gap-2">
           <span class="loading loading-spinner loading-xs"></span>
@@ -70,7 +70,7 @@
 
     <ToolResultCard v-else-if="message.type === 'tool_result'" :content="typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 2)" />
 
-    <div v-else-if="message.type === 'error'" class="card bg-error text-error-content shadow-sm">
+    <div v-else-if="message.type === 'error'" class="card bg-error text-error-content shadow-xl">
       <div class="card-body p-3">
         <div class="flex items-center justify-between gap-3">
           <span class="flex-1 text-sm">{{ message.content }}</span>
