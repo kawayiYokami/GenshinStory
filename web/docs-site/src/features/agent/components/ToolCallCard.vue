@@ -56,8 +56,10 @@ const displayValue = computed(() => {
   const params = props.toolCall.params;
   switch (props.toolCall.name) {
     case 'search_docs':
-      return params.query;
+      return params.query || '';
     case 'read_doc': {
+      // 检查 params.args 是否存在
+      if (!params.args) return '';
       const pathMatch = params.args.match(/<path>(.*?)<\/path>/);
       return pathMatch ? pathMatch[1] : params.args;
     }

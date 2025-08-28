@@ -56,6 +56,8 @@ export interface Message {
         /** 建议列表 */
         suggestions: string[];
     };
+    /** 创建时间 */
+    createdAt: string;
 }
 
 /**

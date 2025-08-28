@@ -33,6 +33,14 @@ class ToolStateService {
   }
 
   /**
+   * 重置指定工具的提示发送状态
+   * @param toolName 工具名称
+   */
+  resetToolPromptState(toolName: string): void {
+    this.promptSentStates.delete(toolName);
+  }
+
+  /**
    * 获取所有工具状态的副本（用于调试）
    */
   getStatesCopy(): Map<string, boolean> {

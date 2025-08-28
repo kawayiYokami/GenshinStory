@@ -106,11 +106,8 @@ interface ContentPart {
   error?: boolean;
 }
 
-interface ToolCall {
-  xml: string;
-  name: string;
-  params: Record<string, any>;
-}
+import type { ToolCall } from '../utils/messageUtils';
+// ToolCall 接口已从 messageUtils 导入
 
 interface Question {
   text: string;
@@ -157,18 +154,28 @@ const hasSignaledRenderComplete = ref<boolean>(false);
 // 内容容器引用
 const contentContainer = ref<HTMLElement | null>(null);
 
+// 导入工具函数
+import { cleanContentFromToolCalls } from '../utils/messageUtils';
+
 // 创建本地 refs 来驱动 useSmartBuffer
-const localContent = ref<string>(props.message.content as string);
+const localContent = ref<string>(cleanContentFromToolCalls(props.message.content as string, props.message.tool_calls));
 const renderCompleted = ref<boolean>(props.message.streamCompleted || false);
 
 // 当 props 变化时，更新本地 refs
 watch(() => props.message.content, (newContent) => {
-  localContent.value = typeof newContent === 'string' ? newContent : JSON.stringify(newContent);
+  const contentStr = typeof newContent === 'string' ? newContent : JSON.stringify(newContent);
+  localContent.value = cleanContentFromToolCalls(contentStr, props.message.tool_calls);
 });
 
 watch(() => props.message.streamCompleted, (newValue) => {
   renderCompleted.value = newValue || false;
 });
+
+// 监听 tool_calls 的变化
+watch(() => props.message.tool_calls, (newToolCalls) => {
+  const contentStr = typeof props.message.content === 'string' ? props.message.content : JSON.stringify(props.message.content);
+  localContent.value = cleanContentFromToolCalls(contentStr, newToolCalls);
+}, { deep: true });
 
 // 在 onMounted 中，对于已完成的消息，强制重新执行一次“流式”渲染
 onMounted(() => {

@@ -58,7 +58,6 @@ export class AgentApiService {
           // 从API请求中移除tool_calls属性，防止不兼容结构被发送
           const toolXmls = m.tool_calls.map(tc => tc.xml).join('');
           messageForApi.content = (m.content || '') + toolXmls;
-          // messageForApi.tool_calls = m.tool_calls; // <-- 这一行被移除
         }
         // 确保tool_calls不会被发送到API，即使它存在于其他角色的消息中
         delete messageForApi.tool_calls;

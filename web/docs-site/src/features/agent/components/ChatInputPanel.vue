@@ -11,6 +11,7 @@
 
       <!-- 文本输入区 -->
       <ChatInputBase
+        ref="chatInputBaseRef"
         v-model="localModelValue"
         :is-loading="isLoading"
         :is-processing="isProcessing"
@@ -180,6 +181,7 @@ const isDevMode = import.meta.env.DEV;
 
 // Reference states
 const dropdownRef = ref<InstanceType<typeof ReferenceDropdown> | null>(null);
+const chatInputBaseRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 
 // Computed
 const hasAttachments = computed(() =>
@@ -309,7 +311,8 @@ onMounted(() => {
 });
 
 defineExpose({
-  // Expose methods that might be needed by parent components
+  adjustTextareaHeight: () => chatInputBaseRef.value?.adjustTextareaHeight(),
+  focus: () => chatInputBaseRef.value?.focus(),
 });
 </script>
 
