@@ -12,7 +12,7 @@ class VHSCollectionInterpreter:
         """
         Initializes the interpreter by loading the text map and VHS collection config data.
         """
-        self.data_loader = ZZZDataLoader()
+        self.data_loader = ZZZDataLoader(gender='M', player_name='哲')
         self.text_map = self.data_loader.get_text_map()
 
     def parse(self) -> List[VHSCollection]:

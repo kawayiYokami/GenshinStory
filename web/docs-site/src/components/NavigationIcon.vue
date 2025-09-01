@@ -18,7 +18,9 @@ import {
   Clock,
   ShieldCheck,
   ClipboardList,
-  Lightbulb
+  Lightbulb,
+  Film,
+  Inbox
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -33,36 +35,41 @@ const iconMap = {
   // 问答/聊天图标
   'chat': MessageCircle,
   'agent': MessageCircle,
-  
+
   // 搜索图标
   'search': Search,
-  
-  // 角色/用户图标
+
+  // 角色/用户图标 (GI, HSR, ZZZ)
+
   'character': Users,
   'characters': Users,
-  
-  // 武器/光锥图标
+  'partner': Users,
+
+  // 武器/光锥图标 (GI, HSR, ZZZ)
   'weapon': Sparkles,
   'lightcones': Sparkles,
-  
-  // 圣遗物/遗器图标
+
+  // 圣遗物/遗器图标 (GI, HSR)
   'relicset': Star,
   'relics': ShieldCheck,
-  
-  // 材料图标
+
+  // 材料/道具图标 (GI, HSR, ZZZ)
   'material': Box,
   'materials': Box,
-  
-  // 书籍/文档图标
+  'item': Box,
+
+  // 书籍/文档/对话图标 (GI, HSR, ZZZ)
   'book': BookOpen,
   'books': BookOpen,
   'readable': FileText,
   'messages': FileText,
-  
-  // 任务图标
-  'quest': ClipboardList,
-  'missions': ClipboardList,
-  
+  'dialogue': MessageCircle,
+  'session': ClipboardList,
+
+  // ZZZ Specific Icons
+  'hollow_item': Inbox,
+  'vhs': Film,
+
   // 其他图标
   'miracles': Lightbulb,
   'rogue_events': Star

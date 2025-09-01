@@ -3,7 +3,8 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
 from ..dataloader import ZZZDataLoader
-from .models.unified_dialogue import DialogueChapter, DialogueAct, DialogueLine
+from ..models.unified_dialogue import DialogueChapter, DialogueAct, DialogueLine
+from ..utils.key_normalizer import normalize_dialogue_key
 
 
 class UnifiedDialogueInterpreter:
@@ -12,13 +13,15 @@ class UnifiedDialogueInterpreter:
     """
 
     # 定义所有已知 key 格式的正则表达式规则
+    # 规则的顺序很重要，优先匹配更具体的规则
     KEY_PATTERNS = [
-        # MainBubble_Chapter01_0001_01
+        # --- Main Story (最精确的规则放最前) ---
+        # Main_Chat_Chapter00_30000011_01
         {
-            "name": "MainBubble",
-            "pattern": re.compile(r"^(?P<prefix>MainBubble)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "name": "Main_Chat",
+            "pattern": re.compile(r"^(?P<prefix>Main_Chat)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
             "category": "Main",
-            "sub_category": "Bubble"
+            "sub_category": "Chat"
         },
         # Main_Bubble_Chapter110_40100107_02
         {
@@ -27,17 +30,47 @@ class UnifiedDialogueInterpreter:
             "category": "Main",
             "sub_category": "Bubble"
         },
-        # CompanionBubble_ChapterBurnice_0050_001
+        # Main_OngoingLevel_Chapter120_110931030_01
         {
-            "name": "CompanionBubble",
-            "pattern": re.compile(r"^(?P<prefix>CompanionBubble)_(?P<chapter_id>Chapter\w+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Companion",
+            "name": "Main_OngoingLevel",
+            "pattern": re.compile(r"^(?P<prefix>Main_OngoingLevel)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "category": "Main",
+            "sub_category": "OngoingLevel"
+        },
+        # Main_GalGame_Chapter110_11100270_039
+        {
+            "name": "Main_GalGame",
+            "pattern": re.compile(r"^(?P<prefix>Main_GalGame)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "category": "Main",
+            "sub_category": "GalGame"
+        },
+        # MainChat_2_0001_00 (需要被规范化为 Main_Chat_Chapter02, 匹配前缀'MainChat')
+        {
+            "name": "MainChat_Number",
+            "pattern": re.compile(r"^(?P<prefix>MainChat)_(?P<chapter_id>\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "category": "Main",
+            "sub_category": "Chat"
+        },
+        # MainBubble_Chapter01_0001_01
+        {
+            "name": "MainBubble",
+            "pattern": re.compile(r"^(?P<prefix>MainBubble)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "category": "Main",
             "sub_category": "Bubble"
         },
+
+        # --- Companion ---
         # Companion_Bubble_ChapterAnbySP_46310001_01
         {
             "name": "Companion_Bubble",
             "pattern": re.compile(r"^(?P<prefix>Companion_Bubble)_(?P<chapter_id>Chapter\w+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "category": "Companion",
+            "sub_category": "Bubble"
+        },
+        # CompanionBubble_ChapterBurnice_0050_001
+        {
+            "name": "CompanionBubble",
+            "pattern": re.compile(r"^(?P<prefix>CompanionBubble)_(?P<chapter_id>Chapter\w+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
             "category": "Companion",
             "sub_category": "Bubble"
         },
@@ -55,46 +88,12 @@ class UnifiedDialogueInterpreter:
             "category": "Companion",
             "sub_category": "Chat"
         },
-        # MainChat_2_0001_00
-        {
-            "name": "MainChat_Number",
-            "pattern": re.compile(r"^(?P<prefix>MainChat)_(?P<chapter_id>\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Main",
-            "sub_category": "Chat"
-        },
-        # Main_Chat_Chapter00_30000011_01
-        {
-            "name": "Main_Chat",
-            "pattern": re.compile(r"^(?P<prefix>Main_Chat)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Main",
-            "sub_category": "Chat"
-        },
-        # Main_OngoingLevel_Chapter120_110931030_01
-        {
-            "name": "Main_OngoingLevel",
-            "pattern": re.compile(r"^(?P<prefix>Main_OngoingLevel)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Main",
-            "sub_category": "OngoingLevel"
-        },
-        # Main_GalGame_Chapter110_11100270_039
-        {
-            "name": "Main_GalGame",
-            "pattern": re.compile(r"^(?P<prefix>Main_GalGame)_(?P<chapter_id>Chapter\d+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Main",
-            "sub_category": "GalGame"
-        },
-        # Activity_GalGame_Summer_10162008_015
+
+        # --- Activity ---
+        # Activity_GalGame_Summer_10162008_015 & Activity_GalGame_AbyssS2-Story4_10161604_011
         {
             "name": "Activity_GalGame_Named",
             "pattern": re.compile(r"^(?P<prefix>Activity_GalGame)_(?P<chapter_id>[^_]+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Activity",
-            "sub_category": "GalGame"
-        },
-        # Activity_GalGame_AbyssS2-Story4_10161604_011
-        # 这个规则与上面的 Activity_GalGame_Named 相同，但为了清晰起见保留
-        {
-            "name": "Activity_GalGame_Named_Hyphen",
-            "pattern": re.compile(r"^(?P<prefix>Activity_GalGame)_(?P<chapter_id>[^-]+-[^_]+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
             "category": "Activity",
             "sub_category": "GalGame"
         },
@@ -105,19 +104,14 @@ class UnifiedDialogueInterpreter:
             "category": "Activity",
             "sub_category": "Ongoing"
         },
+
+        # --- Side Stories & Misc ---
         # GalGame_Special2VirtualRevenge_090_018
         {
             "name": "GalGame_Special",
             "pattern": re.compile(r"^(?P<prefix>GalGame)_(?P<chapter_id>Special[^_]+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
             "category": "GalGame",
             "sub_category": None
-        },
-        # Bubble_ChapterLycaon_0011_01
-        {
-            "name": "Bubble_Generic",
-            "pattern": re.compile(r"^(?P<prefix>Bubble)_(?P<chapter_id>Chapter\w+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
-            "category": "Generic",
-            "sub_category": "Bubble"
         },
         # PhotoSideBubble_Chapter01_00001_01
         {
@@ -175,6 +169,13 @@ class UnifiedDialogueInterpreter:
             "category": "Side",
             "sub_category": "StoreChat"
         },
+        # Bubble_ChapterLycaon_0011_01
+        {
+            "name": "Bubble_Generic",
+            "pattern": re.compile(r"^(?P<prefix>Bubble)_(?P<chapter_id>Chapter\w+)_(?P<act_id>\d+)_(?P<line_info>.+)$"),
+            "category": "Generic",
+            "sub_category": "Bubble"
+        },
     ]
 
     def __init__(self, data_loader: ZZZDataLoader):
@@ -190,15 +191,22 @@ class UnifiedDialogueInterpreter:
         if self._classified_keys is not None:
             return
 
+        # 导入预处理器
+        from ..utils.key_normalizer import normalize_dialogue_key
+
         self._classified_keys = defaultdict(list)
 
-        for key, value in self._text_map.items():
+        for original_key, value in self._text_map.items():
+            # 使用预处理器规范化 key
+            normalized_key = normalize_dialogue_key(original_key)
+
             for rule in self.KEY_PATTERNS:
-                match = rule["pattern"].match(key)
+                match = rule["pattern"].match(normalized_key)
                 if match:
                     # 提取命名捕获组的数据
                     extracted_data = match.groupdict()
-                    extracted_data['original_key'] = key
+                    extracted_data['original_key'] = original_key # 保留原始 key
+                    extracted_data['normalized_key'] = normalized_key # 也记录规范化的 key
                     extracted_data['category'] = rule['category']
                     extracted_data['sub_category'] = rule['sub_category']
                     extracted_data['value'] = value

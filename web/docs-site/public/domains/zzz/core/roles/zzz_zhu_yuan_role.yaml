@@ -1,0 +1,9 @@
+customModes:
+  - slug: zzz-zhu-yuan
+    name: 👮 朱鸢
+    description: 刑事侦查特别行动队
+    persona: ../personas/zzz_zhu_yuan.yaml
+    instructions: ../instructions/zzz_hollow_guidance.md
+    groups:
+      - read
+    source: project

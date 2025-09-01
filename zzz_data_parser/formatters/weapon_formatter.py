@@ -4,47 +4,46 @@ from ..models.weapon import Weapon
 
 class WeaponFormatter:
     """
-    Formatter for converting Weapon objects into various output formats.
+    武器对象格式化器，用于转换为各种输出格式。
     """
+@staticmethod
+def to_markdown(weapon: Weapon) -> str:
+    """
+    将武器对象格式化为 Markdown 字符串。
 
-    @staticmethod
-    def to_markdown(weapon: Weapon) -> str:
-        """
-        Formats a Weapon object into a Markdown string.
+    参数:
+        weapon: 要格式化的武器对象。
 
-        Args:
-            weapon: The Weapon object to format.
+    返回:
+        表示武器的 Markdown 格式字符串。
+    """
+    lines = []
+    lines.append(f"# {weapon.name}")
+    lines.append("")
+    lines.append(f"**ID**: {weapon.id}")
+    lines.append("")
 
-        Returns:
-            A Markdown formatted string representing the weapon.
-        """
-        lines = []
-        lines.append(f"# 武器: {weapon.name} (ID: {weapon.id})")
-        lines.append(f"**型号**: {weapon.model_id}")
+    if weapon.description:
+        lines.append("## 描述")
+        lines.append(weapon.description)
         lines.append("")
 
-        if weapon.description:
-            lines.append("## 功能描述")
-            lines.append(weapon.description)
-            lines.append("")
+    if weapon.story:
+        lines.append("## 故事")
+        lines.append(weapon.story)
+        lines.append("")
 
-        if weapon.story:
-            lines.append("## 背景故事")
-            lines.append(weapon.story)
-            lines.append("")
-
-        return "\n".join(lines)
-
+    return "\n".join(lines)
     @staticmethod
     def to_dict(weapon: Weapon) -> Dict[str, Any]:
         """
-        Converts a Weapon object into a dictionary.
+        将武器对象转换为字典。
 
-        Args:
-            weapon: The Weapon object to convert.
+        参数:
+            weapon: 要转换的武器对象。
 
-        Returns:
-            A dictionary representation of the weapon.
+        返回:
+            武器的字典表示。
         """
         return {
             "id": weapon.id,

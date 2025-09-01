@@ -1,59 +1,51 @@
-import sys
-import os
-import random
-
-# Add the project root to the path so we can import modules
-sys.path.insert(0, os.path.abspath('.'))
-
+import unittest
 from zzz_data_parser.dataloader import ZZZDataLoader
 from zzz_data_parser.services.dialogue_service import DialogueService
 from zzz_data_parser.formatters.dialogue_formatter import DialogueFormatter
 
+class TestUnifiedPipeline(unittest.TestCase):
 
-def test_unified_pipeline():
-    """Test the unified dialogue service and formatter."""
-    print("Initializing data loader...")
-    data_loader = ZZZDataLoader()
+    def test_specific_chapter_formatting(self):
+        """
+        测试一个已知的特定章节，验证其格式化逻辑是否正确。
+        """
+        # --- 1. 初始化 ---
+        data_loader = ZZZDataLoader(gender='M', player_name='哲')
+        service = DialogueService(data_loader)
 
-    print("Initializing DialogueService...")
-    service = DialogueService(data_loader)
+        # --- 2. 获取特定章节 ---
+        # 修正：我们应该传入章节ID，而不是某一行对话的完整Key
+        chapter_id = "Chapter05"
+        chapter = service.get_chapter_by_id(chapter_id)
 
-    print("Getting chapters grouped by category...")
-    chapters_by_category = service.get_chapters_by_category()
+        self.assertIsNotNone(chapter, f"Chapter '{chapter_id}' should not be None.")
+        self.assertEqual(chapter.id, chapter_id)
 
-    print(f"Found chapters in {len(chapters_by_category)} categories:")
-    for category, chapters in chapters_by_category.items():
-        print(f"  {category}: {len(chapters)} chapters")
-
-    print("\n--- Testing Random Chapters ---")
-
-    # For each category, randomly select one chapter to test
-    for category_key, chapter_ids in chapters_by_category.items():
-        if not chapter_ids:
-            continue
-
-        # Randomly select a chapter
-        selected_chapter_id = random.choice(chapter_ids)
-        print(f"\nTesting chapter '{selected_chapter_id}' from category {category_key}")
-
-        # Get the chapter data
-        chapter = service.get_chapter_by_id(selected_chapter_id)
-
-        if not chapter:
-            print(f"  Failed to load chapter {selected_chapter_id}")
-            continue
-
-        # Format it using DialogueFormatter
+        # --- 3. 格式化并验证 ---
         formatter = DialogueFormatter(chapter)
-        markdown_output = formatter.to_markdown()
+        markdown_files = formatter.to_markdown_files()
 
-        # Print a snippet of the markdown output (first 500 characters)
-        print(f"  Markdown output (first 500 chars):\n{markdown_output[:500]}...")
+        # 3.1. 验证返回类型和内容
+        self.assertIsInstance(markdown_files, dict, "The formatter should return a dictionary.")
+        self.assertGreater(len(markdown_files), 0, "The dictionary of markdown files should not be empty.")
 
-        # Also print the dict version
-        dict_output = formatter.to_dict()
-        print(f"  Dict output keys: {list(dict_output.keys())}")
+        # 3.2. 验证第一个文件的名称和内容
+        # 注意: 排序是基于 act_id 的数字大小
+        first_filename = sorted(markdown_files.keys())[0]
+        first_content = markdown_files[first_filename]
+
+        # 修正：文件名应该是基于正确的章节ID
+        self.assertEqual(first_filename, f"{chapter_id}-1.md", "The first filename is incorrect.")
+        self.assertIn("# 第 1 幕", first_content, "The content should contain the act number title.")
+        self.assertIn("出场角色", first_content, "The content should list the speakers.")
+        # 修正断言：根据上次测试失败的输出，使用 Chapter05 中真实存在的文本进行验证
+        self.assertIn("哥哥，妮可打电话说", first_content, "The content should include a correct dialogue line from Chapter05.")
+        print(f"\nSuccessfully validated formatting for chapter '{chapter_id}'.")
+        print(f"Generated file: {first_filename}")
+        print("--- Sample Content ---")
+        print(first_content[:300] + "...")
+        print("----------------------")
 
 
-if __name__ == "__main__":
-    test_unified_pipeline()
+if __name__ == '__main__':
+    unittest.main()

@@ -19,12 +19,12 @@
         </li>
       </ul>
     </div>
-    
+
     <!-- Loading Indicator -->
     <div v-else class="flex-grow flex items-center justify-center">
       <p>加载中...</p>
     </div>
-    
+
     <!-- Settings Button at Bottom -->
     <div class="p-2 border-t border-base-300">
       <router-link
@@ -65,15 +65,15 @@ const { isTablet } = useResponsive();
 const currentDomainName = computed(() => {
   if (appStore.currentDomain === 'gi') return '原神';
   if (appStore.currentDomain === 'hsr') return '星穹铁道';
+  if (appStore.currentDomain === 'zzz') return '绝区零';
   return '知识领域';
 });
-
 async function loadUiConfig(domain: string) {
   try {
     const response = await fetch(`/domains/${domain}/metadata/uiconfig.json`);
     if (!response.ok) throw new Error(`Failed to load UI config for domain ${domain}`);
     const config = await response.json();
-    
+
     // Remap navigation items to include translations
     const categoryTranslations = config.categoryTranslations || {};
     navigationItems.value = config.navigation.map((item: NavItem) => ({
@@ -104,4 +104,3 @@ function getNavPath(item: NavItem) {
   return `/domain/${domain}`;
 }
 </script>
-

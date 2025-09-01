@@ -86,14 +86,11 @@ const functionComponent = computed(() => {
 const currentDomainName = computed(() => {
   if (appStore.currentDomain === 'gi') return '原神';
   if (appStore.currentDomain === 'hsr') return '星穹铁道';
+  if (appStore.currentDomain === 'zzz') return '绝区零';
   return '知识领域';
 });
 
-const domains = [
-  { id: 'gi', name: '原神' },
-  { id: 'hsr', name: '星穹铁道' },
-];
-
+const domains = computed(() => appStore.availableDomains);
 const switchDomain = (domain: string) => {
   if (appStore.currentDomain !== domain) {
     appStore.setCurrentDomain(domain);

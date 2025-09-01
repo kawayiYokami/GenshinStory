@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from ..interpreters.vhs_collection_interpreter import VHSCollectionInterpreter
 from ..models.vhs_collection import VHSCollection
 
@@ -54,3 +54,53 @@ class VHSCollectionService:
         """
         self._load_data()
         return list(self._vhs_collection_map.keys()) if self._vhs_collection_map else []
+
+    def get_vhs_collection_as_markdown(self, vhs_id: int) -> str:
+        """
+        Generate a markdown representation of a VHS collection item.
+
+        Args:
+            vhs_id: The ID of the VHS collection item.
+
+        Returns:
+            A markdown string representing the VHS collection item.
+        """
+        vhs = self.get_vhs_collection_by_id(vhs_id)
+        if not vhs:
+            return f"# VHS Collection {vhs_id} not found"
+
+        # Simple markdown template
+        markdown = f"# {vhs.name}\n\n"
+        markdown += f"**ID**: {vhs.id}\n\n"
+        markdown += "## Description\n\n"
+        markdown += f"{vhs.description}\n\n"
+
+        return markdown
+
+    def get_tree(self) -> List[Dict[str, Any]]:
+        """
+        Generate a tree structure for VHS collection items.
+
+        Returns:
+            A list of dictionaries representing the tree structure.
+        """
+        self._load_data()
+        if not self._vhs_collections:
+            return []
+
+        # Put all VHS collection items in a single "所有录像带" category
+        items_list = []
+        for vhs in self._vhs_collections:
+            items_list.append({
+                "id": vhs.id,
+                "name": vhs.name,
+                "type": "vhs_collection"
+            })
+
+        # Convert to the required format
+        tree = [{
+            "name": "所有录像带",
+            "children": items_list
+        }]
+
+        return tree

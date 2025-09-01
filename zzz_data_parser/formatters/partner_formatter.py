@@ -1,28 +1,30 @@
 from typing import Dict
-from ..interpreters.models.partner import Partner
+from ..models.partner import Partner
 
 class PartnerFormatter:
     """
-    Formatter for converting Partner objects into various output formats.
+    伙伴对象格式化器，用于转换为各种输出格式。
     """
 
     @staticmethod
     def to_markdown(partner: Partner) -> str:
         """
-        Formats a Partner object into a Markdown string.
+        将伙伴对象格式化为 Markdown 字符串。
 
-        Args:
-            partner: The Partner object to format.
+        参数:
+            partner: 要格式化的伙伴对象。
 
-        Returns:
-            A Markdown formatted string representing the partner.
+        返回:
+            表示伙伴的 Markdown 格式字符串。
         """
         lines = []
-        lines.append(f"# 角色: {partner.name} (ID: {partner.id})")
+        lines.append(f"# {partner.name}")
+        lines.append("")
+        lines.append(f"**ID**: {partner.id}")
         lines.append("")
 
         if partner.true_name:
-            lines.append(f"**真名**: {partner.true_name}")
+            lines.append(f"**英文名**: {partner.true_name}")
             lines.append("")
 
         if partner.birthday:
@@ -30,39 +32,37 @@ class PartnerFormatter:
             lines.append("")
 
         if partner.outlook_desc:
-            lines.append("## 外观描述")
+            lines.append("## 外貌描述")
             lines.append(partner.outlook_desc)
             lines.append("")
 
         if partner.profile_descs:
-            lines.append("## 角色简介")
+            lines.append("## 档案")
             for i, desc in enumerate(partner.profile_descs):
-                # If there's more than one profile desc, label them
                 if len(partner.profile_descs) > 1:
-                    lines.append(f"### 简介 {i+1}")
+                    lines.append(f"### 档案 {i+1}")
                 lines.append(desc)
                 lines.append("")
 
         if partner.impression_f or partner.impression_m:
             lines.append("## 印象")
             if partner.impression_f:
-                lines.append(f"- **玲的印象**: {partner.impression_f}")
+                lines.append(f"**玲**: {partner.impression_f}")
             if partner.impression_m:
-                lines.append(f"- **哲的印象**: {partner.impression_m}")
+                lines.append(f"**哲**: {partner.impression_m}")
             lines.append("")
 
         return "\n".join(lines)
-
     @staticmethod
     def to_dict(partner: Partner) -> Dict[str, any]:
         """
-        Converts a Partner object into a dictionary.
+        将伙伴对象转换为字典。
 
-        Args:
-            partner: The Partner object to convert.
+        参数:
+            partner: 要转换的伙伴对象。
 
-        Returns:
-            A dictionary representation of the partner.
+        返回:
+            伙伴的字典表示。
         """
         return {
             "id": partner.id,

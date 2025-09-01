@@ -4,19 +4,19 @@ from ..models.vhs_collection import VHSCollection
 
 class VHSCollectionFormatter:
     """
-    Formatter for converting VHSCollection objects into various output formats.
+    录像带收藏品对象格式化器，用于转换为各种输出格式。
     """
 
     @staticmethod
     def to_markdown(vhs_collection: VHSCollection) -> str:
         """
-        Formats a VHSCollection object into a Markdown string.
+        将录像带收藏品对象格式化为 Markdown 字符串。
 
-        Args:
-            vhs_collection: The VHSCollection object to format.
+        参数:
+            vhs_collection: 要格式化的录像带收藏品对象。
 
-        Returns:
-            A Markdown formatted string representing the VHS collection item.
+        返回:
+            表示录像带收藏品的 Markdown 格式字符串。
         """
         lines = []
         lines.append(f"# 录像带: {vhs_collection.name} (ID: {vhs_collection.id})")
@@ -32,13 +32,13 @@ class VHSCollectionFormatter:
     @staticmethod
     def to_dict(vhs_collection: VHSCollection) -> Dict[str, Any]:
         """
-        Converts a VHSCollection object into a dictionary.
+        将录像带收藏品对象转换为字典。
 
-        Args:
-            vhs_collection: The VHSCollection object to convert.
+        参数:
+            vhs_collection: 要转换的录像带收藏品对象。
 
-        Returns:
-            A dictionary representation of the VHS collection item.
+        返回:
+            录像带收藏品的字典表示。
         """
         return {
             "id": vhs_collection.id,

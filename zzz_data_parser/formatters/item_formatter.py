@@ -4,46 +4,47 @@ from ..models.item import Item
 
 class ItemFormatter:
     """
-    Formatter for converting Item objects into various output formats.
+    物品对象格式化器，用于转换为各种输出格式。
     """
 
     @staticmethod
     def to_markdown(item: Item) -> str:
         """
-        Formats an Item object into a Markdown string.
+        将物品对象格式化为 Markdown 字符串。
 
-        Args:
-            item: The Item object to format.
+        参数:
+            item: 要格式化的物品对象。
 
-        Returns:
-            A Markdown formatted string representing the item.
+        返回:
+            表示物品的 Markdown 格式字符串。
         """
         lines = []
-        lines.append(f"# 道具: {item.name} (ID: {item.id})")
+        lines.append(f"# {item.name}")
+        lines.append("")
+        lines.append(f"**ID**: {item.id}")
         lines.append("")
 
         if item.description:
-            lines.append("## 功能描述")
+            lines.append("## 描述")
             lines.append(item.description)
             lines.append("")
 
         if item.story:
-            lines.append("## 背景故事")
+            lines.append("## 故事")
             lines.append(item.story)
             lines.append("")
 
         return "\n".join(lines)
-
     @staticmethod
     def to_dict(item: Item) -> Dict[str, any]:
         """
-        Converts an Item object into a dictionary.
+        将物品对象转换为字典。
 
-        Args:
-            item: The Item object to convert.
+        参数:
+            item: 要转换的物品对象。
 
-        Returns:
-            A dictionary representation of the item.
+        返回:
+            物品的字典表示。
         """
         return {
             "id": item.id,

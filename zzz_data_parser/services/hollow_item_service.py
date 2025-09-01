@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from ..interpreters.hollow_item_interpreter import HollowItemInterpreter
 from ..models.hollow_item import HollowItem
 
@@ -54,3 +54,53 @@ class HollowItemService:
         """
         self._load_data()
         return list(self._item_map.keys()) if self._item_map else []
+
+    def get_hollow_item_as_markdown(self, item_id: int) -> str:
+        """
+        Generate a markdown representation of a hollow item.
+
+        Args:
+            item_id: The ID of the hollow item.
+
+        Returns:
+            A markdown string representing the hollow item.
+        """
+        item = self.get_item_by_id(item_id)
+        if not item:
+            return f"# Hollow Item {item_id} not found"
+
+        # Simple markdown template
+        markdown = f"# {item.name}\n\n"
+        markdown += f"**ID**: {item.id}\n\n"
+        markdown += "## Description\n\n"
+        markdown += f"{item.description}\n\n"
+
+        return markdown
+
+    def get_tree(self) -> List[Dict[str, Any]]:
+        """
+        Generate a tree structure for hollow items.
+
+        Returns:
+            A list of dictionaries representing the tree structure.
+        """
+        self._load_data()
+        if not self._items:
+            return []
+
+        # Put all hollow items in a single "所有空洞道具" category
+        items_list = []
+        for item in self._items:
+            items_list.append({
+                "id": item.id,
+                "name": item.name,
+                "type": "hollow_item"
+            })
+
+        # Convert to the required format
+        tree = [{
+            "name": "所有空洞道具",
+            "children": items_list
+        }]
+
+        return tree

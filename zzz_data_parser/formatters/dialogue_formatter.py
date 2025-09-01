@@ -1,4 +1,5 @@
-from ..interpreters.models.unified_dialogue import DialogueChapter, DialogueAct, DialogueLine
+from typing import Dict
+from ..models.unified_dialogue import DialogueChapter, DialogueAct, DialogueLine
 
 
 class DialogueFormatter:
@@ -9,57 +10,80 @@ class DialogueFormatter:
     def __init__(self, chapter: DialogueChapter):
         self.chapter = chapter
 
-    def to_markdown(self) -> str:
+    def _format_single_act(self, act: DialogueAct, act_number: int) -> str:
         """
-        将 DialogueChapter 转换为 Markdown 格式的字符串。
+        将单个对话幕格式化为 Markdown 字符串。
         """
         md_lines = []
 
-        # 章节标题
-        title = f"# {self.chapter.id}"
-        if self.chapter.category or self.chapter.sub_category:
-            categories = [self.chapter.category, self.chapter.sub_category]
-            title += f" ({' / '.join(filter(None, categories))})"
-        md_lines.append(title)
-        md_lines.append("")  # 空行
+        # 幕标题
+        md_lines.append(f"## 第 {act_number} 幕")
+        md_lines.append("")
+        # 出场角色
+        if act.speakers:
+            speaker_names = sorted(list(set(act.speakers.values())))
+            md_lines.append(f"**出场角色**: {', '.join(speaker_names)}")
+            md_lines.append("")
 
-        # 遍历每个 Act
-        for act_id, act in self.chapter.acts.items():
-            md_lines.append(f"## Act: {act_id}")
+        # 对话内容
+        sorted_lines = sorted(act.lines.items(), key=lambda item: int(item[0]))
 
-            # 打印角色映射
-            if act.speakers:
-                md_lines.append("**角色映射:**")
-                for speaker_key, speaker_name in act.speakers.items():
-                    md_lines.append(f"  - {speaker_key}: {speaker_name}")
-                md_lines.append("")  # 空行
+        for line_num, line in sorted_lines:
+            line_text = ""
+            if line.speaker:
+                line_text += f"**{line.speaker}**: "
 
-            # 打印对话行
-            md_lines.append("**对话内容:**")
-            for line_num, line in act.lines.items():
-                # 构建行文本
-                line_text = ""
-                if line.speaker:
-                    line_text += f"{line.speaker}: "
+            dialog_content = line.female_text or line.male_text or ""
+            line_text += dialog_content.replace('\n', '  \n')
 
-                # 优先显示女性文本，如果没有则显示男性文本
-                dialog_content = line.female_text or line.male_text or ""
-                line_text += dialog_content
+            md_lines.append(f"{line_text}")
+            md_lines.append("")
 
-                md_lines.append(f"- [{line_num}] {line_text}")
-
-                # 如果有选项，也打印出来
-                if line.options:
-                    for option_id, option_text in line.options.items():
-                        md_lines.append(f"  - *选项 {option_id}*: {option_text}")
-
-            md_lines.append("")  # Act之间的空行
+            if line.options:
+                md_lines.append("> **选项:**")
+                for option_id, option_text in sorted(line.options.items()):
+                    md_lines.append(f"> - {option_text}")
+                md_lines.append("")
 
         return "\n".join(md_lines)
 
+    def to_markdown_files(self) -> Dict[str, str]:
+        """
+        将对话章节转换为一个包含多个 Markdown 文件内容的字典。
+        键是建议的文件名，值是文件内容。
+        """
+        files_dict = {}
+
+        sorted_acts = sorted(self.chapter.acts.items(), key=lambda item: int(item[0]))
+
+        act_number = 1
+        for act_id, act in sorted_acts:
+            filename = f"{self.chapter.id}-{act_number}.md"
+            content = self._format_single_act(act, act_number)
+            files_dict[filename] = content
+            act_number += 1
+
+        return files_dict
+
+    def to_full_chapter_markdown(self) -> str:
+        """
+        将整个对话章节格式化为单个 Markdown 字符串。
+        """
+        all_act_contents = []
+
+        sorted_acts = sorted(self.chapter.acts.items(), key=lambda item: int(item[0]))
+
+        act_number = 1
+        for act_id, act in sorted_acts:
+            act_content = self._format_single_act(act, act_number)
+            all_act_contents.append(act_content)
+            act_number += 1
+
+        return "\n\n---\n\n".join(all_act_contents)
+
     def to_dict(self) -> dict:
         """
-        将 DialogueChapter 转换为字典格式，便于序列化为 JSON。
+        将对话章节转换为字典格式，便于序列化为 JSON。
         """
         def _line_to_dict(line: DialogueLine) -> dict:
             return {

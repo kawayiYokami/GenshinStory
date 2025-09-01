@@ -2,6 +2,12 @@ from typing import Optional
 
 from .dataloader import ZZZDataLoader
 from .services.dialogue_service import DialogueService
+from .services.partner_service import PartnerService
+from .services.weapon_service import WeaponService
+from .services.item_service import ItemService
+from .services.hollow_item_service import HollowItemService
+from .services.vhs_collection_service import VHSCollectionService
+from .services.session_service import SessionService
 from .formatters.dialogue_formatter import DialogueFormatter
 
 class ZZZDataAPI:
@@ -18,6 +24,12 @@ class ZZZDataAPI:
 
         # --- 领域服务 ---
         self.dialogue = DialogueService(self.loader)
+        self.partner = PartnerService()
+        self.weapon = WeaponService()
+        self.item = ItemService()
+        self.hollow_item = HollowItemService()
+        self.vhs_collection = VHSCollectionService()
+        self.session = SessionService()
 
     def format_dialogue(self, chapter_id: str, act_id: str = None) -> str:
         """
@@ -39,15 +51,22 @@ class ZZZDataAPI:
 
         if act_id:
             # 格式化单个幕 (Act)
-            # 注意：新的统一模型中，Act 是直接存储在 chapter.acts 中的
             act = chapter.acts.get(act_id)
             if not act:
                 return f"Error: Act '{act_id}' not found in chapter '{chapter_id}'."
 
-            # 为了简化，我们直接返回整个章节的 Markdown，
-            # 但在实际应用中，你可能需要修改 DialogueFormatter 以支持格式化单个 Act。
-            # 这里我们只是给出一个示例。
-            return formatter.to_markdown()
+            # 因为 _format_single_act 是私有方法，我们需要找到 act 的序号
+            # 为了简化API，我们假设调用者知道ID和顺序之间的关系，或者我们直接格式化
+            # 这里我们通过查找序号来实现
+            sorted_act_ids = sorted(chapter.acts.keys(), key=int)
+            try:
+                act_number = sorted_act_ids.index(act_id) + 1
+                return formatter._format_single_act(act, act_number)
+            except ValueError:
+                 return f"Error: Act ID '{act_id}' could not be ordered correctly."
         else:
-            # 格式化整个章节
-            return formatter.to_markdown()
+            # 格式化整个章节，并返回一个合并的字符串作为示例
+            markdown_files = formatter.to_markdown_files()
+            # 将所有内容合并，用分隔符隔开
+            full_content = "\n\n---\n\n".join(markdown_files.values())
+            return full_content if full_content else "# No content generated."

@@ -28,7 +28,7 @@ def main():
         sys.exit(1)
 
     # Initialize the data loader
-    data_loader = ZZZDataLoader()
+    data_loader = ZZZDataLoader(gender='M', player_name='哲')
 
     # Get the formatted Markdown string
     markdown_output = data_loader.get_message_session_markdown(session_id)

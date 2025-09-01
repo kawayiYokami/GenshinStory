@@ -1,32 +1,32 @@
 """
-Module for formatting Session objects into various output formats, primarily Markdown.
-This formatter implements a simple, nested list structure with anchor links
-to represent the branching conversation flow, as preferred by the user.
+会话对象格式化模块，用于转换为各种输出格式，主要是 Markdown。
+此格式化器实现了简单的嵌套列表结构，带有锚点链接，
+用于表示分支对话流程，符合用户偏好。
 """
 
 from typing import Dict, Any, List
-from ..parsers.session_parser import Session, Stage, Message, PlayerOptions, Option
+from ..models.session import Session, Stage, Message, PlayerOptions, Option
 
 
 class SessionFormatter:
     """
-    Formatter for converting Session objects into various output formats.
+    会话对象格式化器，用于转换为各种输出格式。
     """
 
     @staticmethod
     def _format_message(message: Message) -> str:
         """
-        Formats a single Message into a string line.
+        将单个消息格式化为字符串行。
 
-        Args:
-            message: The Message object to format.
+        参数:
+            message: 要格式化的消息对象。
 
-        Returns:
-            A formatted string line representing the message.
+        返回:
+            表示消息的格式化字符串行。
         """
-        # Speaker name is already resolved by SessionParser
+        # 发言者名称已由 SessionInterpreter 解析
         speaker_display = f"**{message.speaker_name}**" if message.speaker_name else "**[未知发送者]**"
-        # Message text is already resolved by SessionParser
+        # 消息文本已由 SessionInterpreter 解析
         message_text = message.text if message.text else "[无文本]"
 
         return f"{speaker_display}: {message_text}"
@@ -34,18 +34,18 @@ class SessionFormatter:
     @staticmethod
     def _format_option(option: Option, index: int) -> str:
         """
-        Formats a single Option into a string line.
+        将单个选项格式化为字符串行。
 
-        Args:
-            option: The Option object to format.
-            index: The 1-based index of the option.
+        参数:
+            option: 要格式化的选项对象。
+            index: 选项的从1开始的索引。
 
-        Returns:
-            A formatted string line representing the option.
+        返回:
+            表示选项的格式化字符串行。
         """
-        # Option text is already resolved and combined by SessionParser
+        # 选项文本已由 SessionInterpreter 解析和组合
         option_text = option.text if option.text else "[无文本]"
-        # Create an anchor link to the target stage
+        # 创建指向目标阶段的锚点链接
         target_anchor = f"#stage-{option.jump_to_sequence_id}"
 
         return f"{index}. {option_text} -> **跳转到 [阶段 {option.jump_to_sequence_id}]({target_anchor})**"
@@ -53,24 +53,24 @@ class SessionFormatter:
     @staticmethod
     def _format_player_options(player_options: PlayerOptions) -> List[str]:
         """
-        Formats a PlayerOptions object into a list of string lines.
+        将玩家选项对象格式化为字符串行列表。
 
-        Args:
-            player_options: The PlayerOptions object to format.
+        参数:
+            player_options: 要格式化的玩家选项对象。
 
-        Returns:
-            A list of formatted string lines representing the player options.
+        返回:
+            表示玩家选项的格式化字符串行列表。
         """
         lines = []
 
-        # Add a header for options
+        # 添加选项标题
         lines.append("> **选项分支**:")
 
-        # Format each option
+        # 格式化每个选项
         for i, option in enumerate(player_options.options, 1):
             lines.append(SessionFormatter._format_option(option, i))
 
-        # Add unlocks condition if present
+        # 添加解锁条件（如果存在）
         if player_options.unlocks_condition:
             lines.append(f"  - `(解锁条件: {player_options.unlocks_condition})`")
 
@@ -79,73 +79,75 @@ class SessionFormatter:
     @staticmethod
     def _format_stage(stage: Stage) -> List[str]:
         """
-        Formats a single Stage into a list of string lines.
+        将单个阶段格式化为字符串行列表。
 
-        Args:
-            stage: The Stage object to format.
+        参数:
+            stage: 要格式化的阶段对象。
 
-        Returns:
-            A list of formatted string lines representing the stage.
+        返回:
+            表示阶段的格式化字符串行列表。
         """
-        lines = []
+        lines: List[str] = []
 
-        # Add a separator and stage header with an anchor
+        # 分隔符和跳转目标的锚点
         lines.append("---")
         lines.append(f"<a id=\"stage-{stage.sequence_id}\"></a>")
-        lines.append(f"### 阶段 {stage.sequence_id}")
-        lines.append("") # Blank line after header
 
-        # Format messages if present
+        # 使用紧凑的内联标记代替大标题
+        lines.append(f"[{stage.sequence_id}]")
+        lines.append("")  # 标记后的空行
+
+        # 格式化消息（如果存在）
         if stage.messages:
             for message in stage.messages:
-                # Only add message line if it has text
+                # 仅当消息有文本时才添加消息行
                 if message.text:
                     lines.append(SessionFormatter._format_message(message))
-                    # Add unlocks condition if present for the message
+                    # 添加消息的解锁条件（如果存在）
                     if message.unlocks_condition:
                         lines.append(f"  - `(解锁条件: {message.unlocks_condition})`")
-            lines.append("") # Blank line after messages
+            lines.append("")  # 消息后的空行
 
-        # Format player options if present
+        # 格式化玩家选项（如果存在）
         if stage.player_options:
             option_lines = SessionFormatter._format_player_options(stage.player_options)
             lines.extend(option_lines)
-            lines.append("") # Blank line after options
+            lines.append("")  # 选项后的空行
 
-        # Handle end signal
+        # 处理结束信号
         if stage.is_end_signal:
             lines.append("*会话结束*")
-            lines.append("") # Blank line after end signal
+            lines.append("")  # 结束信号后的空行
 
         return lines
 
     @staticmethod
     def to_markdown(session: Session) -> str:
         """
-        Formats a Session object into a Markdown string using a nested list structure
-        with anchor links for navigation.
+        使用带有锚点链接的嵌套列表结构将会话对象格式化为 Markdown 字符串，
+        便于导航。
 
-        Args:
-            session: The Session object to format.
+        参数:
+            session: 要格式化的会话对象。
 
-        Returns:
-            A Markdown formatted string representing the entire session.
+        返回:
+            表示整个会话的 Markdown 格式字符串。
         """
         lines = []
 
-        # Header with session metadata
+        # 包含会话元数据的标题
         lines.append(f"# 会话: {session.session_id} - {session.main_npc_name}")
-        lines.append("") # Blank line after header
+        lines.append("") # 标题后的空行
 
-        # Sort stages by sequence_id to ensure correct order
+        # 按 sequence_id 排序阶段以确保正确顺序
         sorted_stages = sorted(session.stages.items())
 
-        # Iterate through stages and format them
+        # 遍历并格式化所有阶段
         for sequence_id, stage in sorted_stages:
             stage_lines = SessionFormatter._format_stage(stage)
             lines.extend(stage_lines)
 
-        # Remove the trailing blank line if it exists
+        # 如果存在末尾空行则移除
         if lines and lines[-1] == "":
             lines.pop()
 

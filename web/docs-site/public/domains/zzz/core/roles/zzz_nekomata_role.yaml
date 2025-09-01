@@ -1,0 +1,9 @@
+customModes:
+  - slug: zzz-nekomata
+    name: 🐱 猫又
+    description: 狡兔屋成员
+    persona: ../personas/zzz_nekomata.yaml
+    instructions: ../instructions/zzz_hollow_guidance.md
+    groups:
+      - read
+    source: project

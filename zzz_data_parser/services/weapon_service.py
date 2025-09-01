@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from ..interpreters.weapon_interpreter import WeaponInterpreter
 from ..models.weapon import Weapon
 
@@ -54,3 +54,72 @@ class WeaponService:
         """
         self._load_data()
         return list(self._weapon_map.keys()) if self._weapon_map else []
+
+    def get_weapon_as_markdown(self, weapon_id: int) -> str:
+        """
+        Generate a markdown representation of a weapon.
+
+        Args:
+            weapon_id: The ID of the weapon.
+
+        Returns:
+            A markdown string representing the weapon.
+        """
+        weapon = self.get_weapon_by_id(weapon_id)
+        if not weapon:
+            return f"# Weapon {weapon_id} not found"
+
+        # Simple markdown template
+        markdown = f"# {weapon.name}\n\n"
+        markdown += f"**ID**: {weapon.id}\n\n"
+        markdown += f"**Model ID**: {weapon.model_id}\n\n"
+        markdown += "## Description\n\n"
+        markdown += f"{weapon.description}\n\n"
+        markdown += "## Story\n\n"
+        markdown += f"{weapon.story}\n\n"
+
+        return markdown
+
+    def get_tree(self) -> List[Dict[str, Any]]:
+        """
+        Generate a tree structure for weapons, categorized by rarity.
+
+        Returns:
+            A list of dictionaries representing the tree structure.
+        """
+        self._load_data()
+        if not self._weapons:
+            return []
+
+        # Categorize weapons by rarity based on model_id
+        rarities: Dict[str, List[Dict[str, Any]]] = {
+            "S级武器": [],
+            "A级武器": [],
+            "其他": []
+        }
+
+        for weapon in self._weapons:
+            # Determine rarity from model_id
+            rarity = "其他"
+            if "S_" in weapon.model_id:
+                rarity = "S级武器"
+            elif "A_" in weapon.model_id:
+                rarity = "A级武器"
+
+            # Add weapon to the appropriate rarity category
+            rarities[rarity].append({
+                "id": weapon.id,
+                "name": weapon.name,
+                "type": "weapon"
+            })
+
+        # Convert to the required format
+        tree = []
+        for rarity_name, weapons in rarities.items():
+            if weapons:  # Only add rarities that have weapons
+                tree.append({
+                    "name": rarity_name,
+                    "children": weapons
+                })
+
+        return tree

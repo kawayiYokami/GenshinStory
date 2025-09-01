@@ -13,7 +13,7 @@ from zzz_data_parser.interpreters.unified_dialogue_interpreter import UnifiedDia
 def test_unified_interpreter():
     """Test the new UnifiedDialogueInterpreter."""
     print("Initializing data loader...")
-    data_loader = ZZZDataLoader()
+    data_loader = ZZZDataLoader(gender='M', player_name='哲')
 
     print("Initializing UnifiedDialogueInterpreter...")
     interpreter = UnifiedDialogueInterpreter(data_loader)

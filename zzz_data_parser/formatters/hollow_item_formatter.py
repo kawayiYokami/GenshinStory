@@ -4,19 +4,19 @@ from ..models.hollow_item import HollowItem
 
 class HollowItemFormatter:
     """
-    Formatter for converting HollowItem objects into various output formats.
+    空洞道具对象格式化器，用于转换为各种输出格式。
     """
 
     @staticmethod
     def to_markdown(item: HollowItem) -> str:
         """
-        Formats a HollowItem object into a Markdown string.
+        将空洞道具对象格式化为 Markdown 字符串。
 
-        Args:
-            item: The HollowItem object to format.
+        参数:
+            item: 要格式化的空洞道具对象。
 
-        Returns:
-            A Markdown formatted string representing the hollow item.
+        返回:
+            表示空洞道具的 Markdown 格式字符串。
         """
         lines = []
         lines.append(f"# 空洞道具: {item.name} (ID: {item.id})")
@@ -32,13 +32,13 @@ class HollowItemFormatter:
     @staticmethod
     def to_dict(item: HollowItem) -> Dict[str, any]:
         """
-        Converts a HollowItem object into a dictionary.
+        将空洞道具对象转换为字典。
 
-        Args:
-            item: The HollowItem object to convert.
+        参数:
+            item: 要转换的空洞道具对象。
 
-        Returns:
-            A dictionary representation of the hollow item.
+        返回:
+            空洞道具的字典表示。
         """
         return {
             "id": item.id,

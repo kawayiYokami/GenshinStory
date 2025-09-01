@@ -1,0 +1,9 @@
+customModes:
+  - slug: zzz-nicole
+    name: 💰 妮可
+    description: 狡兔屋老大
+    persona: ../personas/zzz_nicole.yaml
+    instructions: ../instructions/zzz_hollow_guidance.md
+    groups:
+      - read
+    source: project

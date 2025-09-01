@@ -76,7 +76,7 @@ class ContextOptimizerService {
             };
         }
 
-        const summaryMessage: Message = { role: 'user', content: `[系统摘要] ${summary}`, id: `msg_${Date.now()}` };
+        const summaryMessage: Message = { role: 'user', content: `[系统摘要] ${summary}`, id: `msg_${Date.now()}`, createdAt: new Date().toISOString() };
         const summaryTokenCount = this._calculateTotalTokens([summaryMessage]);
 
         if (summaryTokenCount > threshold) {
@@ -101,11 +101,11 @@ class ContextOptimizerService {
 
         logger.log(`[优化器] 优化成功。最终 Token 数: ${finalTokenCount}`);
         logger.log('[优化器] 返回的最终历史记录:', newHistory);
-        
+
         // 在上下文压缩后重置所有工具提示状态，允许在新的上下文中重新触发提示
         toolStateService.resetAllPromptStates();
         logger.log('[优化器] 已重置所有工具提示状态');
-        
+
         return { status: 'SUCCESS', history: newHistory, tokens: finalTokenCount };
     }
 
@@ -185,7 +185,7 @@ class ContextOptimizerService {
         if (!compressedContent) {
             throw new Error("摘要器AI响应无效或为空。");
         }
-        
+
         logger.log('[优化器] 摘要成功。');
         return compressedContent;
     }
@@ -256,3 +256,4 @@ class ContextOptimizerService {
 
 const contextOptimizerService = new ContextOptimizerService();
 export default contextOptimizerService;
+export { ContextOptimizerService };

@@ -1,10 +1,14 @@
 [
   {
     "id": "hsr",
-    "name": "Honkai: Star Rail"
+    "name": "崩坏星穹铁道"
   },
   {
     "id": "gi",
-    "name": "Genshin Impact"
+    "name": "原神"
+  },
+  {
+  "id": "zzz",
+  "name": "绝区零"
   }
 ]

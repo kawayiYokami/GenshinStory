@@ -1,12 +1,24 @@
-
 import json
 import logging
 import os
+import gzip
+import pickle
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import re
+import collections
+from typing import NamedTuple
 
-# Import the new parser
-from .parsers.session_parser import SessionParser, Session
+class SearchResult(NamedTuple):
+    id: Any
+    name: str
+    type: str
+    match_source: str
+
+# Import the new interpreter
+# Import the new text transformer
+from .utils.text_transformer import transform_text
+from .interpreters.session_interpreter import SessionInterpreter, Session
 
 class ZZZDataLoader:
     """
@@ -14,6 +26,8 @@ class ZZZDataLoader:
     """
     _instance = None
     _cache: Dict[str, Any] = {}
+    _search_index: Dict[str, List[Any]] = collections.defaultdict(list)
+
 
     # 数据根目录
     _DEFAULT_ROOT = Path(__file__).parent.parent / "ZenlessData"
@@ -23,7 +37,7 @@ class ZZZDataLoader:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, root_path: Optional[str] = None):
+    def __init__(self, root_path: Optional[str] = None, gender: str = 'M', player_name: str = '哲'):
         if hasattr(self, '_initialized'):
             if root_path:
                 self.set_data_root(root_path)
@@ -32,6 +46,8 @@ class ZZZDataLoader:
         effective_path = Path(root_path) if root_path else self._DEFAULT_ROOT
         self.set_data_root(str(effective_path))
 
+        self.gender = gender
+        self.player_name = player_name
         self._text_map_cache: Optional[Dict[str, str]] = None
         self._initialized = True
 
@@ -69,14 +85,28 @@ class ZZZDataLoader:
             logging.error(f"Failed to decode JSON from: {full_path}")
             return None
 
+    def clear_cache(self):
+        """Clear the text map cache."""
+        self._text_map_cache = None
+        if 'text_map' in self._cache:
+            del self._cache['text_map']
+
+    def clear_search_index(self) -> None:
+        """Clear the search index."""
+        self._search_index.clear()
+
     def get_text_map(self) -> Dict[str, str]:
         """
         加载并合并绝区零的两个TextMap文件。
         - TextMapTemplateTb.json (基础)
         - TextMapOverwriteTemplateTb.json (覆盖)
         """
+        # First, check if it's in the general cache
+        if 'text_map' in self._cache:
+            return self._cache['text_map']
+
         if self._text_map_cache is None:
-            logging.info("Loading ZZZ TextMaps...")
+            logging.info("Loading and cleaning ZZZ TextMaps...")
 
             # get_json 直接返回我们需要的字典
             base_text_map = self.get_json("TextMap/TextMapTemplateTb.json") or {}
@@ -85,8 +115,23 @@ class ZZZDataLoader:
             # 合并两个字典，overwrite_text_map 中的键会覆盖 base_text_map 中的同名键
             merged_map = {**base_text_map, **overwrite_text_map}
 
-            self._text_map_cache = merged_map
-            logging.info(f"ZZZ TextMaps loaded. Total entries: {len(merged_map)}")
+            # --- 新增的清洗逻辑 ---
+            cleaned_map = {}
+            count = 0
+            for key, value in merged_map.items():
+                # 对每个文本值应用 transform_text
+                cleaned_text, _ = transform_text(value, self.gender, self.player_name)
+                cleaned_map[key] = cleaned_text
+                count += 1
+                # Print a message every 50000 entries to show progress
+                if count % 50000 == 0:
+                    logging.info(f"Cleaned {count} entries...")
+            logging.info(f"Finished cleaning {count} entries.")
+            # --- 清洗逻辑结束 ---
+
+            self._text_map_cache = cleaned_map # 缓存清洗后的 map
+            self._cache['text_map'] = cleaned_map # Also cache in the general cache
+            logging.info(f"ZZZ TextMaps loaded and cleaned. Total entries: {len(cleaned_map)}")
 
         return self._text_map_cache
 
@@ -114,7 +159,11 @@ class ZZZDataLoader:
                     'impression_m_key': partner_data['DIDBDGDIJFP'],
                     'birthday_key': partner_data['FELBLONCIDJ'],
                     'true_name': partner_data['NMDLENGDAKD'],
-                    'camp_ids': partner_data['CLKJKCGPCAN']
+                    'camp_ids': partner_data['CLKJKCGPCAN'],
+                    'camp_key': partner_data.get('NPMBJEBPMIK', ''),
+                    'gender': partner_data.get('EEMFLLFIIKL', 0),
+                    'icon_path': partner_data.get('PCOENAKPIMP', ''),
+                    'gacha_splash_path': partner_data.get('MNHJEPLGCKC', '')
                 }
             self._cache['partner_config'] = processed_config
             logging.info(f"Partner Config loaded for {len(processed_config)} partners.")
@@ -131,7 +180,6 @@ class ZZZDataLoader:
             if not raw_config or 'PDHBFPILAJD' not in raw_config:
                 logging.error("Failed to load or parse ItemTemplateTb.json")
                 return None
-
             # 预处理：构建以ID为键的配置字典
             processed_config = {}
             for item_data in raw_config['PDHBFPILAJD']:
@@ -157,6 +205,8 @@ class ZZZDataLoader:
 
             self._cache['item_config'] = processed_config
             logging.info(f"Item Config loaded for {len(processed_config)} items.")
+
+        return self._cache['item_config']
 
 
     def get_hollow_item_config(self) -> Optional[Dict[int, Any]]:
@@ -399,7 +449,7 @@ class ZZZDataLoader:
     def get_message_sessions(self) -> Optional[List[Session]]:
         """
         加载并返回结构化的手机短信会话数据。
-        使用 SessionParser 将原始消息数据解析为 Session 对象列表。
+        使用 SessionInterpreter 将原始消息数据解释为 Session 对象列表。
         """
         cache_key = 'message_sessions'
         if cache_key not in self._cache:
@@ -417,10 +467,10 @@ class ZZZDataLoader:
             # 3. 获取NPC配置 (用于更准确的NPC名称解析)
             npc_config = self.get_json("FileCfg/MessageNPCTemplateTb.json")
 
-            # 4. 初始化解析器并解析
-            parser = SessionParser(text_map, npc_config)
+            # 4. 初始化解释器并解释
+            interpreter = SessionInterpreter(text_map, npc_config, player_name=self.player_name)
             try:
-                sessions = parser.parse(raw_messages['PDHBFPILAJD'])
+                sessions = interpreter.interpret(raw_messages['PDHBFPILAJD'])
                 self._cache[cache_key] = sessions
                 logging.info(f"Message Sessions parsed successfully. Total sessions: {len(sessions)}")
             except Exception as e:
@@ -428,3 +478,79 @@ class ZZZDataLoader:
                 return None
 
         return self._cache[cache_key]
+
+    def save_cache(self, file_path: str) -> None:
+        """
+        Save the cache and search index to a file using pickle and gzip.
+        """
+        data_to_save = {
+            'cache': self._cache,
+            'search_index': self._search_index
+        }
+        with gzip.open(file_path, 'wb') as f:
+            pickle.dump(data_to_save, f)
+        logging.info(f"Cache and search index saved to {file_path}")
+
+    def load_cache(self, file_path: str) -> bool:
+        """
+        Load the cache and search index from a file using pickle and gzip.
+        """
+        try:
+            with gzip.open(file_path, 'rb') as f:
+                data_loaded = pickle.load(f)
+            self._cache = data_loaded.get('cache', {})
+            self._search_index = data_loaded.get('search_index', {})
+            logging.info(f"Cache and search index loaded from {file_path}")
+            return True
+        except FileNotFoundError:
+            logging.warning(f"Cache file not found at: {file_path}")
+            return False
+        except (pickle.UnpicklingError, gzip.BadGzipFile) as e:
+            logging.error(f"Failed to load cache from {file_path}: {e}")
+            return False
+
+    def _clean_text(self, text: str) -> str:
+        """
+        清洗文本，移除标点符号、特殊字符，并转换为小写。
+        """
+        text = re.sub(r'[^\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7a3a-zA-Z0-9\s]', '', text)
+        text = re.sub(r'\s+', '', text)
+        return text.lower()
+
+    def _generate_ngrams(self, text: str, n: int = 2):
+        """为给定的文本生成二元词条集合。"""
+        if len(text) < n:
+            return set()
+        return {text[i:i+n] for i in range(len(text)-n+1)}
+
+    def _add_to_index(self, keyword: str, item_id: Any, item_name: str, item_type: str, source_field: str):
+        """向索引中添加一条记录，处理重复。"""
+        key = keyword.lower()
+        if not any(res.id == item_id and res.type == item_type for res in self._search_index[key]):
+            self._search_index[key].append(
+                SearchResult(id=item_id, name=item_name, type=item_type, match_source=source_field)
+            )
+
+    def _index_item(self, data: dict, context: Any):
+        """
+        为从JSON加载的数据(`data`)，根据其归属信息(`context`)，建立搜索索引。
+        """
+        item_id = context.get('id')
+        item_type = context.get('type')
+        item_name = context.get('name')
+
+        if not all([item_id, item_type, item_name]):
+            logging.warning(f"Indexing skipped: missing id, type, or name in context. context={context}")
+            return
+
+        # 对 content 字段进行索引
+        if 'content' in data and isinstance(data['content'], str):
+            cleaned_text = self._clean_text(data['content'])
+            if cleaned_text:
+                # 对短字段进行完整索引
+                if len(cleaned_text) <= 5:
+                     self._add_to_index(cleaned_text, item_id, item_name, item_type, 'content')
+
+                # 对所有字段都进行二元索引
+                for token in self._generate_ngrams(cleaned_text):
+                     self._add_to_index(token, item_id, item_name, item_type, 'content')

@@ -1,9 +1,9 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from collections import defaultdict
 
 from ..dataloader import ZZZDataLoader
 from ..interpreters.unified_dialogue_interpreter import UnifiedDialogueInterpreter
-from ..interpreters.models.unified_dialogue import DialogueChapter
+from ..models.unified_dialogue import DialogueChapter
 
 
 class DialogueService:
@@ -66,3 +66,82 @@ class DialogueService:
                 chapters_by_category[key].append(chapter_id)
 
         return dict(chapters_by_category)
+
+    def get_dialogue_as_markdown(self, chapter_id: str) -> str:
+        """
+        Generate a markdown representation of a dialogue chapter.
+
+        Args:
+            chapter_id: The ID of the dialogue chapter.
+
+        Returns:
+            A markdown string representing the dialogue chapter.
+        """
+        chapter = self.get_chapter_by_id(chapter_id)
+        if not chapter:
+            return f"# Dialogue Chapter {chapter_id} not found"
+
+        # Simple markdown template
+        markdown = f"# {chapter_id}\n\n"
+        markdown += f"**Category**: {chapter.category}\n\n"
+        markdown += f"**Sub-category**: {chapter.sub_category or 'N/A'}\n\n"
+        markdown += "## Acts\n\n"
+
+        for act_id, act in chapter.acts.items():
+            markdown += f"### Act {act_id}\n\n"
+            for line_id, line in act.lines.items():
+                if line.speaker:
+                    markdown += f"**{line.speaker}**: "
+                if line.male_text:
+                    markdown += f"{line.male_text}\n\n"
+                elif line.female_text:
+                    markdown += f"{line.female_text}\n\n"
+
+                # Add options if any
+                if line.options:
+                    markdown += "Options:\n"
+                    for option_id, option_text in line.options.items():
+                        markdown += f"- {option_text}\n"
+                    markdown += "\n"
+
+        return markdown
+
+    def get_tree(self) -> List[Dict[str, Any]]:
+        """
+        Generate a tree structure for dialogue chapters, categorized by category and sub-category.
+
+        Returns:
+            A list of dictionaries representing the tree structure.
+        """
+        chapters_by_category = self.get_chapters_by_category()
+
+        # Organize chapters into a tree structure
+        tree = []
+
+        # Group by main category first
+        categories: Dict[str, Dict[Optional[str], List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+
+        for (category, sub_category), chapter_ids in chapters_by_category.items():
+            for chapter_id in chapter_ids:
+                categories[category][sub_category].append({
+                    "id": chapter_id,
+                    "name": chapter_id,
+                    "type": "dialogue"
+                })
+
+        # Convert to the required format
+        for category_name, sub_categories in categories.items():
+            sub_category_nodes = []
+            for sub_category_name, chapters in sub_categories.items():
+                sub_category_display_name = sub_category_name if sub_category_name else "其他"
+                sub_category_nodes.append({
+                    "name": sub_category_display_name,
+                    "children": chapters
+                })
+
+            tree.append({
+                "name": category_name,
+                "children": sub_category_nodes
+            })
+
+        return tree
