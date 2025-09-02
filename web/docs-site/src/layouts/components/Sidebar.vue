@@ -155,11 +155,10 @@ const navigateTo = (path: string) => {
     drawerCheckbox.checked = false;
   }
 };
-
 const switchDomain = (domain: string) => {
   emit('switchDomain', domain);
+  router.push(`/domain/${domain}/agent`);
 };
-
 // Session & Agent Management
 const sessions = computed(() => Object.values(agentStore.sessions));
 const activeSessionId = computed(() => agentStore.activeSessionId);

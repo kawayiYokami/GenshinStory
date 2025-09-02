@@ -9,14 +9,16 @@
           class="input input-sm h-full w-full bg-base-300 border-none pr-10"
           @keyup.enter="performSearch"
         />
-        <button
-          @click="performSearch"
-          class="absolute right-2 top-1/2 transform -translate-y-1/2 btn btn-ghost btn-sm btn-circle z-10"
-          :disabled="isSearching || isLoading"
-          title="搜索"
-        >
-          <Search class="w-4 h-4" />
-        </button>
+        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 z-10">
+          <button
+            @click="performSearch"
+            class="btn btn-ghost btn-sm btn-circle"
+            :disabled="isSearching || isLoading"
+            title="搜索"
+          >
+            <Search class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </Teleport>
     <!-- 搜索结果区域 - 可滚动，隐藏滚动条 -->

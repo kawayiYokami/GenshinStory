@@ -49,10 +49,9 @@ const showAgentButton = computed(() => currentPageType.value !== 'agent')
 
 const navigateToSearch = () => {
   // 获取当前域
-  const currentDomain = localStorage.getItem('currentDomain') || 'default';
-  router.push(`/domain/${currentDomain}/search`);
+  const targetDomain = route.params.domain || localStorage.getItem('currentDomain') || 'default';
+  router.push(`/domain/${targetDomain}/search`);
 };
-
 const navigateToAgent = () => {
   // 使用与侧边栏相同的域处理逻辑
   const targetDomain = route.params.domain || localStorage.getItem('currentDomain') || 'default';

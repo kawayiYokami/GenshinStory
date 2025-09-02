@@ -32,7 +32,11 @@ export class AgentToolService {
     const resultTokens = tokenizerService.countTokens(toolResult);
     let historyForCalculation = [...this.orderedMessages];
     const newToolMessage: Message = {
-      role: "tool", name: parsedTool.name, content: toolResult, id: 'temp-prediction-id'
+      role: "tool",
+      name: parsedTool.name,
+      content: toolResult,
+      id: 'temp-prediction-id',
+      createdAt: new Date().toISOString(),
     };
 
     let replacementDone = false;
@@ -80,16 +84,16 @@ export class AgentToolService {
       await this.messageManager.replaceMessage(statusMessage.id, {
         role: 'assistant', type: 'tool_result', content: toolResult, status: 'done', is_hidden: false
       });
-      
+
       // 如果有后续提示，将其作为隐藏的用户消息添加到对话历史中
       if (followUpPrompt) {
-        await this.messageManager.addMessage({ 
-          role: 'user', 
-          content: followUpPrompt, 
-          is_hidden: true 
+        await this.messageManager.addMessage({
+          role: 'user',
+          content: followUpPrompt,
+          is_hidden: true
         });
       }
-      
+
       return { status: 'success' };
     } else {
       await this.messageManager.addMessage({ role: 'user', content: toolResult, is_hidden: true });
