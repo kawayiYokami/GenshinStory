@@ -58,10 +58,16 @@ const displayValue = computed(() => {
     case 'search_docs':
       return params.query || '';
     case 'read_doc': {
-      // 检查 params.args 是否存在
-      if (!params.args) return '';
-      const pathMatch = params.args.match(/<path>(.*?)<\/path>/);
-      return pathMatch ? pathMatch[1] : params.args;
+      // 检查 params.args 是否存在且为字符串
+      if (typeof params.args === 'string') {
+        const pathMatch = params.args.match(/<path>(.*?)<\/path>/);
+        return pathMatch ? pathMatch[1] : params.args;
+      }
+      // 如果 params.args 不是字符串，则将其序列化以安全显示，防止崩溃
+      if (params.args) {
+        return JSON.stringify(params.args);
+      }
+      return '';
     }
     // 可以为其他工具添加更多 case
     default:
