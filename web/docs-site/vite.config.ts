@@ -31,8 +31,8 @@ export default defineConfig({
     exclude: ['@dqbd/tiktoken']
   },
   server: {
-    port: 5713,
-    host: '0.0.0.0'
+    port: 8080,
+    host: '127.0.0.1'
   },
   build: {
     rollupOptions: {

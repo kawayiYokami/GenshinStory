@@ -4,10 +4,12 @@
 .__pycache__/
 AnimeGameData/
 turnbasedgamedata/
+wiki_scraper/
 scraper/
 logs/
 test_outputs/
-
+structured_data/
+ZenlessData/
 # Python
 __pycache__/
 *.pyc
