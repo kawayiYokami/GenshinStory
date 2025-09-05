@@ -8,7 +8,7 @@ publish = "web/docs-site/dist"
 # 1. Run the Python scripts to generate data and markdown files.
 # 2. Change directory into the frontend application.
 # 3. Install frontend dependencies and build the static site.
-command = "python scripts/hsrwiki_generate_markdown.py && python scripts/gi_generate_markdown.py && python scripts/gi_generate_catalog_tree.py && python scripts/hsrwiki_generate_catalog_tree.py && python scripts/zzz_generate_markdown.py && python scripts/zzz_generate_catalog_tree.py && cd web/docs-site && npm install && npm run build"
+command = "pip install pydantic && python scripts/hsrwiki_generate_markdown.py && python scripts/gi_generate_markdown.py && python scripts/gi_generate_catalog_tree.py && python scripts/hsrwiki_generate_catalog_tree.py && python scripts/zzz_generate_markdown.py && python scripts/zzz_generate_catalog_tree.py && cd web/docs-site && npm install && npm run build"
 
 [build.environment]
 # Set the Python and Node.js versions to ensure a consistent build environment.

@@ -8,6 +8,7 @@ authors = [
 urls = { Homepage = "https://github.com/kawayiYokami/GenshinStory" }
 requires-python = ">=3.10"
 dependencies = [
+    "pydantic>=2.0,<3.0"
 ]
 
 [tool.uv]
