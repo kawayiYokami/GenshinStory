@@ -62,10 +62,10 @@ class TextTransformer:
         for placeholder, replacement in self.placeholder_replacements.items():
             # 使用 re.sub 进行不区分大小写的替换
             text = re.sub(re.escape(placeholder), replacement, text, flags=re.IGNORECASE)
-        
+
         # 2. 处理性别分支文本，统一选择男性版本
         text = self.GENDER_REGEX.sub(self._replace_gender_text, text)
-        
+
         # 3. 转换 Ruby 标签，例如 {RUBY_B#注音}正文{RUBY_E#} -> 正文(注音)
         text = self.RUBY_REGEX.sub(r'\2（\1）', text)
 
@@ -74,9 +74,18 @@ class TextTransformer:
 
         # 5. 移除所有HTML风格的标签
         text = self.TAG_REGEX.sub('', text)
-        
+
         # 6. 移除一些常见的转义字符，例如 #1, #2 等参数标记
         # 并清理首尾可能产生的多余空格
         text = re.sub(r'#\d+', '', text).strip()
-        
+
+        # 7. 处理字符串形式的换行符 \n 和 \n\n
+        #    首先处理双换行，将其转换为真正的段落分隔
+        text = text.replace('\\n\\n', '\n\n')
+        #    然后处理单个换行，将其转换为空格
+        text = text.replace('\\n', ' ')
+        #    最后清理可能产生的多余空格
+        text = re.sub(r' +', ' ', text) # 将多个连续空格替换为一个
+        text = text.strip()
+
         return text

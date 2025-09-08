@@ -53,3 +53,6 @@ class DataLoader:
     def get_outfits(self) -> Iterator[Dict[str, Any]]:
         return self._load_json_files('157_装扮')
 
+    def get_rogue_events(self) -> Iterator[Dict[str, Any]]:
+        return self._load_json_files('103_模拟宇宙·事件图鉴')
+

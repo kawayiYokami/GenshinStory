@@ -19,6 +19,8 @@ class CacheService:
         # Add other lists as needed from structured_data
         self.outfits: List[Any] = []
         self.valuables: List[Any] = []
+        self.rogue_events: List[Any] = []
+        self.rogue_magic_scepters: List[Any] = []
 
         # 搜索索引
         self._search_index: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -41,7 +43,7 @@ class CacheService:
         if len(text) < n:
             return set()
         return {text[i:i+n] for i in range(len(text)-n+1)}
-    
+
     def _add_to_index(self, token: str, item_id: Any, item_name: str, item_type: str):
         """向索引中添加一条记录，处理重复。"""
         context = {'id': item_id, 'name': item_name, 'type': item_type}

@@ -20,7 +20,9 @@ from hsrwiki_data_parser.formatters.book_formatter import BookFormatter
 from hsrwiki_data_parser.formatters.material_formatter import MaterialFormatter
 from hsrwiki_data_parser.formatters.quest_formatter import QuestFormatter
 from hsrwiki_data_parser.formatters.outfit_formatter import OutfitFormatter
+from hsrwiki_data_parser.formatters.rogue_event_formatter import RogueEventFormatter
 from hsrwiki_data_parser.formatters.message_formatter import MessageFormatter
+from hsrwiki_data_parser.formatters.rogue_magic_scepter_formatter import RogueMagicScepterFormatter
 
 # --- Config ---
 logging.basicConfig(
@@ -101,6 +103,16 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
                 item.metadata.type if item.metadata else "装扮"
             ),
         },
+        "rogue_events": {
+            "attr": "rogue_events",
+            "formatter": RogueEventFormatter(),
+            "sub_cat_func": lambda item: "模拟宇宙事件",
+        },
+        "rogue_magic_scepters": {
+            "attr": "rogue_magic_scepters",
+            "formatter": RogueMagicScepterFormatter(),
+            "sub_cat_func": lambda item: "奇物",
+        },
     }
 
     for cat_name, config in category_map.items():
@@ -116,7 +128,8 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
         for item in items:
             try:
                 item_id = item.id
-                item_name = item.name or f"{cat_name}-{item_id}"
+                # Use 'name' attribute if available, otherwise use 'title' attribute
+                item_name = getattr(item, 'name', getattr(item, 'title', '')) or f"{cat_name}-{item_id}"
                 sub_category = sub_cat_func(item) or "Uncategorized"
 
                 markdown_content = formatter.format(item)
@@ -191,6 +204,14 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
                 item.metadata.type if item.metadata else "装扮"
             ),
         },
+        "rogue_events": {
+            "attr": "rogue_events",
+            "sub_cat_func": lambda item: "模拟宇宙事件",
+        },
+        "rogue_magic_scepters": {
+            "attr": "rogue_magic_scepters",
+            "sub_cat_func": lambda item: "奇物",
+        },
     }
 
     for cat_name, config in category_map.items():
@@ -200,7 +221,8 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
         for item in items:
             try:
                 item_id = item.id
-                item_name = item.name or f"{cat_name}-{item_id}"
+                # Use 'name' attribute if available, otherwise use 'title' attribute
+                item_name = getattr(item, 'name', getattr(item, 'title', '')) or f"{cat_name}-{item_id}"
                 sub_category = sub_cat_func(item) or "Uncategorized"
 
                 cleaned_sub_cat = clean_filename(sub_category)

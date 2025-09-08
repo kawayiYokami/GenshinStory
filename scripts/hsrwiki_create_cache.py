@@ -15,12 +15,18 @@ from hsrwiki_data_parser.interpreters.book_interpreter import BookInterpreter
 from hsrwiki_data_parser.interpreters.material_interpreter import MaterialInterpreter
 from hsrwiki_data_parser.interpreters.quest_interpreter import QuestInterpreter
 from hsrwiki_data_parser.interpreters.outfit_interpreter import OutfitInterpreter
+from hsrwiki_data_parser.interpreters.rogue_event_interpreter import RogueEventInterpreter
 from hsrwiki_data_parser.formatters.character_formatter import CharacterFormatter
 from hsrwiki_data_parser.formatters.relic_formatter import RelicFormatter
 from hsrwiki_data_parser.formatters.book_formatter import BookFormatter
 from hsrwiki_data_parser.formatters.material_formatter import MaterialFormatter
 from hsrwiki_data_parser.formatters.quest_formatter import QuestFormatter
 from hsrwiki_data_parser.formatters.outfit_formatter import OutfitFormatter
+from hsrwiki_data_parser.formatters.rogue_event_formatter import RogueEventFormatter
+
+# Rogue Magic Scepter Components
+from hsrwiki_data_parser.interpreters.rogue_magic_scepter_interpreter import RogueMagicScepterInterpreter
+from hsrwiki_data_parser.formatters.rogue_magic_scepter_formatter import RogueMagicScepterFormatter
 
 # Game Data Components (for Messages)
 from hsrwiki_data_parser.services.game_data_loader import GameDataLoader
@@ -61,13 +67,15 @@ def main():
         'materials': {'interpreter': MaterialInterpreter(wiki_loader), 'formatter': MaterialFormatter(), 'type_name': 'Material'},
         'quests': {'interpreter': QuestInterpreter(wiki_loader), 'formatter': QuestFormatter(), 'type_name': 'Quest'},
         'outfits': {'interpreter': OutfitInterpreter(wiki_loader), 'formatter': OutfitFormatter(), 'type_name': 'Outfit'},
+        'rogue_events': {'interpreter': RogueEventInterpreter(wiki_loader), 'formatter': RogueEventFormatter(), 'type_name': 'RogueEvent'},
+        'rogue_magic_scepters': {'interpreter': RogueMagicScepterInterpreter(game_loader, text_map_service), 'formatter': RogueMagicScepterFormatter(), 'type_name': 'RogueMagicScepter'},
     }
 
     for store_key, config in processing_map.items():
         interpreter = config['interpreter']
         formatter = config['formatter']
         type_name = config['type_name']
-        
+
         logging.info(f"--- Processing: {type_name} ---")
         items = interpreter.interpret_all()
         setattr(cache_service, store_key, items)
@@ -76,7 +84,9 @@ def main():
         # Format and Index
         for item in items:
             markdown_content = formatter.format(item)
-            cache_service.index_item(item.id, item.name, type_name, text_content=markdown_content)
+            # Use 'name' attribute if available, otherwise use 'title' attribute
+            item_name = getattr(item, 'name', getattr(item, 'title', ''))
+            cache_service.index_item(item.id, item_name, type_name, text_content=markdown_content)
         logging.info(f"  Indexed {len(items)} {type_name} items.")
 
     # --- 3. Save Cache ---
