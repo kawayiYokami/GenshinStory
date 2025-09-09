@@ -32,7 +32,5 @@ class CharacterFormatter:
                 for line in voice_lines:
                     md.append(f"- **{line.title}:** {line.text}")
                 md.append("")
-        
-        md.append(f"*来源: {item.source_url}*")
 
         return '\n'.join(md)

@@ -21,7 +21,5 @@ class RelicFormatter:
             for piece in item.pieces:
                 md.append(f"### {piece.name}")
                 md.append(f"{piece.story}\n")
-        
-        md.append(f"*来源: {item.source_url}*")
 
         return '\n'.join(md)
