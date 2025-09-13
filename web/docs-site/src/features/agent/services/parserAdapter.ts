@@ -154,20 +154,20 @@ export function parseMultipleToolCalls(xmlString: string): {
       if (match) {
         return match[0];
       }
-      
+
       // 如果没找到，尝试自闭合标签
       const selfClosingRegex = new RegExp(`<${toolName}[^>]*/>`, 'i');
       const selfClosingMatch = xmlString.match(selfClosingRegex);
       if (selfClosingMatch) {
         return selfClosingMatch[0];
       }
-      
+
       // 如果还是没找到，返回重建的XML作为备选
       return buildToolXml(toolName, {});
     }
 
     const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs', 'ask']
-    
+
     // 工具名称别名映射
     const TOOL_ALIASES: Record<string, string> = {
       'read': 'read_doc',
@@ -186,7 +186,7 @@ export function parseMultipleToolCalls(xmlString: string): {
 
     for (const toolName of toolNodes) {
       let finalToolName = toolName
-      
+
       // 检查是否是别名
       if (!VALID_TOOLS.includes(toolName)) {
         if (TOOL_ALIASES[toolName]) {
@@ -386,6 +386,22 @@ export function parseReadDocRequests(argsContent: string): any[] {
 }
 
 /**
+ * 规范化 lineRanges 为字符串数组
+ */
+function _normalizeLineRanges(ranges: unknown): string[] {
+  if (Array.isArray(ranges)) {
+    // 确保数组内都是字符串
+    return ranges.filter(r => typeof r === 'string');
+  }
+  if (typeof ranges === 'string') {
+    // 如果是单个字符串，放入数组
+    return [ranges];
+  }
+  // 其他情况返回空数组
+  return [];
+}
+
+/**
  * 从 JSON 对象解析文档请求
  */
 function parseJsonDocRequests(parsed: any): any[] {
@@ -396,18 +412,20 @@ function parseJsonDocRequests(parsed: any): any[] {
     const docs = Array.isArray(parsed.doc) ? parsed.doc : [parsed.doc]
     for (const doc of docs) {
       if (doc.path) {
+        const ranges = doc.line_range || doc.lineRanges;
         docRequests.push({
           path: doc.path,
-          lineRanges: doc.line_range || doc.lineRanges || []
+          lineRanges: _normalizeLineRanges(ranges)
         })
       }
     }
   }
   // 处理扁平化格式: { "doc.path": "file.md" }
   else if (parsed['doc.path']) {
+    const ranges = parsed['doc.lineRanges'] || parsed['doc.line_range'] || parsed['line_range'];
     docRequests.push({
       path: parsed['doc.path'],
-      lineRanges: parsed['doc.lineRanges'] || parsed['doc.line_range'] || []
+      lineRanges: _normalizeLineRanges(ranges)
     })
   }
   // 处理 args 包装格式: { args: { doc: { path: "file.md" } } }
