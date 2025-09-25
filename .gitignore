@@ -4,11 +4,9 @@
 .__pycache__/
 AnimeGameData/
 turnbasedgamedata/
-wiki_scraper/
 scraper/
 logs/
 test_outputs/
-structured_data/
 ZenlessData/
 # Python
 __pycache__/
@@ -24,3 +22,7 @@ web/docs-site/public/domains/zzz/docs/
 /web/docs-site/src/**/*.js.map
 /web/docs-site/src/**/*.vue.js
 /web/docs-site/src/modules
+
+# HTML and JSON files
+*.html
+*.json

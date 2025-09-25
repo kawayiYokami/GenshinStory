@@ -47,7 +47,7 @@ interface NavItem {
   id: string;
   type: 'route' | 'category';
   label?: string;
-  icon: string;
+  iconKey?: string;
 }
 
 const route = useRoute();

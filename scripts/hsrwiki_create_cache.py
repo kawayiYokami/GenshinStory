@@ -52,7 +52,7 @@ def main():
 
     # --- 1. Initialize Services ---
     logging.info("Initializing services...")
-    wiki_loader = WikiDataLoader(base_path=os.path.join(project_root, 'structured_data'))
+    wiki_loader = WikiDataLoader(base_path=os.path.join(project_root, 'hsr_wiki_scraper', 'output', 'structured_data'))
     game_loader = GameDataLoader(base_path=os.path.join(project_root, 'turnbasedgamedata'))
     text_map_service = TextMapService(game_loader)
     cache_service = CacheService()

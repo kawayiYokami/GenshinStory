@@ -1,56 +1,37 @@
 {
   "categoryTranslations": {
-    "quest": "任务",
-    "character": "角色",
-    "weapon": "武器",
-    "relicset": "圣遗物",
-    "material": "材料",
-    "book": "书籍",
-    "readable": "读物"
+    "武器": "武器",
+    "敌人": "敌人",
+    "背包": "材料",
+    "NPC&商店": "NPC",
+    "角色": "角色",
+    "任务": "任务",
+    "动物": "动物",
+    "书籍": "读物",
+    "圣遗物": "圣遗物",
+    "地图文本": "读物",
+    "组织": "组织",
+    "角色逸闻": "逸闻",
+    "秘境": "秘境",
+    "食物": "食物",
+    "装扮": "装扮"
   },
   "navigation": [
-    {
-      "id": "agent",
-      "type": "route",
-      "label": "问答",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M20.25 8.511c.884.284 1.5 1.083 1.5 1.989v9a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5v-9c0-.906.616-1.705 1.5-1.989V7.5A3.75 3.75 0 0 1 9.75 3.75h4.5A3.75 3.75 0 0 1 18.25 7.5v1.011ZM12 9.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 2.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 2.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z\" /></svg>"
-    },
-    {
-      "id": "search",
-      "type": "route",
-      "label": "搜索",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z\" /></svg>"
-    },
-    {
-      "id": "quest",
-      "type": "category",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\" /></svg>"
-    },
-    
-    {
-      "id": "character",
-      "type": "category",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z\" /></svg>"
-    },
-    {
-      "id": "weapon",
-      "type": "category",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 2l-1.5 8.5L12 12l1.5-1.5L12 2z\" /><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10.5 10.5L8 20l4-1 4 1-2.5-9.5\" /><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 19l3 1 3-1M12 2v8\" /></svg>"
-    },
-    {
-      "id": "relicset",
-      "type": "category",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 3l2.5 6h6.5l-5 4 1.5 6.5L12 16l-5.5 3.5L8 13l-5-4h6.5L12 3z\" /></svg>"
-    },
-    {
-      "id": "material",
-      "type": "category",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z\" /></svg>"
-    },
-    {
-      "id": "book",
-      "type": "category",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"1.5\" stroke=\"currentColor\" class=\"w-6 h-6\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25\" /></svg>"
-    }
+    { "id": "agent", "type": "route", "label": "问答", "iconKey": "agent" },
+    { "id": "search", "type": "route", "label": "搜索", "iconKey": "search" },
+    { "id": "任务", "type": "category", "iconKey": "quest" },
+    { "id": "角色", "type": "category", "iconKey": "character" },
+    { "id": "角色逸闻", "type": "category", "iconKey": "dialogue" },
+    { "id": "武器", "type": "category", "iconKey": "weapon" },
+    { "id": "圣遗物", "type": "category", "iconKey": "relicset" },
+    { "id": "背包", "type": "category", "iconKey": "material" },
+    { "id": "敌人", "type": "category", "iconKey": "rogue_events" },
+    { "id": "动物", "type": "category", "iconKey": "star" },
+    { "id": "NPC&商店", "type": "category", "iconKey": "users" },
+    { "id": "组织", "type": "category", "iconKey": "shieldcheck" },
+    { "id": "书籍", "type": "category", "iconKey": "book" },
+    { "id": "秘境", "type": "category", "iconKey": "miracles" },
+    { "id": "食物", "type": "category", "iconKey": "material" },
+    { "id": "装扮", "type": "category", "iconKey": "weapon" }
   ]
 }

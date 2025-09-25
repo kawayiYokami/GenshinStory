@@ -36,7 +36,7 @@
                 <ul v-if="activeMenu === 'wiki'" class="mt-2">
                 <li v-for="navItem in wikiNavigationItems" :key="navItem.id">
                   <a @click="navigateTo(getNavPath(navItem))">
-                    <NavigationIcon :icon-name="navItem.id" />
+                    <NavigationIcon :icon-name="navItem.iconKey || navItem.id" />
                     {{ navItem.label }}
                   </a>
                 </li>
@@ -124,7 +124,7 @@ interface NavItem {
   id: string;
   type: 'route' | 'category';
   label?: string;
-  icon: string;
+  iconKey?: string;
 }
 
 const props = defineProps<{
