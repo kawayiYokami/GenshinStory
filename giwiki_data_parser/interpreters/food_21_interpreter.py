@@ -68,6 +68,7 @@ class FoodInterpreter:
 
             # 创建食物对象
             food = FoodModel(
+                name=food_name,  # 设置为标准name字段，与其他模型保持一致
                 food_name=food_name,
                 quality_variants=quality_variants
             )
