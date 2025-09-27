@@ -15,7 +15,6 @@ from giwiki_data_parser.main import GiWikiDataParser
 
 # --- 配置 ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-WIKI_DATA_DIR = "gi_wiki_scraper/output/structured_data"
 CACHE_FILE_PATH = "giwiki_data_parser/cache/giwiki_data.cache.gz"
 MARKDOWN_OUTPUT_DIR = "web/docs-site/public/domains/gi/docs"
 JSON_OUTPUT_DIR = "web/docs-site/public/domains/gi/metadata"
@@ -69,9 +68,9 @@ def load_cache_data(cache_path: str) -> Dict[str, Any]:
     # 使用 pickle 从 gzip 压缩文件加载缓存对象
     import pickle
     from giwiki_data_parser.services.cache_service import CacheService
-    
+
     cache_service = CacheService.load(cache_path)
-    
+
     # 将缓存服务对象转换为字典格式以兼容现有代码
     cache_data = {
         'parser_cache': {
@@ -87,108 +86,149 @@ def load_cache_data(cache_path: str) -> Dict[str, Any]:
             'organizations': cache_service.organizations,
             'character_stories': cache_service.character_stories,
             'map_texts': cache_service.map_texts,
+            'adventurer_guild_tasks': cache_service.adventurer_guild_tasks,
             'food': cache_service.foods,
             'domains': cache_service.domains,
             'outfits': cache_service.outfits,
         },
         'search_index': cache_service._search_index
     }
-    
+
     return cache_data
 
-def export_all_to_markdown(parser: GiWikiDataParser, output_dir: str) -> List[Dict[str, Any]]:
-    """
-    将所有解析的数据导出为Markdown文件，并返回元数据索引。
-    """
-    logging.info(f"开始导出所有数据到Markdown文件，输出目录: {output_dir}")
+def get_cache_type_mapping() -> Dict[str, str]:
+    """获取缓存类型名到标准数据类型名的映射"""
+    return {
+        'characters': '25_角色',
+        'quests': '43_任务',
+        'books': '68_书籍',
+        'weapons': '5_武器',
+        'artifacts': '218_圣遗物',
+        'enemies': '6_敌人',
+        'animals': '49_动物',
+        'inventory_items': '13_背包',
+        'npc_shops': '20_NPC&商店',
+        'organizations': '255_组织',
+        'character_stories': '261_角色逸闻',
+        'map_texts': '251_地图文本',
+        'adventurer_guild_tasks': '55_冒险家协会',
+        'food': '21_食物',
+        'domains': '54_秘境',
+        'outfits': '211_装扮',
+    }
 
+def export_all_to_markdown_from_cache(cache_data: Dict[str, Any], output_dir: str, classification_map: Dict[str, str]) -> List[Dict[str, Any]]:
+    """
+    完全基于缓存数据生成markdown文件（修复版本）
+
+    Args:
+        cache_data: 缓存数据字典
+        output_dir: 输出目录
+        classification_map: 分类映射表
+
+    Returns:
+        元数据索引列表
+    """
+    logging.info("开始基于缓存数据导出所有数据到Markdown文件")
     metadata_index = []
-    supported_types = parser.get_supported_data_types()
+    type_mapping = get_cache_type_mapping()
 
-    for data_type in supported_types:
-        # 去除 data_type 开头的数字和下划线，得到干净的分类名
-        clean_data_type = re.sub(r'^\d+_', '', data_type)
-        logging.info(f"  正在处理数据类型: {data_type} (cleaned: {clean_data_type})")
-
-        try:
-            # 获取该类型的所有文件
-            type_dir = Path(WIKI_DATA_DIR) / data_type
-            if not type_dir.exists():
-                logging.warning(f"    数据目录不存在: {type_dir}")
-                continue
-
-            json_files = list(type_dir.glob("*.json"))
-            logging.info(f"    找到 {len(json_files)} 个文件")
-
-            # 创建输出子目录，使用干净的分类名
-            output_subdir = Path(output_dir) / clean_data_type
-
-            for json_file in json_files:
-                try:
-                    # 解析文件
-                    parsed_data = parser.parse_file(str(json_file))
-                    if not parsed_data:
-                        continue
-
-                    # 生成Markdown内容
-                    markdown_content = parser.format_to_markdown(parsed_data, data_type)
-                    if not markdown_content:
-                        continue
-
-                    # 确定文件名和路径
-                    file_id = json_file.stem
-                    item_name = getattr(parsed_data, 'name', None) or getattr(parsed_data, 'title', None) or file_id
-                    cleaned_name = clean_filename(item_name)
-
-                    file_name_without_ext = f"{cleaned_name}-{file_id}"
-                    file_name = f"{file_name_without_ext}.md"
-
-                    # 获取二级分类
-                    sub_category_name = None
-                    if data_type in CLASSIFICATION_MAP:
-                        field_name = CLASSIFICATION_MAP[data_type]
-                        # 从标签字典中获取分类字段值
-                        if hasattr(parsed_data, 'tags') and parsed_data.tags and field_name in parsed_data.tags:
-                            sub_category_name = parsed_data.tags[field_name]
-
-                    # 如果没有获取到分类或分类为空，则设置为 "未分类"
-                    if not sub_category_name or str(sub_category_name).strip() == "":
-                        sub_category_name = "未分类"
-
-                    # 确定输出路径
-                    if data_type in CLASSIFICATION_MAP:
-                        cleaned_sub_category = clean_filename(str(sub_category_name))
-                        final_output_dir = output_subdir / cleaned_sub_category
-                        output_path = final_output_dir / file_name
-                        frontend_path = f"/v2/gi/category/{clean_data_type}/{cleaned_sub_category}/{file_name_without_ext}"
-                        display_category = str(sub_category_name)
-                    else:
-                        output_path = output_subdir / file_name
-                        frontend_path = f"/v2/gi/category/{clean_data_type}/{file_name_without_ext}"
-                        display_category = clean_data_type
-
-                    # 保存Markdown文件
-                    save_file(output_path, markdown_content)
-
-                    # 添加到元数据索引
-                    metadata_index.append({
-                        "id": file_id,
-                        "name": item_name,
-                        "type": clean_data_type,
-                        "category": display_category,
-                        "path": frontend_path
-                    })
-
-                except Exception as e:
-                    logging.error(f"    处理文件 {json_file} 时出错: {e}")
-                    continue
-
-        except Exception as e:
-            logging.error(f"  处理数据类型 {data_type} 时出错: {e}")
+    # 遍历所有缓存的数据类型
+    for cache_type, data_type in type_mapping.items():
+        items = cache_data['parser_cache'].get(cache_type, [])
+        if not items:
+            logging.info(f"  跳过空的数据类型: {data_type} ({cache_type})")
             continue
 
-    logging.info(f"Markdown导出完成，共处理 {len(metadata_index)} 个文件")
+        # 去除 data_type 开头的数字和下划线，得到干净的分类名
+        clean_data_type = re.sub(r'^\d+_', '', data_type)
+        logging.info(f"  正在处理数据类型: {data_type} (cleaned: {clean_data_type}), 共 {len(items)} 项")
+
+        # 创建输出子目录
+        output_subdir = Path(output_dir) / clean_data_type
+
+        for item in items:
+            try:
+                # 从缓存项目生成markdown内容
+                markdown_content = generate_markdown_from_cache_item(item, data_type)
+                if not markdown_content:
+                    logging.warning(f"    项目 {item.id} 生成markdown失败")
+                    continue
+
+                # 确定文件名和路径
+                item_name = getattr(item, 'name', None) or getattr(item, 'title', None) or str(item.id)
+                cleaned_name = clean_filename(item_name)
+                file_name_without_ext = f"{cleaned_name}-{item.id}"
+                file_name = f"{file_name_without_ext}.md"
+
+                # 获取二级分类
+                sub_category_name = None
+                if data_type in classification_map:
+                    field_name = classification_map[data_type]
+                    # 从标签字典中获取分类字段值
+                    if hasattr(item, 'tags') and item.tags and field_name in item.tags:
+                        sub_category_name = item.tags[field_name]
+
+                # 如果没有获取到分类或分类为空，则设置为 "未分类"
+                if not sub_category_name or str(sub_category_name).strip() == "":
+                    sub_category_name = "未分类"
+
+                # 确定输出路径
+                if data_type in classification_map:
+                    cleaned_sub_category = clean_filename(str(sub_category_name))
+                    final_output_dir = output_subdir / cleaned_sub_category
+                    output_path = final_output_dir / file_name
+                    frontend_path = f"/v2/gi/category/{clean_data_type}/{cleaned_sub_category}/{file_name_without_ext}"
+                    display_category = str(sub_category_name)
+                else:
+                    output_path = output_subdir / file_name
+                    frontend_path = f"/v2/gi/category/{clean_data_type}/{file_name_without_ext}"
+                    display_category = clean_data_type
+
+                # 保存Markdown文件
+                save_file(output_path, markdown_content)
+
+                # 添加到元数据索引
+                metadata_index.append({
+                    "id": item.id,
+                    "name": item_name,
+                    "type": clean_data_type,
+                    "category": display_category,
+                    "path": frontend_path
+                })
+
+                logging.debug(f"    已生成: {output_path}")
+
+            except Exception as e:
+                logging.error(f"    处理缓存项目 {item.id} 时出错: {e}")
+                continue
+
+    logging.info(f"基于缓存的Markdown导出完成，共处理 {len(metadata_index)} 个文件")
     return metadata_index
+
+def generate_markdown_from_cache_item(item: Any, data_type: str) -> str:
+    """
+    从缓存项目生成markdown内容
+
+    Args:
+        item: 缓存中的数据模型对象
+        data_type: 数据类型
+
+    Returns:
+        Markdown格式的内容
+    """
+    try:
+        # 初始化解析器（只需要用于格式化，不需要数据加载）
+        parser = GiWikiDataParser()  # 不传入data_dir，因为我们不从文件加载数据
+
+        # 使用解析器的格式化功能
+        markdown_content = parser.format_to_markdown(item, data_type)
+        return markdown_content
+
+    except Exception as e:
+        logging.error(f"生成markdown失败: {e}")
+        return ""
+
 
 def export_catalog_index(metadata_index: List[Dict[str, Any]], output_dir: str):
     """
@@ -256,7 +296,7 @@ def export_search_index_chunked(search_index: Dict[str, List[Dict[str, Any]]], b
     logging.info(f"所有分片索引已保存到: {output_chunk_dir.resolve()}")
 
 def main():
-    """主执行函数"""
+    """主执行函数（修复版本，完全基于缓存）"""
     # --- 1. 检查缓存文件 ---
     if not os.path.exists(CACHE_FILE_PATH):
         logging.error(f"缓存文件 '{CACHE_FILE_PATH}' 不存在。请先运行 `scripts/giwiki_create_cache.py`。")
@@ -267,39 +307,45 @@ def main():
     try:
         cache_data = load_cache_data(CACHE_FILE_PATH)
         logging.info("缓存数据加载成功")
+
+        # 检查缓存数据完整性
+        if 'parser_cache' not in cache_data:
+            logging.error("缓存数据中缺少 parser_cache")
+            sys.exit(1)
+
+        # 统计缓存数据
+        total_items = sum(len(items) for items in cache_data['parser_cache'].values())
+        logging.info(f"缓存中总共有 {total_items} 个数据项")
+
     except Exception as e:
         logging.error(f"加载缓存数据失败: {e}")
         sys.exit(1)
 
-    # --- 3. 初始化解析器 ---
-    logging.info("正在初始化解析器...")
-    parser = GiWikiDataParser(WIKI_DATA_DIR)
-
-    # 如果缓存中有解析器数据，可以在这里恢复
-    if 'parser_cache' in cache_data:
-        parser.load_cache_data(cache_data)
-        logging.info("解析器缓存数据已恢复")
-
-    # --- 4. 清理旧文件 ---
+    # --- 3. 清理旧文件 ---
     output_path = Path(MARKDOWN_OUTPUT_DIR)
     if output_path.exists():
         import shutil
         shutil.rmtree(output_path)
         logging.info(f"已清理旧的Markdown目录: {output_path}")
 
-    # --- 5. 执行导出 ---
-    metadata_index = export_all_to_markdown(parser, MARKDOWN_OUTPUT_DIR)
-    export_catalog_index(metadata_index, JSON_OUTPUT_DIR)
+    # --- 4. 基于缓存执行导出 ---
+    try:
+        metadata_index = export_all_to_markdown_from_cache(cache_data, MARKDOWN_OUTPUT_DIR, CLASSIFICATION_MAP)
+        export_catalog_index(metadata_index, JSON_OUTPUT_DIR)
 
-    # 导出搜索索引
-    if 'search_index' in cache_data:
-        export_search_index_chunked(cache_data['search_index'], JSON_OUTPUT_DIR)
-    else:
-        logging.warning("缓存中未找到搜索索引数据")
+        # 导出搜索索引
+        if 'search_index' in cache_data:
+            export_search_index_chunked(cache_data['search_index'], JSON_OUTPUT_DIR)
+        else:
+            logging.warning("缓存中未找到搜索索引数据")
 
-    logging.info(f"所有文件已生成。")
-    logging.info(f"  - Markdown: {output_path.resolve()}")
-    logging.info(f"  - JSON Indices: {Path(JSON_OUTPUT_DIR).resolve()}")
+        logging.info("所有文件已生成。")
+        logging.info(f"  - Markdown: {output_path.resolve()}")
+        logging.info(f"  - JSON Indices: {Path(JSON_OUTPUT_DIR).resolve()}")
+
+    except Exception as e:
+        logging.error(f"导出过程中发生错误: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
