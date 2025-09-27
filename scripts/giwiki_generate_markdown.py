@@ -28,7 +28,7 @@ CLASSIFICATION_MAP = {
     "6_敌人": "元素",
     "49_动物": "动物类型",
     "13_背包": "道具类型",
-    "20_NPC&商店": "地区",
+    "NPC": "地区",
     "255_组织": "地区",
     "261_角色逸闻": "地区",
     "251_地图文本": "地区",
@@ -40,13 +40,12 @@ CLASSIFICATION_MAP = {
 }
 
 def clean_filename(name: str) -> str:
-    """清理字符串，使其适合作为文件名或URL的一部分。"""
+    """清理字符串，使其适合作为文件路径的一部分（目录名或文件名）。"""
     if not isinstance(name, str):
         name = str(name)
-    # 移除所有非(汉字、字母、数字、下划线、中划线)的字符
-    name = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9_-]', '', name)
-    name = name.replace(' ', '-')  # 将空格替换为中划线
-    name = name.strip()  # 移除首尾空格
+    # 将所有非法字符（包括&符号、空格等）替换为中划线
+    name = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9_-]+', '-', name)
+    name = name.strip('-')  # 移除首尾可能出现的中划线
     return name
 
 def save_file(file_path: Path, content: str):
@@ -141,8 +140,8 @@ def export_all_to_markdown_from_cache(cache_data: Dict[str, Any], output_dir: st
             logging.info(f"  跳过空的数据类型: {data_type} ({cache_type})")
             continue
 
-        # 去除 data_type 开头的数字和下划线，得到干净的分类名
-        clean_data_type = re.sub(r'^\d+_', '', data_type)
+        # 去除 data_type 开头的数字和下划线，得到干净的分类名，并清理非法字符
+        clean_data_type = clean_filename(re.sub(r'^\d+_', '', data_type))
         logging.info(f"  正在处理数据类型: {data_type} (cleaned: {clean_data_type}), 共 {len(items)} 项")
 
         # 创建输出子目录
