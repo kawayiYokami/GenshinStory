@@ -22,6 +22,27 @@ from bs4 import BeautifulSoup
 # --- 核心常量定义 ---
 BASE_URL = "https://baike.mihoyo.com"
 ENTRY_URL = "https://baike.mihoyo.com/ys/obc/channel/map/189/25?bbs_presentation_style=no_header&visit_device=pc"
+
+# --- 需要抓取的分类ID白名单 ---
+INCLUDED_CATEGORIES = {
+    "5",    # 武器
+    "6",    # 敌人
+    "13",   # 背包
+    "20",   # NPC&商店
+    "21",   # 食物
+    "25",   # 角色
+    "43",   # 任务
+    "49",   # 动物
+    "54",   # 秘境
+    "55",   # 冒险家协会
+    "68",   # 书籍
+    "211",  # 装扮
+    "218",  # 圣遗物
+    "251",  # 地图文本
+    "255",  # 组织
+    "261",  # 角色逸闻
+}
+
 # 使用绝对路径确保在任何位置运行脚本都能正确输出
 from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
@@ -53,14 +74,14 @@ async def fetch_categories(page):
     访问入口页面，解析并获取所有内容分类的信息。
     """
     print(f"正在从入口页面获取所有分类信息...")
-    
+
     html_content = await fetch_page_content(page, ENTRY_URL)
     if not html_content:
         print("错误：无法获取入口页面内容。")
         return []
 
     soup = BeautifulSoup(html_content, 'html.parser')
-    
+
     # 使用正确的选择器定位容器
     category_container = soup.select_one("div.swiper-pagination.position-list__tabs")
     if not category_container:
@@ -75,7 +96,7 @@ async def fetch_categories(page):
         # 更精确地获取 span 标签的直接文本内容
         category_name = span_tag.get_text(strip=True)
         category_id_raw = span_tag.get("id") # 例如 "_position_25"
-        
+
         if not category_id_raw:
             continue # 跳过没有 id 的标签
 
@@ -83,12 +104,17 @@ async def fetch_categories(page):
         id_match = re.search(r'_position_(\d+)', category_id_raw)
         if not id_match:
             continue # 跳过格式不匹配的 id
-        
+
         category_id = id_match.group(1) # -> 25
-        
+
+        # 添加过滤：只处理需要的分类
+        if category_id not in INCLUDED_CATEGORIES:
+            print(f" -> 跳过不需要的分类: {category_name} (ID: {category_id})")
+            continue
+
         # 拼接分类页面的完整 URL
         category_url = f"{BASE_URL}/ys/obc/channel/map/189/{category_id}?bbs_presentation_style=no_header&visit_device=pc"
-        
+
         # 将信息存入列表
         categories_list.append({
             "name": category_name,
@@ -96,7 +122,7 @@ async def fetch_categories(page):
             "url": category_url
         })
         print(f" -> 发现分类: {category_name} (ID: {category_id})")
-        
+
     print(f"成功获取到 {len(categories_list)} 个分类。")
     return categories_list
 
@@ -300,61 +326,20 @@ async def fetch_items_with_tags_for_category(page, category):
             if option == "不限":
                 continue  # 跳过"不限"选项
 
-            try:
-                print(f"    -> 测试选项: {option}")
+            # 在处理当前筛选器前，先重置所有其他筛选器到"不限"
+            await reset_all_filters_to_unlimited(page, filters_dict.keys(), current_filter=filter_name)
 
-                # 找到筛选器容器和输入框
-                filter_container = await page.query_selector(f"div.el-select.pos-filter-pc__select:has(input[placeholder='{filter_name}'])")
-                if not filter_container:
-                    print(f"      -> 警告：找不到筛选器容器 {filter_name}")
-                    continue
+            # 找到筛选器容器
+            filter_container = await page.query_selector(f"div.el-select.pos-filter-pc__select:has(input[placeholder='{filter_name}'])")
+            if not filter_container:
+                print(f"    -> 警告：找不到筛选器容器 {filter_name}")
+                continue
 
-                filter_input = await filter_container.query_selector("input.el-input__inner")
-                if not filter_input:
-                    print(f"      -> 警告：找不到筛选器输入框 {filter_name}")
-                    continue
+            # 应用筛选器（带重试）
+            success, filtered_items = await apply_filter_with_retry(page, filter_container, option)
 
-                # 点击输入框
-                await filter_input.click()
-
-                # 等待该筛选器获得焦点状态
-                await filter_container.wait_for_selector("div.el-input.is-focus", timeout=10000)
-
-                # 等待箭头翻转
-                await filter_container.wait_for_selector("i.el-icon-arrow-up.is-reverse", timeout=5000)
-
-                # 等待下拉菜单状态更新
-                await page.wait_for_timeout(1000)
-
-                # 动态查找当前活跃的下拉菜单
-                all_dropdowns = await page.query_selector_all("div.el-select-dropdown.pos-filter-pc__select-dropdown")
-                visible_dropdown = None
-
-                for dropdown in all_dropdowns:
-                    placement = await dropdown.get_attribute("x-placement")
-                    if placement:
-                        visible_dropdown = dropdown
-                        break
-
-                if not visible_dropdown:
-                    print(f"      -> 警告：未找到活跃的下拉菜单")
-                    continue
-
-                # 点击目标选项
-                option_element = await visible_dropdown.query_selector(f"li.el-select-dropdown__item span:has-text('{option}')")
-                if not option_element:
-                    print(f"      -> 警告：找不到选项 {option}")
-                    continue
-
-                await option_element.click()
-
-                # 等待页面更新
-                await page.wait_for_timeout(2000)
-
-                # 获取筛选后的条目
-                filtered_items = await extract_items_from_page(page)
-
-                # 为这些条目添加标签
+            if success:
+                # 为筛选后的条目添加标签
                 tagged_count = 0
                 for item in filtered_items:
                     if item["id"] in items_dict:
@@ -362,44 +347,8 @@ async def fetch_items_with_tags_for_category(page, category):
                         tagged_count += 1
 
                 print(f"      -> 为 {tagged_count} 个条目添加标签 {filter_name}={option}")
-
-            except Exception as e:
-                print(f"      -> 错误：处理选项 {option} 时出错: {e}")
-                continue
-
-        # 重置筛选器到"不限"状态
-        try:
-            print(f"  -> 重置筛选器: {filter_name}")
-            filter_container = await page.query_selector(f"div.el-select.pos-filter-pc__select:has(input[placeholder='{filter_name}'])")
-            if filter_container:
-                filter_input = await filter_container.query_selector("input.el-input__inner")
-                if filter_input:
-                    await filter_input.click()
-
-                    # 等待焦点状态
-                    await filter_container.wait_for_selector("div.el-input.is-focus", timeout=10000)
-                    await filter_container.wait_for_selector("i.el-icon-arrow-up.is-reverse", timeout=5000)
-
-                    # 等待下拉菜单状态更新
-                    await page.wait_for_timeout(1000)
-
-                    # 动态查找当前活跃的下拉菜单
-                    all_dropdowns = await page.query_selector_all("div.el-select-dropdown.pos-filter-pc__select-dropdown")
-                    visible_dropdown = None
-
-                    for dropdown in all_dropdowns:
-                        placement = await dropdown.get_attribute("x-placement")
-                        if placement:
-                            visible_dropdown = dropdown
-                            break
-
-                    if visible_dropdown:
-                        unlimited_option = await visible_dropdown.query_selector("li.el-select-dropdown__item span:has-text('不限')")
-                        if unlimited_option:
-                            await unlimited_option.click()
-                            await page.wait_for_timeout(1000)
-        except Exception as e:
-            print(f"    -> 警告：重置筛选器 {filter_name} 失败: {e}")
+            else:
+                print(f"    -> 跳过筛选器 {filter_name}={option}（应用失败）")
 
     # 转换为列表格式
     items_list = list(items_dict.values())
@@ -417,6 +366,145 @@ async def fetch_items_with_tags_for_category(page, category):
         print(f"  -> 错误：保存文件 {output_filename} 失败: {e}")
 
     return items_list
+
+
+async def apply_filter_with_retry(page, filter_container, option, max_retries=3):
+    """
+    应用筛选器，带重试机制
+    返回 (success: bool, filtered_items: list)
+    """
+    for attempt in range(max_retries):
+        try:
+            print(f"    -> 尝试应用筛选器 {option} (第{attempt+1}次)")
+
+            # 每次重试前先重置当前筛选器到"不限"状态
+            await reset_filter_to_unlimited(page, filter_container)
+
+            # 获取筛选前的内容快照
+            before_items = await extract_items_from_page(page)
+
+            # 执行筛选操作
+            success = await perform_filter_selection(page, filter_container, option)
+            if not success:
+                continue
+
+            # 等待内容更新
+            await wait_for_content_update(page, before_items)
+
+            # 验证筛选结果
+            after_items = await extract_items_from_page(page)
+
+            if is_filter_effective(before_items, after_items):
+                print(f"      -> 筛选成功：{len(before_items)} -> {len(after_items)} 个条目")
+                return True, after_items
+            else:
+                print(f"      -> 筛选未生效，重试...")
+
+        except Exception as e:
+            print(f"      -> 第{attempt+1}次尝试失败: {e}")
+
+    print(f"    -> 筛选器 {option} 应用失败，已达到最大重试次数")
+    return False, []
+
+
+async def perform_filter_selection(page, filter_container, option):
+    """执行筛选器选择操作"""
+    try:
+        # 点击输入框
+        filter_input = await filter_container.query_selector("input.el-input__inner")
+        await filter_input.click()
+
+        # 等待下拉菜单
+        await filter_container.wait_for_selector("i.el-icon-arrow-up.is-reverse", timeout=5000)
+
+        # 找到可见的下拉菜单
+        visible_dropdown = await find_visible_dropdown(page)
+        if not visible_dropdown:
+            return False
+
+        # 点击目标选项
+        option_element = await visible_dropdown.query_selector(f"li.el-select-dropdown__item span:has-text('{option}')")
+        if not option_element:
+            return False
+
+        await option_element.click()
+        return True
+
+    except Exception as e:
+        print(f"      -> 筛选器操作失败: {e}")
+        return False
+
+
+async def wait_for_content_update(page, before_items):
+    """等待内容更新"""
+    try:
+        # 等待网络空闲
+        await page.wait_for_load_state('networkidle', timeout=8000)
+
+        # 等待加载指示器消失
+        await page.wait_for_selector('.el-loading-mask, .loading-spinner', state='hidden', timeout=5000)
+
+        # 额外缓冲时间
+        await page.wait_for_timeout(1000)
+
+    except Exception as e:
+        print(f"      -> 等待内容更新时出错: {e}")
+
+
+def is_filter_effective(before_items, after_items):
+    """判断筛选是否生效"""
+    if len(before_items) != len(after_items):
+        return True
+
+    if not before_items or not after_items:
+        return False
+
+    # 检查第一个条目是否变化
+    return before_items[0]['id'] != after_items[0]['id']
+
+
+async def reset_filter_to_unlimited(page, filter_container):
+    """重置筛选器到'不限'状态"""
+    try:
+        filter_input = await filter_container.query_selector("input.el-input__inner")
+        await filter_input.click()
+
+        await filter_container.wait_for_selector("i.el-icon-arrow-up.is-reverse", timeout=5000)
+
+        visible_dropdown = await find_visible_dropdown(page)
+        if visible_dropdown:
+            unlimited_option = await visible_dropdown.query_selector("li.el-select-dropdown__item span:has-text('不限')")
+            if unlimited_option:
+                await unlimited_option.click()
+                await page.wait_for_timeout(500)
+
+    except Exception as e:
+        print(f"      -> 重置筛选器失败: {e}")
+
+
+async def find_visible_dropdown(page):
+    """查找当前可见的下拉菜单"""
+    all_dropdowns = await page.query_selector_all("div.el-select-dropdown.pos-filter-pc__select-dropdown")
+    for dropdown in all_dropdowns:
+        placement = await dropdown.get_attribute("x-placement")
+        if placement:
+            return dropdown
+    return None
+
+
+async def reset_all_filters_to_unlimited(page, all_filter_names, current_filter=None):
+    """重置所有筛选器到'不限'状态，除了当前正在处理的筛选器"""
+    for filter_name in all_filter_names:
+        if current_filter and filter_name == current_filter:
+            continue  # 跳过当前正在处理的筛选器
+
+        try:
+            filter_container = await page.query_selector(f"div.el-select.pos-filter-pc__select:has(input[placeholder='{filter_name}'])")
+            if filter_container:
+                await reset_filter_to_unlimited(page, filter_container)
+                print(f"    -> 已重置筛选器 {filter_name} 到'不限'")
+        except Exception as e:
+            print(f"    -> 重置筛选器 {filter_name} 失败: {e}")
 
 
 async def fetch_items_for_category_basic(page, category):
@@ -489,24 +577,24 @@ async def fetch_items_for_category_basic(page, category):
 async def main():
     """主函数，协调整个抓取流程。"""
     print("--- 开始执行原神百科链接抓取任务 (Playwright 版本) ---")
-    
+
     # 启动 Playwright
     async with async_playwright() as p:
         # 启动浏览器 (可以设置 headless=False 来查看浏览器操作)
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        
+
         # 确保输出目录存在
         Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
         print(f"确保输出目录 '{OUTPUT_DIR}' 存在。")
-        
+
         # 第一步：获取所有分类
         all_categories = await fetch_categories(page)
         if not all_categories:
             print("未能获取到任何分类信息，程序退出。")
             await browser.close()
             return
-        
+
         # 将所有分类信息也保存一份
         try:
             with open(os.path.join(OUTPUT_DIR, "categories.json"), 'w', encoding='utf-8') as f:
@@ -523,9 +611,9 @@ async def main():
             processed_count += len(items)
             # (可选) 在每个请求之间加入短暂延迟，防止IP被封
             await asyncio.sleep(2)
-            
+
         await browser.close()
-        
+
     print(f"\n--- 链接抓取任务完成 ---")
     print(f"总计处理了 {len(all_categories)} 个分类，抓取了 {processed_count} 个条目链接。")
 
