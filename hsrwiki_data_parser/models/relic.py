@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from ._core import BaseEntity
+from ._core import BaseWikiModel
 
 class RelicPiece(BaseModel):
     """Represents a single piece of a relic set."""
@@ -12,7 +12,7 @@ class SetEffect(BaseModel):
     count: int
     description: str
 
-class Relic(BaseEntity):
+class Relic(BaseWikiModel):
     """Represents a relic set loaded from the structured JSON files."""
     id: int
     name: str = Field(..., alias='title')

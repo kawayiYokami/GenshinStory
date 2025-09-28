@@ -56,3 +56,6 @@ class DataLoader:
     def get_rogue_events(self) -> Iterator[Dict[str, Any]]:
         return self._load_json_files('103_模拟宇宙·事件图鉴')
 
+    def get_lightcones(self) -> Iterator[Dict[str, Any]]:
+        return self._load_json_files('19_光锥')
+

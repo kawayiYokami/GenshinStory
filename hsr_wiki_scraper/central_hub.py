@@ -162,23 +162,25 @@ class WikiPageCoordinator:
                             button = voice_expand_buttons.nth(i)
                             if await button.is_visible():
                                 await button.click()
-                                await page.wait_for_timeout(2000)  # 等待异步内容加载
-                                print(f"    - 点击完成，已等待内容加载。")
+                                # 等待可见的弹窗出现，表示内容已加载
+                                await page.wait_for_selector('.gt-popup-layout.gt-popup-layout-hsr:not([style*="display: none"])', timeout=5000)
+                                print(f"    - 点击完成，弹窗已出现。")
                         except Exception as e:
                             print(f"    - 无法点击一个'查看全部语音'按钮: {e}")
                     print("完成点击'查看全部语音'按钮。")
 
                 # 4. 对折叠面板使用健壮的、逆序点击逻辑
-                expand_buttons = page.locator("span.obc-tmpl__expand-text")
-                button_count = await expand_buttons.count()
+                # 只选择包含"展开"文字的折叠标签容器
+                fold_tags = page.locator(".obc-tmpl__fold-tag:has(span.obc-tmpl__expand-text:visible:has-text('展开'))")
+                button_count = await fold_tags.count()
 
                 if button_count > 0:
                     print(f"找到 {button_count} 个可展开部分。正在逆序点击...")
                     for i in range(button_count - 1, -1, -1):
-                        button = expand_buttons.nth(i)
+                        fold_tag = fold_tags.nth(i)
                         try:
-                            if await button.is_visible():
-                                await button.click()
+                            if await fold_tag.is_visible():
+                                await fold_tag.click()
                                 await page.wait_for_timeout(200)
                         except Exception as e:
                             print(f"    - 无法点击一个展开按钮: {e}")
@@ -295,23 +297,25 @@ class WikiPageCoordinator:
                                 button = voice_expand_buttons.nth(i)
                                 if await button.is_visible():
                                     await button.click()
-                                    await page.wait_for_timeout(2000)  # 等待异步内容加载
-                                    print(f"    - 点击完成，已等待内容加载。")
+                                    # 等待可见的弹窗出现，表示内容已加载
+                                    await page.wait_for_selector('.gt-popup-layout.gt-popup-layout-hsr:not([style*="display: none"])', timeout=5000)
+                                    print(f"    - 点击完成，弹窗已出现。")
                             except Exception as e:
                                 print(f"    - 无法点击一个'查看全部语音'按钮: {e}")
                         print("完成点击'查看全部语音'按钮。")
 
                     # 4. 对折叠面板使用健壮的、逆序点击逻辑
-                    expand_buttons = page.locator("span.obc-tmpl__expand-text")
-                    button_count = await expand_buttons.count()
+                    # 只选择包含"展开"文字的折叠标签容器
+                    fold_tags = page.locator(".obc-tmpl__fold-tag:has(span.obc-tmpl__expand-text:visible:has-text('展开'))")
+                    button_count = await fold_tags.count()
 
                     if button_count > 0:
                         print(f"找到 {button_count} 个可展开部分。正在逆序点击...")
                         for i in range(button_count - 1, -1, -1):
-                            button = expand_buttons.nth(i)
+                            fold_tag = fold_tags.nth(i)
                             try:
-                                if await button.is_visible():
-                                    await button.click()
+                                if await fold_tag.is_visible():
+                                    await fold_tag.click()
                                     await page.wait_for_timeout(200)
                             except Exception as e:
                                 print(f"    - 无法点击一个展开按钮: {e}")

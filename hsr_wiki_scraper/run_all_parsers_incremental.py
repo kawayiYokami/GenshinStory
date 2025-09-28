@@ -13,10 +13,30 @@
 import asyncio
 import json
 from pathlib import Path
+from difflib import SequenceMatcher
 
 # 使用相对导入，因为此脚本旨在作为模块运行。
 from .central_hub import WikiPageCoordinator
 from playwright.async_api import async_playwright
+
+
+def compare_json_similarity(json_str1, json_str2, threshold=0.8):
+    """
+    比较两个JSON字符串的相似度
+
+    Args:
+        json_str1: 第一个JSON字符串
+        json_str2: 第二个JSON字符串
+        threshold: 相似度阈值，默认0.8 (80%)
+
+    Returns:
+        bool: 是否相似（相似度 >= threshold）
+    """
+    if not json_str1 or not json_str2:
+        return False
+
+    similarity = SequenceMatcher(None, json_str1, json_str2).ratio()
+    return similarity >= threshold
 
 
 async def run_all_parsers_incremental():
@@ -26,13 +46,13 @@ async def run_all_parsers_incremental():
     只处理指定的 parser ID：18, 30, 31, 20, 53, 54, 55, 25, 157, 103
     """
     # 定义允许处理的 parser ID 列表
-    allowed_parser_ids = [18, 30, 31, 20, 53, 54, 55, 25, 157, 103]
-    
+    allowed_parser_ids = [18, 19, 30, 31, 20, 53, 54, 55, 25, 157, 103]
+
     # --- 1. 定义路径 ---
     # 当作为模块运行时，__file__ 指向包内的文件
     # 项目根目录是当前包目录的父目录
     project_root = Path(__file__).parent.parent
-    link_dir = project_root / "hsr_wiki_scraper" / "output" / "links"
+    link_dir = project_root / "hsr_wiki_scraper" / "output" / "link"
     output_base_dir = project_root / "hsr_wiki_scraper" / "output" / "structured_data"
     debug_dir = project_root / "hsr_wiki_scraper" / "output" / "debug"
 
@@ -62,9 +82,9 @@ async def run_all_parsers_incremental():
             # 如果文件名格式不符合预期，跳过
             print(f"跳过文件: {file_path.name} (文件名格式不符合预期)")
             continue
-    
+
     link_files = filtered_files
-    
+
     if not link_files:
         print(f"错误: 没有找到符合条件的链接文件。允许的 parser ID: {allowed_parser_ids}")
         return
@@ -76,7 +96,7 @@ async def run_all_parsers_incremental():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         print("共享浏览器启动成功。")
-        
+
         try:
             # --- 4. 初始化协调器（传入共享浏览器）---
             coordinator = WikiPageCoordinator(shared_browser=browser)
@@ -105,7 +125,7 @@ async def run_all_parsers_incremental():
                     # --- c. 配置解析器 ID ---
                     # HSR 的文件名就是 parser_id (例如, "18_角色.json")
                     parser_id = link_file_path.stem
-                    
+
                     if parser_id not in coordinator.registered_parsers:
                         print(f"  -> 错误: 未找到解析器 '{parser_id}'。可用解析器: {list(coordinator.registered_parsers.keys())}")
                         continue # 跳过此文件
@@ -116,20 +136,34 @@ async def run_all_parsers_incremental():
                     # 确保特定解析器的输出目录存在
                     output_dir.mkdir(parents=True, exist_ok=True)
 
-                    # --- d. 处理每个条目 ---
-                    # HSR 的 JSON 格式是 {"entry_id": "url", ...}
-                    for entry_id, url in link_data.items():
+                    # --- d. 初始化智能增量更新标志 ---
+                    found_duplicate = False
+                    updated_count = 0
+                    skipped_by_duplicate = 0
+
+                    # --- e. 处理每个条目 ---
+                    # 新的 JSON 格式是数组: [{"id": "xxx", "name": "xxx", "url": "xxx", "tags": {}}]
+                    for item in link_data:
                         total_entries += 1
-                        entry_name = entry_id  # HSR 中使用 entry_id 作为名称
+                        entry_id = item["id"]
+                        entry_name = item["name"]
+                        url = item["url"]
 
                         # 检查输出文件是否已存在
                         output_file = output_dir / f"{entry_id}.json"
-                        if output_file.exists():
-                            print(f"  -> 跳过条目 {entry_id}: 文件已存在 {output_file}")
+
+                        # 智能增量更新逻辑
+                        if found_duplicate and output_file.exists():
+                            # 已发现重复内容，只处理不存在的文件
+                            print(f"  -> 跳过条目 {entry_id}: 文件已存在（重复后模式）")
                             skipped_entries += 1
+                            skipped_by_duplicate += 1
                             continue
 
-                        print(f"  -> 正在处理条目 {entry_id} ({entry_name})")
+                        # 无论是否存在，都要先抽取内容（在found_duplicate=False时）
+
+                        mode_text = "重复后模式" if found_duplicate else "更新模式"
+                        print(f"  -> 正在处理条目 {entry_id} ({entry_name}) [{mode_text}]")
                         print(f"    -> 输出文件路径: {output_file}")
 
                         try:
@@ -152,12 +186,30 @@ async def run_all_parsers_incremental():
                             if isinstance(json_result, dict):
                                 json_result["source_url"] = url
 
-                            # --- i. 保存结果 ---
+                            # --- i. 检查是否与现有内容相同 ---
+                            new_json_str = json.dumps(json_result, ensure_ascii=False, sort_keys=True)
+
+                            if not found_duplicate and output_file.exists():
+                                # 读取现有文件内容进行比较
+                                try:
+                                    with open(output_file, 'r', encoding='utf-8') as f:
+                                        existing_data = json.load(f)
+                                    existing_json_str = json.dumps(existing_data, ensure_ascii=False, sort_keys=True)
+
+                                    if compare_json_similarity(new_json_str, existing_json_str):
+                                        print(f"    -> 发现相同内容！切换到重复后模式")
+                                        found_duplicate = True
+                                        # 仍然更新这个文件，但下次循环就会跳过已存在的
+                                except Exception as e:
+                                    print(f"    -> 警告: 读取现有文件时出错: {e}，继续更新")
+
+                            # --- j. 保存结果 ---
                             with open(output_file, 'w', encoding='utf-8') as f:
                                 json.dump(json_result, f, indent=4, ensure_ascii=False)
 
                             print(f"    -> 成功! 输出已保存到: {output_file}")
                             processed_entries += 1
+                            updated_count += 1
 
                         except asyncio.TimeoutError:
                             print(f"    -> 跳过条目 {entry_id}: 处理超时")
@@ -165,6 +217,14 @@ async def run_all_parsers_incremental():
                         except Exception as e:
                             print(f"    -> 跳过条目 {entry_id}: 处理时发生错误: {e}")
                             # 继续处理下一个条目
+
+                    # --- f. 输出分类处理统计 ---
+                    print(f"  -> 分类 '{link_file_path.name}' 处理完成:")
+                    print(f"    -> 总条目数: {len(link_data)}")
+                    print(f"    -> 更新条目数: {updated_count}")
+                    print(f"    -> 跳过条目数 (重复后模式): {skipped_by_duplicate}")
+                    if found_duplicate:
+                        print(f"    -> 已切换到重复后模式，后续只处理缺失文件")
 
                 except FileNotFoundError:
                     print(f"  -> 错误: 在 {link_file_path} 未找到链接文件")
@@ -180,7 +240,7 @@ async def run_all_parsers_incremental():
             print(f"总条目数: {total_entries}")
             print(f"处理条目数: {processed_entries}")
             print(f"跳过条目数: {skipped_entries}")
-            
+
         finally:
             # --- 8. 关闭共享浏览器 ---
             print("正在关闭共享浏览器...")

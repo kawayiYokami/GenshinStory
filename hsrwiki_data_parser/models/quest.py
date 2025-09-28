@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union, Literal
-from ._core import BaseEntity
+from ._core import BaseWikiModel
 
 class QuestMetadata(BaseModel):
     task_name: Optional[str] = Field(None, alias='任务名')
@@ -38,7 +38,7 @@ class OptionChoice(BaseModel):
     option: str
     reply: Optional[List[AnyDialoguePart]] = None
 
-class Quest(BaseEntity):
+class Quest(BaseWikiModel):
     id: int
     name: str = Field(..., alias='title')
     metadata: Optional[QuestMetadata] = None

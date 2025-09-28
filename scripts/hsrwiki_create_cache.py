@@ -16,6 +16,7 @@ from hsrwiki_data_parser.interpreters.material_interpreter import MaterialInterp
 from hsrwiki_data_parser.interpreters.quest_interpreter import QuestInterpreter
 from hsrwiki_data_parser.interpreters.outfit_interpreter import OutfitInterpreter
 from hsrwiki_data_parser.interpreters.rogue_event_interpreter import RogueEventInterpreter
+from hsrwiki_data_parser.interpreters.lightcone_interpreter import LightconeInterpreter
 from hsrwiki_data_parser.formatters.character_formatter import CharacterFormatter
 from hsrwiki_data_parser.formatters.relic_formatter import RelicFormatter
 from hsrwiki_data_parser.formatters.book_formatter import BookFormatter
@@ -23,6 +24,7 @@ from hsrwiki_data_parser.formatters.material_formatter import MaterialFormatter
 from hsrwiki_data_parser.formatters.quest_formatter import QuestFormatter
 from hsrwiki_data_parser.formatters.outfit_formatter import OutfitFormatter
 from hsrwiki_data_parser.formatters.rogue_event_formatter import RogueEventFormatter
+from hsrwiki_data_parser.formatters.lightcone_formatter import LightconeFormatter
 
 # Rogue Magic Scepter Components
 from hsrwiki_data_parser.interpreters.rogue_magic_scepter_interpreter import RogueMagicScepterInterpreter
@@ -39,7 +41,7 @@ from hsrwiki_data_parser.services.cache_service import CacheService
 
 # --- Config ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-CACHE_DIR = "hsrwiki_data_parser/cache"
+CACHE_DIR = os.path.join(project_root, "hsrwiki_data_parser", "cache")
 CACHE_FILE = os.path.join(CACHE_DIR, "hsrwiki_data.cache.gz")
 
 def main():
@@ -69,6 +71,7 @@ def main():
         'outfits': {'interpreter': OutfitInterpreter(wiki_loader), 'formatter': OutfitFormatter(), 'type_name': 'Outfit'},
         'rogue_events': {'interpreter': RogueEventInterpreter(wiki_loader), 'formatter': RogueEventFormatter(), 'type_name': 'RogueEvent'},
         'rogue_magic_scepters': {'interpreter': RogueMagicScepterInterpreter(game_loader, text_map_service), 'formatter': RogueMagicScepterFormatter(), 'type_name': 'RogueMagicScepter'},
+        'lightcones': {'interpreter': LightconeInterpreter(wiki_loader), 'formatter': LightconeFormatter(), 'type_name': 'Lightcone'},
     }
 
     for store_key, config in processing_map.items():

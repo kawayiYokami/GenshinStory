@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from ._core import BaseEntity
+from ._core import BaseWikiModel
 
 class MaterialMetadata(BaseModel):
     type: Optional[str] = None
 
-class Material(BaseEntity):
+class Material(BaseWikiModel):
     """Represents a material, which can be of various types."""
     id: int
     name: str = Field(..., alias='title')
