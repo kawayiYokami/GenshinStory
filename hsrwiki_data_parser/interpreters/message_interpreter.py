@@ -66,8 +66,6 @@ class MessageInterpreter:
                     logging.warning(f"    Item ID {current_item_id} not found.")
                     break
 
-                logging.info(f"    Processing Item ID: {current_item_id} with data: {item_data}")
-
                 # Determine sender based on the 'Sender' field
                 sender_type = item_data.get('Sender')
                 sender_name = "未知"

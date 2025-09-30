@@ -23,6 +23,7 @@ from hsrwiki_data_parser.formatters.outfit_formatter import OutfitFormatter
 from hsrwiki_data_parser.formatters.rogue_event_formatter import RogueEventFormatter
 from hsrwiki_data_parser.formatters.message_formatter import MessageFormatter
 from hsrwiki_data_parser.formatters.rogue_magic_scepter_formatter import RogueMagicScepterFormatter
+from hsrwiki_data_parser.formatters.rogue_miracle_formatter import RogueMiracleFormatter
 from hsrwiki_data_parser.formatters.lightcone_formatter import LightconeFormatter
 
 # --- Config ---
@@ -222,6 +223,11 @@ def export_all_to_markdown(cache: CacheService, output_dir_str: str):
             "formatter": RogueMagicScepterFormatter(),
             "sub_cat_func": lambda item: "奇物",
         },
+        "rogue_miracles": {
+            "attr": "rogue_miracles",
+            "formatter": RogueMiracleFormatter(),
+            "sub_cat_func": lambda item: "奇物",
+        },
     }
 
     for cat_name, config in category_map.items():
@@ -321,6 +327,10 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
         },
         "rogue_magic_scepters": {
             "attr": "rogue_magic_scepters",
+            "sub_cat_func": lambda item: "奇物",
+        },
+        "rogue_miracles": {
+            "attr": "rogue_miracles",
             "sub_cat_func": lambda item: "奇物",
         },
     }

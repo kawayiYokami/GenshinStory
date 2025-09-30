@@ -30,6 +30,10 @@ from hsrwiki_data_parser.formatters.lightcone_formatter import LightconeFormatte
 from hsrwiki_data_parser.interpreters.rogue_magic_scepter_interpreter import RogueMagicScepterInterpreter
 from hsrwiki_data_parser.formatters.rogue_magic_scepter_formatter import RogueMagicScepterFormatter
 
+# Rogue Miracle Components
+from hsrwiki_data_parser.interpreters.rogue_miracle_interpreter import RogueMiracleInterpreter
+from hsrwiki_data_parser.formatters.rogue_miracle_formatter import RogueMiracleFormatter
+
 # Game Data Components (for Messages)
 from hsrwiki_data_parser.services.game_data_loader import GameDataLoader
 from hsrwiki_data_parser.services.text_map_service import TextMapService
@@ -71,6 +75,7 @@ def main():
         'outfits': {'interpreter': OutfitInterpreter(wiki_loader), 'formatter': OutfitFormatter(), 'type_name': 'Outfit'},
         'rogue_events': {'interpreter': RogueEventInterpreter(wiki_loader), 'formatter': RogueEventFormatter(), 'type_name': 'RogueEvent'},
         'rogue_magic_scepters': {'interpreter': RogueMagicScepterInterpreter(game_loader, text_map_service), 'formatter': RogueMagicScepterFormatter(), 'type_name': 'RogueMagicScepter'},
+        'rogue_miracles': {'interpreter': RogueMiracleInterpreter(game_loader, text_map_service), 'formatter': RogueMiracleFormatter(), 'type_name': 'RogueMiracle'},
         'lightcones': {'interpreter': LightconeInterpreter(wiki_loader), 'formatter': LightconeFormatter(), 'type_name': 'Lightcone'},
     }
 

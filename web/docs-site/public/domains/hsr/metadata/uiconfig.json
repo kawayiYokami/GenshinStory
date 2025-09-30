@@ -7,8 +7,9 @@
     "materials": "材料",
     "quests": "任务",
     "outfits": "装扮",
-    "rogue_events": "模拟宇宙事件",
-    "rogue_magic_scepters": "模拟宇宙奇物",
+    "rogue_events": "事件",
+    "rogue_miracles": "奇物",
+    "rogue_magic_scepters": "权杖",
     "lightcones": "光锥"
   },
   "navigation": [
@@ -71,6 +72,11 @@
     },
     {
       "id": "rogue_magic_scepters",
+      "type": "category",
+      "iconKey": "miracles"
+    },
+    {
+      "id": "rogue_miracles",
       "type": "category",
       "iconKey": "miracles"
     }

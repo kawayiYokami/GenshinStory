@@ -45,3 +45,11 @@ class GameDataLoader:
     def get_rogue_magic_scepters(self) -> List[Dict[str, Any]]:
         """加载奇物 (RogueMagicScepter) 数据。"""
         return self._read_json_file(os.path.join(self.excel_path, 'RogueMagicScepterDisplay.json')) or []
+
+    def get_rogue_miracles(self) -> List[Dict[str, Any]]:
+        """加载奇物主配置数据。"""
+        return self._read_json_file(os.path.join(self.excel_path, 'RogueMiracle.json')) or []
+
+    def get_rogue_miracle_displays(self) -> List[Dict[str, Any]]:
+        """加载奇物显示数据。"""
+        return self._read_json_file(os.path.join(self.excel_path, 'RogueMiracleDisplay.json')) or []
