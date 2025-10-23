@@ -71,7 +71,6 @@ class HollowItemService:
 
         # Simple markdown template
         markdown = f"# {item.name}\n\n"
-        markdown += f"**ID**: {item.id}\n\n"
         markdown += "## Description\n\n"
         markdown += f"{item.description}\n\n"
 

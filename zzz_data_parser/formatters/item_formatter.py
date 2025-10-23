@@ -21,8 +21,6 @@ class ItemFormatter:
         lines = []
         lines.append(f"# {item.name}")
         lines.append("")
-        lines.append(f"**ID**: {item.id}")
-        lines.append("")
 
         if item.description:
             lines.append("## 描述")

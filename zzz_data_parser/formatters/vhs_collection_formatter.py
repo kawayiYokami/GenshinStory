@@ -19,7 +19,7 @@ class VHSCollectionFormatter:
             表示录像带收藏品的 Markdown 格式字符串。
         """
         lines = []
-        lines.append(f"# 录像带: {vhs_collection.name} (ID: {vhs_collection.id})")
+        lines.append(f"# 录像带: {vhs_collection.name}")
         lines.append("")
 
         if vhs_collection.description:

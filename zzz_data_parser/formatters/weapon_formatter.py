@@ -20,8 +20,6 @@ def to_markdown(weapon: Weapon) -> str:
     lines = []
     lines.append(f"# {weapon.name}")
     lines.append("")
-    lines.append(f"**ID**: {weapon.id}")
-    lines.append("")
 
     if weapon.description:
         lines.append("## 描述")

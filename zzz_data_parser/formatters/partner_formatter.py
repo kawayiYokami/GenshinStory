@@ -20,8 +20,6 @@ class PartnerFormatter:
         lines = []
         lines.append(f"# {partner.name}")
         lines.append("")
-        lines.append(f"**ID**: {partner.id}")
-        lines.append("")
 
         if partner.true_name:
             lines.append(f"**英文名**: {partner.true_name}")

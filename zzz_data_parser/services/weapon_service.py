@@ -71,7 +71,6 @@ class WeaponService:
 
         # Simple markdown template
         markdown = f"# {weapon.name}\n\n"
-        markdown += f"**ID**: {weapon.id}\n\n"
         markdown += f"**Model ID**: {weapon.model_id}\n\n"
         markdown += "## Description\n\n"
         markdown += f"{weapon.description}\n\n"

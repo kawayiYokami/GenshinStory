@@ -71,7 +71,6 @@ class VHSCollectionService:
 
         # Simple markdown template
         markdown = f"# {vhs.name}\n\n"
-        markdown += f"**ID**: {vhs.id}\n\n"
         markdown += "## Description\n\n"
         markdown += f"{vhs.description}\n\n"
 

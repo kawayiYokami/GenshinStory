@@ -19,7 +19,7 @@ class HollowItemFormatter:
             表示空洞道具的 Markdown 格式字符串。
         """
         lines = []
-        lines.append(f"# 空洞道具: {item.name} (ID: {item.id})")
+        lines.append(f"# 空洞道具: {item.name}")
         lines.append("")
 
         if item.description:
