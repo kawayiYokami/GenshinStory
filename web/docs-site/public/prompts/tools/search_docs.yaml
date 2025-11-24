@@ -2,11 +2,32 @@ name: "search_docs"
 type: "execution"
 description: "搜索包含查询词的相关文档，返回匹配的文档路径、行号和上下文片段"
 usage: |
-  <search_docs>
-  <query>关键词A|关键词B</query>
-  </search_docs>
+  {
+    "tool_call": {
+      "name": "search_docs",
+      "arguments": {
+        "query": "关键词A|关键词B"
+      }
+    }
+  }
 examples:
-  - "<search_docs><query>原神|角色</query></search_docs>"
-  - "<search_docs><query>任务 剧情</query></search_docs>"
+  - |-
+    {
+      "tool_call": {
+        "name": "search_docs",
+        "arguments": {
+          "query": "原神|角色"
+        }
+      }
+    }
+  - |-
+    {
+      "tool_call": {
+        "name": "search_docs",
+        "arguments": {
+          "query": "任务 剧情"
+        }
+      }
+    }
 error_guidance: "查询参数无效或缺失时返回错误，查询结果过大时提示上下文限制"
 prompt_trigger: 'system'

@@ -1,12 +1,12 @@
 
 export interface ToolCall {
-  xml: string;
+  original: string;
   name: string;
   params: Record<string, any>;
 }
 
 /**
- * 清洗消息内容中的工具调用 XML
+ * 清洗消息内容中的工具调用 JSON
  */
 export function cleanContentFromToolCalls(content: string, toolCalls?: ToolCall[]): string {
   if (!toolCalls || toolCalls.length === 0) {
@@ -15,15 +15,15 @@ export function cleanContentFromToolCalls(content: string, toolCalls?: ToolCall[
 
   let cleanedContent = content;
 
-  // 直接使用 toolCall.xml 进行替换，因为现在存储的是原始XML
+  // 直接使用 toolCall.original 进行替换，因为现在存储的是原始JSON
   for (const toolCall of toolCalls) {
-    if (toolCall.xml) {
-      // 使用原始XML进行精确替换
-      cleanedContent = cleanedContent.replace(toolCall.xml, '');
+    if (toolCall.original) {
+      // 使用原始JSON进行精确替换
+      cleanedContent = cleanedContent.replace(toolCall.original, '');
     }
   }
 
-  // 移除 XML 前后的换行符，但保留内容之间的换行
+  // 移除 JSON 前后的换行符，但保留内容之间的换行
   cleanedContent = cleanedContent.replace(/\n\s*\n(?=\n*[^\n])/g, '\n');
 
   // 清理开头和结尾的空白

@@ -14,11 +14,13 @@ interface ToolCallParams {
 export interface ParsedToolCall {
     name: string;
     params: ToolCallParams;
-    xml: string;
+    /** 原始的工具调用字符串（JSON格式） */
+    original: string;
 }
 
 interface ParsedQuestion {
-    xml: string;
+    /** 原始的 ask 调用字符串（JSON格式） */
+    original: string;
     question: string;
     suggestions: string[];
 }
@@ -52,9 +54,22 @@ function convertParams(toolName: string, params: Record<string, any>): ToolCallP
             }
             break;
 
+        case 'ask':
+            // ask 工具需要特殊处理数组类型的 suggestions
+            for (const [key, value] of Object.entries(params)) {
+                if (key === 'suggest' && Array.isArray(value)) {
+                    // suggestions 字段保持数组不变
+                    converted[key] = value;
+                } else if (typeof value === 'string') {
+                    converted[key] = value;
+                } else {
+                    converted[key] = JSON.stringify(value);
+                }
+            }
+            break;
+
         case 'search_docs':
         case 'list_docs':
-        case 'ask':
         default:
             // 其他工具保持原有逻辑
             for (const [key, value] of Object.entries(params)) {
@@ -93,28 +108,66 @@ async function _getLinkPrompt(): Promise<string> {
  * 从 API 的结构化 JSON 格式解析工具调用。
  */
 function parseJsonToolCall(toolCall: any): ParsedToolCall | null {
-    // 使用 parserAdapter 解析 JSON 工具调用
-    const result = parserAdapter.parseJsonToolCall(toolCall);
-    if (!result) return null;
+    // 直接解析 JSON 工具调用
+    if (!toolCall || !toolCall.function) return null;
 
-    // 智能转换参数类型
-    const params = convertParams(result.name, result.params);
+    const { name, arguments: args } = toolCall.function;
 
-    return {
-        name: result.name,
-        params,
-        xml: result.xml
-    };
+    if (!VALID_TOOLS.includes(name)) {
+        logger.log(`[ParserAdapter] 忽略无效工具: ${name}`);
+        return null;
+    }
+
+    try {
+        let params: any;
+
+        if (typeof args === 'string') {
+            // 处理字符串形式的 JSON
+            try {
+                params = JSON.parse(args);
+            } catch (jsonError) {
+                // 如果 JSON 解析失败，将整个字符串作为 args 参数
+                params = { args };
+            }
+        } else if (args !== null && typeof args === 'object') {
+            // 处理已经是对象的参数
+            params = args;
+        } else {
+            // 处理其他类型（包括 null 和 undefined）
+            params = { args: String(args) };
+        }
+
+        // 智能转换参数类型
+        const convertedParams = convertParams(name, params);
+
+        // 构建 XML 字符串，确保对 JSON 进行转义
+        let xmlContent: string;
+        try {
+            xmlContent = JSON.stringify(params);
+        } catch (stringifyError) {
+            // 如果 stringify 失败，使用一个简单的表示
+            xmlContent = '[Object object]';
+        }
+
+        return {
+            name,
+            params: convertedParams,
+            original: `<${name}>${xmlContent}</${name}>`,
+        };
+    } catch (error) {
+        logger.error(`[ParserAdapter] JSON 解析错误 (${name}):`, error);
+        return null;
+    }
 }
 
 /**
- * 解析类 XML 字符串以查找工具调用。
+ * 解析工具调用字符串（仅支持JSON格式）。
  */
-function parseXmlToolCall(xmlString: string): ParsedToolCall | null {
-    if (typeof xmlString !== 'string') return null;
+function parseToolCall(input: string): ParsedToolCall | null {
+    if (typeof input !== 'string') return null;
 
-    // 使用 parserAdapter 解析 XML
-    const result = parserAdapter.parseSingleToolCall(xmlString);
+    // 使用 parserAdapter 解析工具调用（仅支持JSON格式）
+    const result = parserAdapter.parseSingleToolCall(input);
     if (!result) return null;
 
     // 智能转换参数类型
@@ -123,7 +176,7 @@ function parseXmlToolCall(xmlString: string): ParsedToolCall | null {
     return {
         name: result.name,
         params,
-        xml: result.xml
+        original: result.original
     };
 }
 
@@ -135,14 +188,48 @@ function parseReadDocRequests(argsContent: string): DocRequest[] {
         return [];
     }
 
-    // 使用 parserAdapter 解析 read_doc 请求
-    const requests = parserAdapter.parseReadDocRequests(argsContent);
+    try {
+        const parsed = JSON.parse(argsContent);
 
-    // 转换格式以兼容旧接口
-    return requests.map(request => ({
-        path: request.path,
-        lineRanges: request.lineRanges || []
-    }));
+        if (!parsed || typeof parsed !== 'object') {
+            return [];
+        }
+
+        const docRequests: DocRequest[] = [];
+
+        // 处理单个文档请求
+        if (parsed.doc) {
+            const docs = Array.isArray(parsed.doc) ? parsed.doc : [parsed.doc];
+            for (const doc of docs) {
+                if (doc.path) {
+                    const lineRanges = doc.line_range ?
+                        (Array.isArray(doc.line_range) ? doc.line_range : [doc.line_range]) : [];
+                    docRequests.push({
+                        path: doc.path,
+                        lineRanges: lineRanges.filter((r: any) => typeof r === 'string')
+                    });
+                }
+            }
+        }
+
+        // 处理简单路径列表
+        if (parsed.path) {
+            const paths = Array.isArray(parsed.path) ? parsed.path : [parsed.path];
+            for (const path of paths) {
+                if (typeof path === 'string') {
+                    docRequests.push({
+                        path: path,
+                        lineRanges: []
+                    });
+                }
+            }
+        }
+
+        return docRequests;
+    } catch (error) {
+        logger.error('[ToolParserService] read_doc 参数解析错误:', error);
+        return [];
+    }
 }
 
 /**
@@ -257,17 +344,17 @@ function formatFollowUpPrompt(tool: any): string {
 }
 
 /**
- * 从字符串中解析 <ask> UI 指令。
+ * 从JSON字符串中解析 ask UI 指令。
  */
-function parseAskCall(xmlString: string): ParsedQuestion | null {
-    if (typeof xmlString !== 'string') return null;
+function parseAskCall(jsonString: string): ParsedQuestion | null {
+    if (typeof jsonString !== 'string') return null;
 
     // 使用 parserAdapter 解析 ask 调用
-    const result = parserAdapter.parseAskCall(xmlString);
+    const result = parserAdapter.parseAskCall(jsonString);
     if (!result) return null;
 
     return {
-        xml: result.xml,
+        original: result.original,
         question: result.question,
         suggestions: result.suggestions
     };
@@ -280,7 +367,7 @@ export function isToolRetryable(toolName: string): boolean {
 export { convertParams };
 
 export default {
-    parseXmlToolCall,
+    parseToolCall,
     parseJsonToolCall,
     parseReadDocRequests,
     createStatusMessage,

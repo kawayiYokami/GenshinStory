@@ -6,7 +6,7 @@ const mockToolCalls = [
   {
     name: 'read_doc',
     params: { path: 'test.md' },
-    xml: '<read_doc>\n  <path>test.md</path>\n</read_doc>'
+    original: '<read_doc>\n  <path>test.md</path>\n</read_doc>'
   }
 ];
 
@@ -49,7 +49,7 @@ describe('MessageBubble 工具调用内容清洗', () => {
       {
         name: 'search_docs',
         params: { query: 'test' },
-        xml: '<search_docs>\n  <query>test</query>\n</search_docs>'
+        original: '<search_docs>\n  <query>test</query>\n</search_docs>'
       }
     ];
     
@@ -65,7 +65,7 @@ describe('MessageBubble 工具调用内容清洗', () => {
       {
         name: 'read_doc',
         params: { path: 'file with spaces.md' },
-        xml: '<read_doc>\n  <path>file with spaces.md</path>\n</read_doc>'
+        original: '<read_doc>\n  <path>file with spaces.md</path>\n</read_doc>'
       }
     ];
     

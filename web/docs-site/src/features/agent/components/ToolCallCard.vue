@@ -33,7 +33,7 @@ import {
 interface ToolCall {
   name: string;
   params: Record<string, any>;
-  xml?: string;
+  original?: string;
 }
 
 interface Props {

@@ -76,7 +76,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       const statusMessage = createMockMessage({ id: 'status-msg-1' })
@@ -129,7 +129,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       const statusMessage = createMockMessage({ id: 'status-msg-1' })
@@ -167,7 +167,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'read_doc',
         params: { args: '<path>/large/file.vue</path>' },
-        xml: '<read_doc><path>/large/file.vue</path></read_doc>'
+        original: '<read_doc><path>/large/file.vue</path></read_doc>'
       }
 
       const statusMessage = createMockMessage({ id: 'status-msg-1' })
@@ -210,7 +210,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'read_doc',
         params: { args: '<path>/test.vue</path>' },
-        xml: '<read_doc><path>/test.vue</path></read_doc>'
+        original: '<read_doc><path>/test.vue</path></read_doc>'
       }
 
       const statusMessage = createMockMessage({ id: 'status-msg-1' })
@@ -257,7 +257,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       vi.mocked(messageManager.addMessage)
@@ -285,7 +285,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       const statusMessage = createMockMessage()
@@ -326,7 +326,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       const statusMessage = createMockMessage()
@@ -374,7 +374,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       const statusMessage = createMockMessage()
@@ -419,7 +419,7 @@ describe('AgentToolService', () => {
       const parsedTool: ParsedToolCall = {
         name: 'search_docs',
         params: { query: 'Vue 3' },
-        xml: '<search_docs><query>Vue 3</query></search_docs>'
+        original: '<search_docs><query>Vue 3</query></search_docs>'
       }
 
       const statusMessage = createMockMessage()

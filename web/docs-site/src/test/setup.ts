@@ -6,7 +6,9 @@ vi.mock('@/features/app/services/loggerService', () => ({
   default: {
     log: vi.fn(),
     error: vi.fn(),
-    warn: vi.fn()
+    warn: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn()
   }
 }))
 

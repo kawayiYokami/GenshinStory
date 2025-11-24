@@ -26,3 +26,4 @@ web/docs-site/public/domains/zzz/docs/
 # HTML and JSON files
 *.html
 *.json
+CLAUDE.md
