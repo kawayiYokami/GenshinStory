@@ -27,7 +27,7 @@ export class MessageManagerImpl implements MessageManager {
 
   async addMessage(messageData: Partial<Message>): Promise<Message | null> {
     if (!this.currentSession) return null;
-    
+
     const id = messageData.id || nanoid();
     const message: Message = {
       id,

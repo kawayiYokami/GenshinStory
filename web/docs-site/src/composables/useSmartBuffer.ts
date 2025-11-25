@@ -40,23 +40,15 @@ export function useSmartBuffer(
 
     // 如果不处于缓冲状态
     if (!isBuffering.value) {
-      // 检测是否有触发缓冲的起始标记（如 <tool>）
-      const toolStartIndex = newContent.indexOf('<tool>');
-      
-      if (toolStartIndex !== -1) {
-        // 进入缓冲状态
-        isBuffering.value = true;
-        expectedClosingTag.value = '</tool>';
-        
-        // 将标记前的内容更新到 renderableContent
-        renderableContent.value = newContent.substring(0, toolStartIndex);
-        
-        // 将标记后的内容存入 buffer 数组
-        buffer.value = [newContent.substring(toolStartIndex)];
-      } else {
-        // 没有检测到起始标记，直接更新 renderableContent
-        renderableContent.value = newContent;
+      // 检测到 { 就立即截断，等待流结束后一次性显示
+      const braceIndex = newContent.indexOf('{');
+      if (braceIndex !== -1) {
+        renderableContent.value = newContent.substring(0, braceIndex);
+        return;
       }
+
+      // 没有检测到起始标记，直接更新 renderableContent
+      renderableContent.value = newContent;
     } else {
       // 正处于缓冲状态，将新文本追加到 buffer 数组中
       const newContentPart = newContent.slice(renderableContent.value.length + buffer.value.join('').length);

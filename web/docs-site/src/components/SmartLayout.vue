@@ -187,7 +187,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   padding: 1rem;
   border-bottom: 1px solid var(--color-border);
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   background-color: var(--color-surface);
 }
 

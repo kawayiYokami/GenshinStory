@@ -1,6 +1,6 @@
 <template>
-  <div class="overflow-y-auto scrollbar-hide h-full" ref="historyPanel">
-    <div class="max-w-4xl mx-auto space-y-1 px-4 py-4">
+  <div class="overflow-y-auto scrollbar-hide flex-1" ref="historyPanel">
+    <div class="max-w-4xl mx-auto space-y-1 px-4 pt-4 pb-4" ref="messageContainer">
       <MessageBubble
         v-for="(message, index) in visibleMessages"
         :key="message.id"
@@ -11,42 +11,24 @@
         @send-suggestion="handleSendSuggestionSelected"
         @delete-from-here="handleDeleteFrom"
         @retry="handleRetry"
+        @rendered="handleMessageRendered"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-/**
- * ChatHistoryPanel 组件
- *
- * 这是聊天历史记录面板组件，负责显示聊天消息列表，
- * 处理用户交互事件，以及管理滚动行为。
- */
-
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import linkProcessorService from '@/lib/linkProcessor/linkProcessorService';
 import MessageBubble from './MessageBubble.vue';
 
-/**
- * 组件属性定义
- * @property {boolean} showRawContent - 是否显示原始内容
- * @property {Array} visibleMessages - 可见消息列表
- */
 const props = defineProps<{
   showRawContent: boolean;
   visibleMessages: any[];
 }>();
 
-/**
- * 组件事件定义
- * @event select-suggestion - 当用户选择建议时触发
- * @event send-suggestion - 当用户发送建议时触发
- * @event delete-from - 当用户删除消息时触发
- * @event retry - 当用户重试时触发
- */
 const emit = defineEmits<{
   (e: 'select-suggestion', suggestionText: string): void;
   (e: 'send-suggestion', suggestionText: string): void;
@@ -54,54 +36,46 @@ const emit = defineEmits<{
   (e: 'retry'): void;
 }>();
 
-/**
- * 智能体状态存储
- * 用于获取智能体相关信息
- */
 const agentStore = useAgentStore();
-
-/**
- * 组件引用和状态变量
- */
 const historyPanel = ref<HTMLElement | null>(null);
+const messageContainer = ref<HTMLElement | null>(null);
 let mutationObserver: MutationObserver | null = null;
 
-/**
- * 事件处理函数：处理建议选择
- * @param {string} suggestionText - 建议文本
- */
 const handleSuggestionSelected = (suggestionText: string) => {
   emit('select-suggestion', suggestionText);
 };
 
-/**
- * 事件处理函数：处理建议发送
- * @param {string} suggestionText - 建议文本
- */
 const handleSendSuggestionSelected = (suggestionText: string) => {
   emit('send-suggestion', suggestionText);
 };
 
-/**
- * 事件处理函数：处理删除消息
- * @param {string} messageId - 消息ID
- */
 const handleDeleteFrom = (messageId: string) => {
   emit('delete-from', messageId);
 };
 
-/**
- * 事件处理函数：处理重试
- */
 const handleRetry = () => {
   emit('retry');
 };
 
-/**
- * 事件处理函数：处理历史面板点击事件
- * 主要用于处理文档链接点击
- * @param {Event} event - 点击事件
- */
+const handleMessageRendered = (messageId: string) => {
+  const lastMessage = props.visibleMessages[props.visibleMessages.length - 1];
+  if (lastMessage && lastMessage.id === messageId) {
+    nextTick(() => {
+      if (historyPanel.value) {
+        const isNearBottom = historyPanel.value.scrollTop +
+                          historyPanel.value.clientHeight >=
+                          historyPanel.value.scrollHeight - 100;
+        if (isNearBottom) {
+          historyPanel.value.scrollTo({
+            top: historyPanel.value.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }
+    });
+  }
+};
+
 const handleHistoryPanelClick = async (event: Event) => {
   const target = (event.target as HTMLElement).closest('.internal-doc-link');
   if (target && target instanceof HTMLElement && target.dataset.rawLink) {
@@ -117,40 +91,49 @@ const handleHistoryPanelClick = async (event: Event) => {
   }
 };
 
-/**
- * 方法：滚动到底部
- * 确保最新的消息始终可见
- */
-const scrollToBottom = () => {
-  if (historyPanel.value) {
-    historyPanel.value.scrollTo({ top: historyPanel.value.scrollHeight, behavior: 'smooth' });
-  }
-};
-
-/**
- * 生命周期钩子：组件挂载时执行
- * 添加事件监听器和设置滚动观察器
- */
 onMounted(() => {
   historyPanel.value?.addEventListener('click', handleHistoryPanelClick);
 
-  mutationObserver = new MutationObserver(() => {
-    scrollToBottom();
-  });
+  // 设置 MutationObserver 监听消息容器的变化
+  if (messageContainer.value && historyPanel.value) {
+    mutationObserver = new MutationObserver(() => {
+      nextTick(() => {
+        if (historyPanel.value) {
+          historyPanel.value.scrollTo({
+            top: historyPanel.value.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
 
-  if (historyPanel.value) {
-    mutationObserver.observe(historyPanel.value, {
+    mutationObserver.observe(messageContainer.value, {
       childList: true,
       subtree: true,
-      characterData: true,
+      attributes: false,
+      characterData: false
     });
   }
 });
 
-/**
- * 生命周期钩子：组件卸载时执行
- * 清理事件监听器和观察器
- */
+// 监听 visibleMessages 长度变化，确保用户消息也会触发滚动
+watch(() => props.visibleMessages.length, (newLength, oldLength) => {
+  if (newLength > oldLength) {
+    nextTick(() => {
+      if (historyPanel.value) {
+        setTimeout(() => {
+          if (historyPanel.value) {
+            historyPanel.value.scrollTo({
+              top: historyPanel.value.scrollHeight,
+              behavior: 'smooth'
+            });
+          }
+        }, 50);
+      }
+    });
+  }
+});
+
 onUnmounted(() => {
   historyPanel.value?.removeEventListener('click', handleHistoryPanelClick);
   if (mutationObserver) {
@@ -158,22 +141,18 @@ onUnmounted(() => {
   }
 });
 
-/**
- * 暴露组件属性给父组件
- */
 defineExpose({
   historyPanel
 });
 </script>
 
 <style scoped lang="postcss">
-/* 隐藏滚动条的样式 */
 .scrollbar-hide {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none; /* WebKit */
+  display: none;
 }
 </style>

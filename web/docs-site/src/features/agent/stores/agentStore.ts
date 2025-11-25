@@ -4,8 +4,9 @@
  * @author yokami
  */
 
-import { defineStore, storeToRefs } from 'pinia';
+// 引入滚动模式枚举（从useScrollManager导入）
 import { ref, computed, watch, nextTick } from 'vue';
+import { defineStore, storeToRefs } from 'pinia';
 import { nanoid } from 'nanoid';
 import logger, { logs } from '@/features/app/services/loggerService';
 import { useAppStore } from '@/features/app/stores/app';

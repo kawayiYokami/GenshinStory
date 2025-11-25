@@ -1,6 +1,6 @@
 <template>
   <!-- 用户消息：保持简单的气泡设计 -->
-  <div v-if="message.role === 'user'" class="chat chat-end animate-fade-in" style="animation-duration: 0.3s;">
+  <div v-if="message.role === 'user'" class="chat chat-end animate-fade-in" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <button class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
       <Trash2 class="w-4 h-4" />
     </button>
@@ -32,7 +32,7 @@
   </div>
 
   <!-- 助理消息：简化为直接内容展示，靠左对齐，右侧留空 -->
-  <div v-else class="message-container animate-fade-in mr-12" style="animation-duration: 0.3s;">
+  <div v-else class="message-container animate-fade-in mr-12" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <!-- DEBUG: Raw Content View -->
     <pre v-if="showRawContent" class="raw-content-debug">{{ message }}</pre>
 
@@ -44,7 +44,7 @@
       <template v-if="message.tool_calls && message.tool_calls.length > 0">
         <div class="divider divider-start text-xs opacity-60 mt-4">工具调用</div>
         <div class="flex flex-wrap gap-2">
-          <ToolCallCard v-for="toolCall in message.tool_calls" :key="toolCall.xml" :tool-call="toolCall" />
+          <ToolCallCard v-for="toolCall in message.tool_calls" :key="toolCall.name + JSON.stringify(toolCall.params)" :tool-call="toolCall" />
         </div>
       </template>
 
@@ -136,6 +136,7 @@ interface Emits {
   (e: 'send-suggestion', suggestionText: string): void;
   (e: 'delete-from-here', messageId: string): void;
   (e: 'retry'): void;
+  (e: 'rendered', messageId: string): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -177,14 +178,17 @@ watch(() => props.message.tool_calls, (newToolCalls) => {
   localContent.value = cleanContentFromToolCalls(contentStr, newToolCalls);
 }, { deep: true });
 
-// 在 onMounted 中，对于已完成的消息，强制重新执行一次“流式”渲染
+// 在 onMounted 中，对于已完成的消息，强制重新执行一次"流式"渲染
 onMounted(() => {
   if (props.message.streamCompleted) {
-    renderCompleted.value = false; // 强制进入“流式”状态
+    renderCompleted.value = false; // 强制进入"流式"状态
     nextTick(() => {
-      renderCompleted.value = true; // 在下一个 tick 立即“完成”流
+      renderCompleted.value = true; // 在下一个 tick 立即"完成"流
     });
   }
+
+  // 通知父组件消息已渲染完成
+  emit('rendered', props.message.id);
 });
 
 import { renderMarkdownSync, replaceLinkPlaceholders } from '@/features/viewer/services/MarkdownRenderingService'; // 导入渲染函数

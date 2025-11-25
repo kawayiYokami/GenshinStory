@@ -30,10 +30,10 @@ function resolvePath(basePath: string, relativePath: string): string {
     if (relativePath.startsWith('/')) {
         return relativePath;
     }
-    
+
     const baseParts = basePath.split('/').slice(0, -1);
     const relativeParts = relativePath.split('/');
-    
+
     for (const part of relativeParts) {
         if (part === '.') continue;
         if (part === '..') {
@@ -62,13 +62,12 @@ async function _fetchAgentName(domain: string, roleId: string): Promise<string> 
         if (!personaPath) return '配置错误';
 
         const finalPersonaPath = resolvePath(roleConfigPath, personaPath);
-        logger.log(`[PromptService] 正在从以下位置获取角色信息: ${finalPersonaPath}`);
         const personaResponse = await fetch(`${finalPersonaPath}?v=${v}`);
         if (!personaResponse.ok) return '无名氏';
 
         const personaConfig = yaml.load(await personaResponse.text()) as any;
         const agentName = personaConfig?.name || 'AI';
-        
+
         _agentNameCache.set(cacheKey, agentName);
         return agentName;
     } catch (error) {
@@ -81,14 +80,11 @@ async function listAvailableAgents(domain: string): Promise<AgentInfo[]> {
     try {
         const v = Date.now();
         const manifestPath = `/domains/${domain}/core/roles.json?v=${v}`;
-        logger.log(`[PromptService] 正在从以下位置列出可用 agent: ${manifestPath}`);
         const response = await fetch(manifestPath);
-        
-        logger.log(`[PromptService] 清单获取响应状态: ${response.status}`);
+
         if (!response.ok) throw new Error(`无法加载 agent 清单: ${response.statusText}`);
-        
+
         const roleInfos: RoleInfo[] = await response.json();
-        logger.log(`[PromptService] 已加载的角色信息:`, roleInfos);
 
         const agentsWithNames = await Promise.all(
             roleInfos.map(async (info) => {
@@ -96,7 +92,7 @@ async function listAvailableAgents(domain: string): Promise<AgentInfo[]> {
                 return { ...info, name };
             })
         );
-        
+
         return agentsWithNames;
     } catch (error) {
         logger.error(`[PromptService] 获取域 ${domain} 的可用 agent 列表失败:`, error);
@@ -106,7 +102,6 @@ async function listAvailableAgents(domain: string): Promise<AgentInfo[]> {
 
 async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemPromptResult> {
     try {
-        logger.log(`[PromptService] 开始为域 '${domain}' 中的角色ID '${roleId}' 加载模块化系统提示词...`);
         const v = Date.now();
         const roleConfigPath = `/domains/${domain}/core/roles/${roleId}.yaml`;
 
@@ -137,10 +132,10 @@ async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemP
 
         if (!personaResponse.ok) throw new Error(`无法加载 Persona 模块: ${personaResponse.statusText}`);
         if (!instructionsResponse.ok) throw new Error(`无法加载 Instructions 模块: ${instructionsResponse.statusText}`);
-        
+
         const personaText = await personaResponse.text();
         const instructionsPrompt = await instructionsResponse.text();
-        
+
         const personaConfig = yaml.load(personaText) as any;
         const personaDefinition = personaConfig?.definition;
         const agentName = personaConfig?.name || 'AI';
@@ -150,8 +145,7 @@ async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemP
         const toolsPrompt = toolPromptService.getSystemPrompt();
 
         const finalSystemPrompt = `${personaDefinition}\n\n${instructionsPrompt}\n\n${toolsPrompt}`;
-        logger.log("[PromptService] 模块化系统提示词加载并合并成功。");
-        
+
         return {
             systemPrompt: finalSystemPrompt,
             agentName: agentName

@@ -145,7 +145,8 @@ let timerInterval: ReturnType<typeof setInterval> | null = null; // 计时器间
 const autoScroll = ref(true); // 默认启用自动滚动
 
 /**
- * 初始化滚动管理器 - 使用简化版
+ * 初始化滚动管理器
+ * 使用历史面板元素作为滚动容器
  */
 const scrollManager = useScrollManager({
   scrollElement: computed(() => historyPanelRef.value?.historyPanel || null),
@@ -233,8 +234,8 @@ const handleSelectAgent = (roleId: string) => {
  * 控制智能体选择器模态框的显示/隐藏
  */
 const toggleAgentSelector = () => {
-  // This is no longer needed as primary way to switch agents.
-  // Kept for modal's close button functionality if reused.
+  // This is no longer needed as the primary way to switch agents.
+  // Kept for the modal's close button functionality if reused.
   isAgentSelectorVisible.value = !isAgentSelectorVisible.value;
 };
 
@@ -250,7 +251,7 @@ const handleSend = async (payload: string | { text: string; images?: string[]; r
   // 验证AI配置是否完整
   if (!activeConfig.value || !activeConfig.value.apiUrl || !activeConfig.value.apiKey) {
     alert("请先完成当前AI配置，API URL 和 API Key 不能为空。");
-    // Future improvement: emit an event to config panel to make it visible
+    // Future improvement: emit an event to the config panel to make it visible
     return;
   }
 
@@ -263,14 +264,11 @@ const handleSend = async (payload: string | { text: string; images?: string[]; r
   }
 
   // 发送消息到智能体
-  await sendMessage(messageToSend);
+  // Pass the entire payload object to the store
+  sendMessage(messageToSend);
 
-  // 关键修改：等待DOM更新后直接滚动到底部
-  await nextTick(); // 确保 DOM 更新
-  scrollManager.scrollToBottom(); // 直接滚动到底部
-
-  // userInput is now cleared inside ChatInputPanel itself upon sending.
-  // We just need to ensure textarea height is adjusted.
+  // userInput is now cleared inside the ChatInputPanel itself upon sending.
+  // We just need to ensure the textarea height is adjusted.
   await nextTick();
   inputPanelRef.value?.adjustTextareaHeight();
 };
@@ -280,7 +278,7 @@ const handleSend = async (payload: string | { text: string; images?: string[]; r
  * 用于开始新的聊天会话
  */
 const resetAgentAndStableList = () => {
-  // This function is now handled by new-chat-dropdown in AgentConfigPanel
+  // This function is now handled by the new-chat-dropdown in AgentConfigPanel
   // Kept here for now to avoid breaking changes if called elsewhere, but can be removed.
   // agentStore.startNewChatWithAgent(currentRoleId.value);
 };
@@ -288,11 +286,43 @@ const resetAgentAndStableList = () => {
 // --- Lifecycle & Watchers ---
 /**
  * 生命周期钩子：组件挂载时执行
- * 初始化组件状态，滚动管理现在由useScrollManager处理
+ * 初始化组件状态，设置滚动监听器等
  */
 onMounted(() => {
   isMounted.value = true; // 设置组件挂载状态
-  // 滚动管理现在由useScrollManager自动处理
+  // fetchAvailableAgents(currentDomain.value); // This is now handled by MainLayout's orchestrator
+
+  /**
+   * 滚动到底部函数
+   * 确保最新的消息始终可见
+   */
+  const scrollToBottom = () => {
+    // 滚动到底部 - 现在由历史面板自身处理
+    if (historyPanelRef.value?.historyPanel) {
+      historyPanelRef.value.historyPanel.scrollTo({ top: historyPanelRef.value.historyPanel.scrollHeight, behavior: 'smooth' });
+    }
+  };
+
+  // We still need the mutation observer for scrolling
+  let mutationObserver = null;
+  mutationObserver = new MutationObserver(() => {
+    scrollToBottom();
+  });
+
+  if (historyPanelRef.value?.historyPanel) {
+    mutationObserver.observe(historyPanelRef.value.historyPanel, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  // Clean up observer on unmount
+  onUnmounted(() => {
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+    }
+  });
 });
 
 /**

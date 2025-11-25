@@ -1,20 +1,67 @@
 import { ref, watch, nextTick, onMounted, onUnmounted, type Ref } from 'vue';
-import type { Message } from '@/features/agent/types';
+
+/**
+ * 滚动位置类型
+ */
+type ScrollPosition = 'top' | 'bottom' | 'center';
 
 /**
  * 滚动管理器组合式函数
- * 负责管理滚动区域的自动滚动行为，处理滚动相关的观察者逻辑
- * 
+ * 类似 Gemini 的简单实现，利用容器自然流特性，不使用观察者
+ *
  * @param {Object} params
  * @param {Ref<HTMLElement | null>} params.scrollElement - 滚动元素
  * @param {Ref<Boolean>} params.autoScroll - 是否自动滚动
  * @returns {Object} 包含滚动管理方法的对象
  */
 export default function useScrollManager({ scrollElement, autoScroll }: { scrollElement: Ref<HTMLElement | null>, autoScroll: Ref<boolean> }) {
-  let mutationObserver: MutationObserver | null = null;
-  let resizeObserver: ResizeObserver | null = null;
   const isUserScrolling = ref(false);
   let userScrollTimeout: number | null = null;
+
+  /**
+   * 滚动到指定消息的特定位置
+   */
+  const scrollToMessage = (messageId: string, position: ScrollPosition = 'top') => {
+    if (!scrollElement.value) return;
+
+    const messageElement = scrollElement.value.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement;
+    if (!messageElement) {
+      console.warn(`[useScrollManager] 未找到消息元素: ${messageId}`);
+      return;
+    }
+
+    const elementRect = messageElement.getBoundingClientRect();
+    const containerRect = scrollElement.value.getBoundingClientRect();
+    const relativeTop = elementRect.top - containerRect.top + scrollElement.value.scrollTop;
+
+    let targetScrollTop: number;
+
+    switch (position) {
+      case 'top':
+        targetScrollTop = relativeTop - 20;
+        break;
+      case 'center':
+        targetScrollTop = relativeTop - (scrollElement.value.clientHeight / 2) + (elementRect.height / 2);
+        break;
+      case 'bottom':
+        targetScrollTop = scrollElement.value.scrollHeight;
+        break;
+      default:
+        targetScrollTop = relativeTop;
+    }
+
+    scrollElement.value.scrollTo({
+      top: Math.max(0, targetScrollTop),
+      behavior: 'smooth'
+    });
+  };
+
+  /**
+   * 处理用户消息发送时的滚动
+   */
+  const scrollToUserMessage = (_messageId: string) => {
+    scrollToBottom();
+  };
 
   /**
    * 滚动到底部
@@ -29,81 +76,58 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
   };
 
   /**
-   * 处理用户滚动事件
-   * 检测用户是否正在手动滚动
+   * 检查是否在底部附近（50px容差）
+   */
+  const isNearBottom = () => {
+    if (!scrollElement.value) return false;
+    const element = scrollElement.value;
+    return element.scrollTop + element.clientHeight >= element.scrollHeight - 50;
+  };
+
+  /**
+   * 智能自动滚动 - 只在用户在底部附近时自动滚动
+   */
+  const autoScrollIfNeeded = () => {
+    if (!scrollElement.value || !autoScroll.value || isUserScrolling.value) return;
+
+    if (isNearBottom()) {
+      scrollToBottom();
+    }
+  };
+
+  /**
+   * 处理用户滚动 - 设置用户滚动状态
    */
   const handleUserScroll = () => {
     isUserScrolling.value = true;
-    
-    // 清除之前的超时
+
     if (userScrollTimeout) {
       clearTimeout(userScrollTimeout);
     }
-    
-    // 设置新的超时，如果用户在1秒内没有滚动，则认为用户停止滚动
+
     userScrollTimeout = window.setTimeout(() => {
       isUserScrolling.value = false;
-    }, 1000);
+    }, 3000);
   };
 
   /**
-   * 设置自动滚动
-   * 当内容变化或自动滚动条件满足时，自动滚动到底部
+   * 设置滚动监听 - 极简实现，类似 Gemini
    */
   const setupAutoScroll = () => {
-    // 监听内容变化
     if (scrollElement.value) {
-      // 使用 MutationObserver 监听 DOM 变化
-      mutationObserver = new MutationObserver(() => {
-        if (autoScroll.value && !isUserScrolling.value) {
-          nextTick(() => {
-            scrollToBottom();
-          });
-        }
-      });
-
-      // 使用 ResizeObserver 监听元素大小变化
-      resizeObserver = new ResizeObserver(() => {
-        if (autoScroll.value && !isUserScrolling.value) {
-          nextTick(() => {
-            scrollToBottom();
-          });
-        }
-      });
-
-      // 开始观察
-      mutationObserver.observe(scrollElement.value, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
-
-      resizeObserver.observe(scrollElement.value);
-
-      // 添加滚动事件监听器
-      scrollElement.value.addEventListener('scroll', handleUserScroll);
+      scrollElement.value.addEventListener('scroll', handleUserScroll, { passive: true });
     }
   };
 
   /**
-   * 清理观察者和事件监听器
+   * 清理事件监听器
    */
   const cleanup = () => {
-    if (mutationObserver) {
-      mutationObserver.disconnect();
-      mutationObserver = null;
-    }
-    
-    if (resizeObserver) {
-      resizeObserver.disconnect();
-      resizeObserver = null;
-    }
-    
     if (userScrollTimeout) {
       clearTimeout(userScrollTimeout);
       userScrollTimeout = null;
     }
-    
+
     if (scrollElement.value) {
       scrollElement.value.removeEventListener('scroll', handleUserScroll);
     }
@@ -130,6 +154,9 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
 
   return {
     scrollToBottom,
+    scrollToMessage,
+    autoScrollIfNeeded,
+    isNearBottom,
     setupAutoScroll
   };
 }
