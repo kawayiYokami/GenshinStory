@@ -56,15 +56,9 @@ export class AgentApiService {
           messageForApi.content = Array.isArray(m.content)
             ? m.content.map(part => (part.type === 'doc' ? { type: 'text', text: part.content } : part))
             : [{ type: 'text', text: m.content }];
-        } else if (m.role === 'assistant' && m.tool_calls) {
-          // 助手消息：保持JSON格式的tool_calls，移除original字段
-          const cleanedToolCalls = m.tool_calls.map(tc => {
-            const { original, ...cleanedTc } = tc;
-            return cleanedTc;
-          });
-          messageForApi.tool_calls = cleanedToolCalls;
         }
 
+        // 注意：不发送tool_calls字段，工具调用只是文本中的上下文语法
         return messageForApi;
       });
   }
