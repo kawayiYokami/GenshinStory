@@ -16,6 +16,8 @@ interface SearchResult {
     path: string;
     line: number;
     snippet: string;
+    totalLines?: number;
+    totalTokens?: number;
 }
 
 interface DocMetadata {
@@ -52,9 +54,34 @@ function _normalizeQuery(query: string): string {
     .toLowerCase()
     .replace(/[\uff01-\uff5e]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
     .replace(/\u3000/g, ' ') // 全角空格
-    .replace(/“|”|‘|’/g, '"') // 中文引号转标准引号
+    .replace(/"|"|'|'/g, '"') // 中文引号转标准引号
     .replace(/^"+|"+$/g, '') // 移除首尾引号
     .trim();
+}
+
+/**
+ * 格式化搜索结果的代码片段：截断、突出显示查询词、清洗 Markdown
+ * @param text 原始文本
+ * @param query 搜索查询词
+ * @param maxLength 最大长度（默认 50）
+ * @returns 格式化后的片段
+ */
+function formatSearchSnippet(text: string, query: string, maxLength: number = 50): string {
+  let snippet = text.trim();
+
+  // 截断
+  if (snippet.length > maxLength) {
+    snippet = snippet.substring(0, maxLength) + '...';
+  }
+
+  // 突出显示查询词
+  const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+  snippet = snippet.replace(regex, `**${query}**`);
+
+  // 清洗 Markdown 格式
+  snippet = stripMarkdown(snippet);
+
+  return snippet;
 }
 
 class LocalToolsService {
@@ -290,9 +317,13 @@ class LocalToolsService {
           // 计算剩余字数
           docResult.remainingTokens = totalTokens - docResult.returnedTokens;
         } else {
-          docResult.content = stripMarkdown(content);
-          docResult.returnedTokens = totalTokens;
-          docResult.remainingTokens = 0;
+          // 没有行范围时，返回完整内容但去除 Markdown 格式
+          const strippedContent = stripMarkdown(content);
+          docResult.content = strippedContent;
+          // 计算实际返回内容的 token 数
+          docResult.returnedTokens = tokenizerService.countTokens(strippedContent);
+          // 计算剩余 token 数，确保不为负数
+          docResult.remainingTokens = Math.max(0, totalTokens - docResult.returnedTokens);
         }
 
         return JSON.stringify(docResult);
@@ -393,6 +424,9 @@ class LocalToolsService {
        const results: SearchResult[] = [];
        const fileSnippetCount = new Map<string, number>();
 
+       // 用于缓存每个文档的元数据，避免重复计算
+       const metadataCache = new Map<string, { totalLines: number, totalTokens: number }>();
+
        for (const item of initialResults) {
            try {
                const logicalPath = this._getLogicalPathFromFrontendPath(item.path);
@@ -405,6 +439,16 @@ class LocalToolsService {
                const content = await dataStore.fetchMarkdownContent(physicalPath);
                const lines = content.split('\n');
 
+               // 计算并缓存元数据
+               let metadata = metadataCache.get(logicalPath);
+               if (!metadata) {
+                   metadata = {
+                       totalLines: lines.length,
+                       totalTokens: tokenizerService.countTokens(content)
+                   };
+                   metadataCache.set(logicalPath, metadata);
+               }
+
                for (let i = 0; i < lines.length; i++) {
                    if ((fileSnippetCount.get(logicalPath) || 0) >= 3) {
                        break;
@@ -412,19 +456,15 @@ class LocalToolsService {
 
                    if (lines[i].toLowerCase().includes(query.toLowerCase())) {
                        const foundLine = i + 1;
-                       let snippet = lines[i].trim();
+                       const snippet = formatSearchSnippet(lines[i], query);
 
-                       if (snippet.length > 50) {
-                           snippet = snippet.substring(0, 50) + '...';
-                       }
-
-                       const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-                       snippet = snippet.replace(regex, `**${query}**`);
-
-                       // 对 snippet 应用 markdown 清洗以减少 token 使用
-                       snippet = stripMarkdown(snippet);
-
-                       results.push({ path: logicalPath, line: foundLine, snippet: snippet });
+                       results.push({
+                           path: logicalPath,
+                           line: foundLine,
+                           snippet: snippet,
+                           totalLines: metadata.totalLines,
+                           totalTokens: metadata.totalTokens
+                       });
                        const currentCount = fileSnippetCount.get(logicalPath) || 0;
                        fileSnippetCount.set(logicalPath, currentCount + 1);
 
@@ -458,14 +498,7 @@ class LocalToolsService {
            if (matchCount >= 10) break; // 限制最多返回10个匹配
 
            const lineNum = i + 1;
-           let snippet = lines[i].trim();
-
-           if (snippet.length > 50) {
-             snippet = snippet.substring(0, 50) + '...';
-           }
-
-           const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-           snippet = snippet.replace(regex, `**${query}**`);
+           const snippet = formatSearchSnippet(lines[i], query);
 
            results.push({
              path: docPath,
@@ -617,34 +650,19 @@ class LocalToolsService {
          return a.line - b.line;
        });
 
+       // 由于 SearchResult 已经包含了元数据，直接使用即可，无需重新获取
+       // 确保所有结果都有元数据，如果没有则设置默认值
+       const resultsWithMetadata = finalResults.map(r => ({
+         path: r.path,
+         line: r.line,
+         snippet: r.snippet,
+         totalLines: r.totalLines || 0,
+         totalTokens: r.totalTokens || 0
+       }));
+
        return JSON.stringify({
          query,
-         results: await Promise.all(finalResults.map(async (r) => {
-           // 为每个结果获取文档元数据
-           try {
-             const physicalPath = this._getPhysicalPathFromLogicalPath(r.path);
-             const content = await dataStore.fetchMarkdownContent(physicalPath);
-             const totalLines = content.split('\n').length;
-             const totalTokens = tokenizerService.countTokens(content);
-
-             return {
-               path: r.path,
-               line: r.line,
-               snippet: r.snippet,
-               totalLines,
-               totalTokens
-             };
-           } catch (e) {
-             // 如果获取元数据失败，返回基本结果
-             return {
-               path: r.path,
-               line: r.line,
-               snippet: r.snippet,
-               totalLines: 0,
-               totalTokens: 0
-             };
-           }
-         }))
+         results: resultsWithMetadata
        });
 
      } catch (e: any) {

@@ -17,12 +17,17 @@ export function stripMarkdown(markdownText: string): string {
         cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
 
         // 移除粗体标记 (**bold** 和 __bold__)
+        // 先处理组合格式（粗斜体）
+        cleaned = cleaned.replace(/\*\*\*(.*?)\*\*\*/g, '$1');
+        cleaned = cleaned.replace(/\_\_\_(.*?)\_\_\_/g, '$1');
+
+        // 移除粗体标记 (**bold** 和 __bold__)
         cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1');
         cleaned = cleaned.replace(/__(.*?)__/g, '$1');
 
         // 移除斜体标记 (*italic* 和 _italic_)
-        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
-        cleaned = cleaned.replace(/_(.*?)_/g, '$1');
+        cleaned = cleaned.replace(/\*([^\*]+?)\*/g, '$1');
+        cleaned = cleaned.replace(/\b_([^_]+?)_\b/g, '$1');
 
         cleaned = cleaned.split('\n').map(line => line.trim()).join('\n');
 
@@ -51,11 +56,18 @@ export function lightenMarkdown(markdownText: string): string {
 
         // 只保留最影响 token 的格式
 
-        // 移除粗体和斜体标记
+        // 移除粗体和斜体标记 - 按照与 stripMarkdown 相同的顺序和模式
+        // 先处理组合格式（粗斜体）
+        cleaned = cleaned.replace(/\*\*\*(.*?)\*\*\*/g, '$1');
+        cleaned = cleaned.replace(/\_\_\_(.*?)\_\_\_/g, '$1');
+
+        // 然后处理粗体标记
         cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1');
         cleaned = cleaned.replace(/__(.*?)__/g, '$1');
-        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
-        cleaned = cleaned.replace(/_(.*?)_/g, '$1');
+
+        // 最后处理斜体标记，使用改进的正则表达式避免在单词内匹配
+        cleaned = cleaned.replace(/\*([^\*]+?)\*/g, '$1');
+        cleaned = cleaned.replace(/\b_([^_]+?)_\b/g, '$1');
 
         // 移除行内代码
         cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
