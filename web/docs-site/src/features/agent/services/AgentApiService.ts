@@ -39,30 +39,32 @@ export class AgentApiService {
    * @return {any[]} 格式化后的消息数组
    */
   private formatMessagesForApi(history: Message[]): any[] {
-    const uiOnlyTypes = ['tool_status', 'tool_result', 'error'];
     return history
-      .filter(m => m.type && !uiOnlyTypes.includes(m.type))
+      .filter(m => {
+        // 过滤掉状态消息和错误消息
+        if (m.type === 'tool_status' || m.type === 'error') {
+          return false;
+        }
+        // 保留所有其他消息，包括隐藏的工具结果，这样LLM才能看到执行结果
+        return true;
+      })
       .map(m => {
-        const messageForApi: any = { role: m.role, content: m.content, name: m.name };
+        const messageForApi: any = { role: m.role, content: m.content };
+
         if (m.role === 'user') {
+          // 用户消息：将MessageContentPart[]转换为API格式
           messageForApi.content = Array.isArray(m.content)
             ? m.content.map(part => (part.type === 'doc' ? { type: 'text', text: part.content } : part))
             : [{ type: 'text', text: m.content }];
+        } else if (m.role === 'assistant' && m.tool_calls) {
+          // 助手消息：保持JSON格式的tool_calls，移除original字段
+          const cleanedToolCalls = m.tool_calls.map(tc => {
+            const { original, ...cleanedTc } = tc;
+            return cleanedTc;
+          });
+          messageForApi.tool_calls = cleanedToolCalls;
         }
-        if (m.role === 'tool') {
-          messageForApi.tool_call_id = m.name;
-          messageForApi.content = String(m.content);
-          delete messageForApi.name;
-        }
-        if (m.role === 'assistant' && m.tool_calls) {
-          // 从API请求中移除tool_calls属性，防止不兼容结构被发送
-          const toolXmls = m.tool_calls.map(tc => tc.xml).join('');
-          messageForApi.content = (m.content || '') + toolXmls;
-        }
-        // 确保tool_calls不会被发送到API，即使它存在于其他角色的消息中
-        delete messageForApi.tool_calls;
-        if (m.role !== 'assistant' || !m.tool_calls) delete messageForApi.name;
-        if (m.role !== 'tool') delete messageForApi.tool_call_id;
+
         return messageForApi;
       });
   }
