@@ -13,13 +13,12 @@ const askTool: Tool<AskParams> = {
   usage: '',
   examples: [],
   error_guidance: '',
-  prompt_trigger: undefined,
 
   async execute(params: AskParams): Promise<ToolExecutionResult> {
     try {
       const question = params.question || '未提供问题';
       const suggestions = params.suggest ? [params.suggest].flat() : [];
-      
+
       if (!question || suggestions.length < 2) {
         return {
           result: "错误: 参数不完整。'ask' 工具需要明确的 'question' 和至少2个 'suggest' 选项。"

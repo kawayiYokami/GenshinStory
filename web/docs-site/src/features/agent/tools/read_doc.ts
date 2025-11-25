@@ -15,7 +15,6 @@ const readDocTool: Tool<ReadDocParams> = {
   usage: '',
   examples: [],
   error_guidance: '',
-  prompt_trigger: undefined,
 
   async execute(params: ReadDocParams): Promise<ToolExecutionResult> {
     try {

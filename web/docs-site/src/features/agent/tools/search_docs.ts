@@ -15,7 +15,6 @@ const searchDocsTool: Tool<SearchDocsParams> = {
   usage: '',
   examples: [],
   error_guidance: '',
-  prompt_trigger: undefined,
 
   async execute(params: SearchDocsParams): Promise<ToolExecutionResult> {
     try {

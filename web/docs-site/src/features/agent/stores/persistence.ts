@@ -38,14 +38,14 @@ export class PersistenceManagerImpl implements PersistenceManager {
     try {
       logger.log('[AgentStore] 正在从缓存初始化 store...');
       const cachedState = await sessionsStore.getItem<any>('state');
-      
+
       if (!cachedState || cachedState.version !== AGENT_CACHE_VERSION) {
         logger.error(`[AgentStore] 检测到过时或损坏的缓存。正在清除缓存并重新开始。`, {
             foundVersion: cachedState?.version,
             expectedVersion: AGENT_CACHE_VERSION,
         });
         await forceClearAgentCache();
-        
+
         sessions.value = {};
         activeSessionIds.value = { gi: null, hsr: null };
 
@@ -56,15 +56,18 @@ export class PersistenceManagerImpl implements PersistenceManager {
         // 修复过去记录中的 tool_result 消息状态
         Object.keys(sessions.value).forEach(sessionId => {
           const session = sessions.value[sessionId];
-          if (session && session.messages) {
-            session.messages.forEach(message => {
-              // 确保所有 tool_result 消息状态为 'done'
-              if (message.type === 'tool_result' && message.status !== 'done') {
-                message.status = 'done';
-              }
-              // 确保所有 tool_status 消息如果没有状态，设置为 'done'
-              if (message.type === 'tool_status' && !message.status) {
-                message.status = 'done';
+          if (session && session.messageIds) {
+            session.messageIds.forEach(messageId => {
+              const message = session.messagesById[messageId];
+              if (message) {
+                // 确保所有 tool_result 消息状态为 'done'
+                if (message.type === 'tool_result' && message.status !== 'done') {
+                  message.status = 'done';
+                }
+                // 确保所有 tool_status 消息如果没有状态，设置为 'done'
+                if (message.type === 'tool_status' && !message.status) {
+                  message.status = 'done';
+                }
               }
             });
           }
@@ -78,7 +81,7 @@ export class PersistenceManagerImpl implements PersistenceManager {
                                  : defaultIds;
         logger.log('[AgentStore] 已恢复活动会话 ID。');
       }
-      
+
     } catch (e) {
       logger.error('[AgentStore] 缓存初始化期间发生严重错误。正在清除缓存并重新开始。', e);
       await forceClearAgentCache();
@@ -86,7 +89,7 @@ export class PersistenceManagerImpl implements PersistenceManager {
       activeSessionIds.value = { gi: null, hsr: null };
     }
   }
-  
+
   persistState(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): () => void {
     const persistFn = debounce(async () => {
       try {
@@ -103,7 +106,7 @@ export class PersistenceManagerImpl implements PersistenceManager {
         logger.error('[AgentStore] 持久化状态失败:', e);
       }
     }, 1000);
-    
+
     return persistFn;
   }
 }
