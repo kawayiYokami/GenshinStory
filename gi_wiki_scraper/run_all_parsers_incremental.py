@@ -19,11 +19,65 @@ from .central_hub import WikiPageCoordinator
 from playwright.async_api import async_playwright
 
 
+def delete_preview_files(output_dir: Path) -> None:
+    """
+    删除指定目录及其子目录下所有包含【预告】字样的JSON文件
+
+    参数:
+        output_dir (Path): 要搜索的根目录路径
+    """
+    if not output_dir.exists():
+        print(f"输出目录不存在: {output_dir}")
+        return
+
+    deleted_count = 0
+    skipped_count = 0
+    # 递归遍历所有子目录
+    for json_file in output_dir.rglob("*.json"):
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # 读取文件内容检查是否包含【预告】
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if "【预告】" in content:
+                        f.close()  # 确保文件句柄关闭
+                        json_file.unlink()
+                        deleted_count += 1
+                        print(f"已删除预告文件: {json_file}")
+                        break  # 成功删除，跳出重试循环
+                    else:
+                        break  # 不是预告文件，跳出重试循环
+            except (UnicodeDecodeError, IOError) as e:
+                if attempt < max_retries - 1:
+                    # 重试前等待一小段时间
+                    import time
+                    time.sleep(0.1)
+                    continue
+                else:
+                    print(f"无法处理文件 {json_file}: {e}")
+                    skipped_count += 1
+                    break
+
+    if deleted_count > 0:
+        print(f"共删除了 {deleted_count} 个包含【预告】的JSON文件")
+        if skipped_count > 0:
+            print(f"跳过了 {skipped_count} 个无法处理的文件")
+    else:
+        print("未找到包含【预告】的JSON文件")
+
+
 async def run_all_parsers_incremental():
     """
     增量解析所有条目的主函数。
     只处理缺失的文件，已存在的文件会被跳过。
     """
+    # --- 0. 删除包含【预告】的文件 ---
+    project_root = Path(__file__).parent.parent
+    output_base_dir = project_root / "gi_wiki_scraper" / "output" / "structured_data"
+    print("正在清理包含【预告】的JSON文件...")
+    delete_preview_files(output_base_dir)
+
     # --- 1. 定义路径 ---
     # 项目根目录是 'gi_wiki_scraper' 包目录的父目录。
     project_root = Path(__file__).parent.parent
