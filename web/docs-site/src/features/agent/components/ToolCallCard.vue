@@ -29,6 +29,7 @@ import {
   List,
   Wrench
 } from 'lucide-vue-next';
+import { extractFileName } from '@/utils/pathUtils';
 
 interface ToolCall {
   name: string;
@@ -61,9 +62,14 @@ const displayValue = computed(() => {
       // 检查 params.args 是否存在且为字符串
       if (typeof params.args === 'string') {
         const pathMatch = params.args.match(/<path>(.*?)<\/path>/);
-        return pathMatch ? pathMatch[1] : params.args;
+        const fullPath = pathMatch ? pathMatch[1] : params.args;
+        return extractFileName(fullPath);
       }
-      // 如果 params.args 不是字符串，则将其序列化以安全显示，防止崩溃
+      // 如果 params.args 是对象且包含 path 字段
+      if (params.args && typeof params.args === 'object' && params.args.path) {
+        return extractFileName(params.args.path);
+      }
+      // 如果 params.args 存在但不匹配上述情况，则将其序列化以安全显示
       if (params.args) {
         return JSON.stringify(params.args);
       }
