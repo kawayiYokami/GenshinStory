@@ -239,17 +239,8 @@ const { renderedHtml: smartBufferHtml, renderableContent } = useSmartBuffer(
 
 const renderedHtml = ref<string>('');
 watchEffect(async () => {
-  // watchEffect 会自动追踪 localContent 和 renderCompleted 的变化
-  if (renderCompleted.value) {
-    const markdownHtml = renderMarkdownSync(localContent.value || '');
-    renderedHtml.value = await replaceLinkPlaceholders(markdownHtml);
-  } else if (!props.message.streamCompleted) {
-    // 仅在真实流式传输期间使用 smartBuffer 的输出
-    renderedHtml.value = smartBufferHtml.value;
-  } else {
-    // 在 onMounted 强制刷新期间，暂时清空内容
-    renderedHtml.value = '';
-  }
+  // 始终使用 smartBuffer 的输出，让 useSmartBuffer 处理所有逻辑
+  renderedHtml.value = smartBufferHtml.value;
 });
 
 

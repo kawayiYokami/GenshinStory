@@ -43,28 +43,41 @@ export function useSmartBuffer(
       // 检测到 { 就立即截断，等待流结束后一次性显示
       const braceIndex = newContent.indexOf('{');
       if (braceIndex !== -1) {
+        // 截断内容，忽略 { 及之后的所有内容
         renderableContent.value = newContent.substring(0, braceIndex);
+
+        // 进入缓冲状态，但忽略后续所有内容
+        isBuffering.value = true;
+        expectedClosingTag.value = null; // 不需要特定的闭合标记
+
         return;
       }
 
       // 没有检测到起始标记，直接更新 renderableContent
       renderableContent.value = newContent;
     } else {
-      // 正处于缓冲状态，将新文本追加到 buffer 数组中
-      const newContentPart = newContent.slice(renderableContent.value.length + buffer.value.join('').length);
-      if (newContentPart) {
-        buffer.value.push(newContentPart);
-      }
-      
-      // 检查 buffer 是否已包含 expectedClosingTag
-      if (buffer.value.join('').includes(expectedClosingTag.value || '')) {
-        // 将 buffer 内容合并到 renderableContent
-        renderableContent.value += buffer.value.join('');
-        
-        // 退出缓冲状态
-        isBuffering.value = false;
-        buffer.value = [];
-        expectedClosingTag.value = null;
+      // 正处于缓冲状态
+      if (expectedClosingTag.value === null) {
+        // 如果是因为检测到 { 而进入缓冲状态，则忽略所有新内容
+        // 不做任何处理，等待流结束
+        return;
+      } else {
+        // 原有的缓冲逻辑（处理其他类型的缓冲）
+        const newContentPart = newContent.slice(renderableContent.value.length + buffer.value.join('').length);
+        if (newContentPart) {
+          buffer.value.push(newContentPart);
+        }
+
+        // 检查 buffer 是否已包含 expectedClosingTag
+        if (buffer.value.join('').includes(expectedClosingTag.value || '')) {
+          // 将 buffer 内容合并到 renderableContent
+          renderableContent.value += buffer.value.join('');
+
+          // 退出缓冲状态
+          isBuffering.value = false;
+          buffer.value = [];
+          expectedClosingTag.value = null;
+        }
       }
     }
   });
@@ -75,22 +88,29 @@ export function useSmartBuffer(
     if (oldStreamCompleted === false && newStreamCompleted === true) {
       // 检查是否仍处于缓冲状态
       if (isBuffering.value) {
-        // 强制清空缓冲区
-        const bufferContent = buffer.value.join('');
-        
-        // 检查 buffer 内容是否包含 expectedClosingTag
-        if (expectedClosingTag.value && !bufferContent.includes(expectedClosingTag.value)) {
-          // 自动补全闭合标签
-          buffer.value.push(expectedClosingTag.value);
+        // 如果是因为检测到 { 而进入缓冲状态，则忽略所有缓冲内容
+        if (expectedClosingTag.value === null) {
+          // 退出缓冲状态，不添加任何内容
+          isBuffering.value = false;
+          buffer.value = [];
+        } else {
+          // 原有的缓冲逻辑（处理其他类型的缓冲）
+          const bufferContent = buffer.value.join('');
+
+          // 检查 buffer 内容是否包含 expectedClosingTag
+          if (expectedClosingTag.value && !bufferContent.includes(expectedClosingTag.value)) {
+            // 自动补全闭合标签
+            buffer.value.push(expectedClosingTag.value);
+          }
+
+          // 将处理后的缓冲区内容合并到 renderableContent
+          renderableContent.value += buffer.value.join('');
+
+          // 退出缓冲状态
+          isBuffering.value = false;
+          buffer.value = [];
+          expectedClosingTag.value = null;
         }
-        
-        // 将处理后的缓冲区内容合并到 renderableContent
-        renderableContent.value += buffer.value.join('');
-        
-        // 退出缓冲状态
-        isBuffering.value = false;
-        buffer.value = [];
-        expectedClosingTag.value = null;
       }
     }
   });

@@ -64,7 +64,7 @@ const handleMessageRendered = (messageId: string) => {
       if (historyPanel.value) {
         const isNearBottom = historyPanel.value.scrollTop +
                           historyPanel.value.clientHeight >=
-                          historyPanel.value.scrollHeight - 500;
+                          historyPanel.value.scrollHeight - 200;
         if (isNearBottom) {
           historyPanel.value.scrollTo({
             top: historyPanel.value.scrollHeight,
@@ -83,7 +83,7 @@ const isHistoryPanelNearBottom = (): boolean => {
   if (!historyPanel.value) return false;
   return historyPanel.value.scrollTop +
          historyPanel.value.clientHeight >=
-         historyPanel.value.scrollHeight - 500;
+         historyPanel.value.scrollHeight - 200;
 };
 
 const handleHistoryPanelClick = async (event: Event) => {
