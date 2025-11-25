@@ -15,6 +15,7 @@ import type { Ref } from 'vue';
 import type { LogEntry } from '@/features/app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
 import type { MessageContentPart, Message, Session, AgentInfo, Command } from '../types';
+import { ContentProcessor } from '../services/ContentProcessor';
 
 // --- 导入管理器和服务模块 ---
 import { MessageManagerImpl } from './messageManager';
@@ -434,6 +435,9 @@ export const useAgentStore = defineStore('agent', () => {
       return;
     }
 
+    // 检测上一条消息是否有工具调用，如果没有则添加提示
+    await checkAndPromptForToolCall();
+
     await messageManager.addMessage({
       role: 'user',
       content: contentPayload.length === 1 && contentPayload[0].type === 'text'
@@ -442,6 +446,39 @@ export const useAgentStore = defineStore('agent', () => {
     });
 
     agentService.startTurn();
+  }
+
+  /**
+   * 检测上一条assistant消息是否包含工具调用，如果没有则添加提示
+   */
+  async function checkAndPromptForToolCall(): Promise<void> {
+    if (!currentSession.value) return;
+
+    const messages = orderedMessages.value;
+    const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
+
+    if (lastAssistantMessage && !lastAssistantMessage.tool_calls?.length) {
+      const feedbackPrompt = await getToolFeedbackPrompt();
+      await messageManager.addMessage({
+        role: 'user',
+        content: feedbackPrompt,
+        is_hidden: true
+      });
+    }
+  }
+
+  /**
+   * 获取工具反馈提示内容
+   */
+  async function getToolFeedbackPrompt(): Promise<string> {
+    try {
+      const response = await fetch(`/prompts/tool_feedback_prompt.md?v=${Date.now()}`);
+      if (!response.ok) throw new Error('Failed to load prompt');
+      return await response.text();
+    } catch (error) {
+      logger.error("加载 tool_feedback_prompt.md 时出错:", error);
+      return "你的回复中没有包含任何工具调用。";
+    }
   }
 
   /**

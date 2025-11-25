@@ -85,13 +85,12 @@ export class AgentResponseHandlerService {
       return { type: 'tool_call', payload: processed.toolCalls[0] };
     }
 
-    if (this.noToolCallRetries.value >= 2) {
-      await this.messageManager.addMessage({ role: 'assistant', type: 'error', content: "抱歉，我似乎无法找到合适的指令来回应您的问题。" });
-      return { type: 'no_op' };
-    }
-    this.noToolCallRetries.value++;
-    const feedbackPrompt = await this.getToolFeedbackPrompt();
-    await this.messageManager.addMessage({ role: 'user', content: feedbackPrompt, is_hidden: true });
-    return { type: 'retry_no_tool_call' };
+    // 如果没有工具调用，直接返回no_op，不再重试以避免token浪费
+    await this.messageManager.updateMessage({
+      messageId: assistantMessage.id,
+      updates: { content: processed.cleanedContent, status: 'done' }
+    });
+
+    return { type: 'no_op' };
   }
 }
