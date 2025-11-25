@@ -89,6 +89,15 @@
           </div>
         </button>
 
+        <!-- 截图按钮 -->
+        <button
+          @click="handleScreenshot"
+          class="debug-panel-btn"
+          title="截图当前对话"
+        >
+          <Camera class="w-5 h-5" />
+        </button>
+
         <!-- 调试按钮 (仅在开发模式下显示) -->
         <button
           v-if="isDevMode"
@@ -127,20 +136,11 @@ import ChatAttachments from './ChatAttachments.vue';
 import ChatToolbar from './ChatToolbar.vue';
 import { useReferenceHandler } from './useReferenceHandler';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
-import {
-  Send,
-  Square,
-  FileText,
-  Image,
-  X,
-  Wrench,
-  AlertTriangle,
-  Archive,
-  MessageCirclePlus
-} from 'lucide-vue-next';
+import { AlertTriangle, Archive, MessageCirclePlus, Camera, Wrench } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { simpleContextCompressor } from '../services/simpleContextCompressor';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
+import html2canvas from 'html2canvas-pro';
 
 interface ReferenceItem {
   path: string;
@@ -344,6 +344,74 @@ const handleNewSession = async () => {
     console.log('新会话已开启');
   } catch (error) {
     console.error('开启新会话失败:', error);
+  }
+};
+
+// 截图处理方法
+const handleScreenshot = async () => {
+  try {
+    console.log('开始截图...');
+
+    // 找到聊天历史容器 - 使用更精确的选择器
+    const historyPanel = document.querySelector('.overflow-y-auto.scrollbar-hide.flex-1') as HTMLElement;
+    if (!historyPanel) {
+      console.error('找不到聊天历史容器');
+      toast.error('找不到聊天历史容器');
+      return;
+    }
+
+    console.log('找到历史容器:', historyPanel);
+
+    // 存储原始样式
+    const originalMaxHeight = historyPanel.style.maxHeight;
+    const originalOverflow = historyPanel.style.overflow;
+
+    console.log('原始样式:', { maxHeight: originalMaxHeight, overflow: originalOverflow });
+
+    // 临时解除滚动限制
+    historyPanel.style.maxHeight = 'unset';
+    historyPanel.style.overflow = 'unset';
+
+    console.log('已解除滚动限制');
+
+    // 等待DOM更新
+    await nextTick();
+
+    console.log('开始生成截图...');
+
+    // 获取主容器的背景色
+    const mainContainer = document.querySelector('.drawer.mx-auto.lg\\:drawer-open') as HTMLElement;
+    const bgColor = mainContainer
+      ? getComputedStyle(mainContainer).backgroundColor
+      : '#ffffff';
+
+    console.log('获取到的背景色:', bgColor);
+
+    // 截图 - 使用html2canvas-pro简化配置，设置正确的背景色
+    const canvas = await html2canvas(historyPanel, {
+      useCORS: true,
+      backgroundColor: bgColor
+    });
+
+    console.log('截图生成成功，Canvas尺寸:', canvas.width, 'x', canvas.height);
+
+    // 恢复原始样式
+    historyPanel.style.maxHeight = originalMaxHeight;
+    historyPanel.style.overflow = originalOverflow;
+
+    console.log('已恢复原始样式');
+
+    // 下载图片
+    const link = document.createElement('a');
+    link.download = `对话截图-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+
+    console.log('截图已下载');
+    toast.success('截图已保存');
+  } catch (error) {
+    console.error('截图失败:', error);
+    toast.error('截图失败，请重试');
   }
 };
 
