@@ -228,7 +228,37 @@ export const useAgentStore = defineStore('agent', () => {
     if (!roleId) {
       throw new Error('当前没有激活的角色，无法开启新聊天');
     }
-    return await startNewChatWithAgent(roleId);
+
+    // 获取系统提示词
+    const systemPrompt = await sessionManager.startNewChatWithAgent(
+      roleId,
+      currentDomain.value,
+      currentSession.value,
+      isLoading,
+      stopAgent, // stop function
+      fetchAvailableAgents,
+      startNewSession,
+      availableAgents,
+      activeRoleId,
+      activeAgentName,
+      lastUsedRolesStore,
+      sessions,
+      activeSessionIds
+    );
+
+    if (systemPrompt) {
+      await messageManager.addMessage({
+        role: 'system',
+        content: systemPrompt,
+        type: 'system',
+      });
+      return systemPrompt;
+    }
+
+    // 如果没有系统提示词，创建新会话并返回默认系统提示词
+    await startNewSession(currentDomain.value!, roleId);
+    const { systemPrompt: defaultPrompt } = await promptService.loadSystemPrompt(currentDomain.value!, roleId);
+    return defaultPrompt;
   }
 
   /**

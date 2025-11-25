@@ -5,6 +5,7 @@
     <div v-if="message.isCompressed" class="card bg-base-200 border border-base-300 shadow-xs">
       <div class="card-body p-0">
         <div class="collapse collapse-arrow bg-base-200/50 p-0">
+          <!-- 直接绑定到 isCompressedExpanded 是合理的，因为每个消息气泡组件实例都有自己的状态 -->
           <input type="checkbox" v-model="isCompressedExpanded" />
           <div class="collapse-title compressed-message-card p-0">
             <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20">
@@ -111,7 +112,7 @@ import { ref, watch, computed, nextTick, onMounted, watchEffect, type Ref } from
 import { useToast } from 'vue-toastification';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 import { useSmartBuffer } from '@/composables/useSmartBuffer';
-import { Trash2, RefreshCw, ChevronDown, ChevronUp, Archive } from 'lucide-vue-next';
+import { Trash2, RefreshCw, Archive } from 'lucide-vue-next';
 import ToolCallCard from './ToolCallCard.vue';
 import ToolResultCard from './ToolResultCard.vue';
 import QuestionSuggestions from './QuestionSuggestions.vue';
@@ -179,6 +180,10 @@ const hasSignaledRenderComplete = ref<boolean>(false);
 const contentContainer = ref<HTMLElement | null>(null);
 
 // 压缩消息展开/折叠状态
+// 注意：虽然这里使用了单一的 ref，但这是设计上合理的，因为：
+// 1. 应用中同时只会存在一个压缩消息（对话摘要）
+// 2. 每个消息气泡都是独立的组件实例，各自维护自己的状态
+// 3. 不需要基于消息 ID 的状态管理，简化了实现
 const isCompressedExpanded = ref<boolean>(false);
 
 // 导入工具函数

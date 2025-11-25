@@ -11,16 +11,23 @@ export class SimpleContextCompressor {
    * @returns 压缩后的消息列表
    */
   async compressMessages(messages: Message[]): Promise<Message[]> {
-    // 1. 保留系统消息
+    // 1. 分离系统消息和其他消息
     const systemMessage = messages.find(m => m.role === 'system');
+    const nonSystemMessages = messages.filter(m => m.role !== 'system');
 
-    // 2. 保留最后5条对话
-    const recentMessages = messages.slice(-5);
+    // 2. 如果非系统消息少于等于5条，直接返回原消息（无需压缩）
+    if (nonSystemMessages.length <= 5) {
+      return messages;
+    }
 
-    // 3. 生成简单摘要
-    const summary = this.generateSimpleSummary(messages);
+    // 3. 保留最后5条非系统消息
+    const recentMessages = nonSystemMessages.slice(-5);
 
-    // 4. 构建新的消息列表
+    // 4. 从被省略的消息生成摘要
+    const omittedMessages = nonSystemMessages.slice(0, -5);
+    const summary = this.generateSimpleSummary(omittedMessages);
+
+    // 5. 构建新的消息列表
     const compressedMessages: Message[] = [];
 
     // 添加系统消息（如果有）

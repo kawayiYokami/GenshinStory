@@ -114,6 +114,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import { useToast } from 'vue-toastification';
 import { useDataStore } from '@/features/app/stores/data';
 import { useConfigStore } from '@/features/app/stores/config';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
@@ -159,6 +160,7 @@ const configStore = useConfigStore();
 const agentStore = useAgentStore();
 const appStore = useAppStore();
 const router = useRouter();
+const toast = useToast();
 
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
@@ -327,9 +329,11 @@ const handleCompressContext = async () => {
 
   try {
     await compressAndStartNewChat();
-    console.log('上下文压缩完成，已开启新对话');
+    toast.success('上下文压缩成功，已开启新对话');
   } catch (error) {
     console.error('上下文压缩失败:', error);
+    const errorMessage = error instanceof Error ? error.message : '上下文压缩失败，请稍后重试';
+    toast.error(errorMessage);
   }
 };
 

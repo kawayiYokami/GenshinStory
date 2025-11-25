@@ -22,7 +22,7 @@
       @click="isLoading ? stopAgent() : handleSend()"
       :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0 && attachedReferences.length === 0) || isContextOverLimit || isCompressing"
       class="btn btn-circle btn-primary btn-sm w-8 h-8 min-h-8"
-      :title="isLoading ? '停止生成' : (isCompressing ? '正在压缩上下文...' : (isContextOverLimit ? '上下文已达到上限，请压缩上下文' : '发送消息'))"
+      :title="isCompressing ? '正在压缩上下文...' : (isContextOverLimit ? '上下文已达到上限，请压缩上下文' : (isLoading ? '停止生成' : '发送消息'))"
     >
       <Square v-if="isLoading" class="w-5 h-5" />
       <Send v-else class="w-5 h-5" />
@@ -130,7 +130,7 @@ const isContextOverLimit = computed(() => {
   const currentTokens = tokenizerService.countTokens(
     orderedMessages.value.map(m =>
       Array.isArray(m.content) ? m.content.map(c => c.text || '').join(' ') : m.content || ''
-    ).join('\n')
+    ).join(' ')
   );
   const maxTokens = activeConfig.value?.maxTokens || 128000;
   return currentTokens > maxTokens * 0.9;
