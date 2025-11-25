@@ -1,7 +1,7 @@
 <template>
-  <div class="card bg-base-200 border border-base-300 shadow-xs">
+  <div class="card bg-base-200 border border-base-300 shadow-xs rounded-2xl">
     <div class="card-body p-0">
-      <div class="collapse collapse-arrow bg-base-200/50 p-0">
+      <div class="collapse collapse-arrow bg-base-200/50 p-0 rounded-2xl">
         <input type="checkbox" />
         <div class="tool-result-card p-0">
           <div class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20">

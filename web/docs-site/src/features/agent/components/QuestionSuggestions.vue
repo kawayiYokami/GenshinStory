@@ -1,5 +1,5 @@
 <template>
-  <div v-if="question" class="card bg-base-200 shadow-md border border-primary/20">
+  <div v-if="question" class="card bg-base-200 shadow-sm rounded-2xl">
     <div class="card-body p-4">
       <h3 class="card-title text-primary text-sm mb-2">{{ question.text }}</h3>
       <div class="flex flex-wrap gap-2">

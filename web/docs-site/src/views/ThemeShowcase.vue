@@ -18,7 +18,7 @@
       <ThemePreview />
 
       <!-- 实时预览区域 -->
-      <div class="mt-12 card bg-base-200 shadow-md">
+      <div class="mt-12 card bg-base-200 shadow-md rounded-2xl">
         <div class="card-body">
           <h2 class="card-title mb-6">当前主题实时预览</h2>
 

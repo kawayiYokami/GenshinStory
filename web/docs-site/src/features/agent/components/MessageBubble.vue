@@ -2,9 +2,9 @@
   <!-- 用户消息：保持简单的气泡设计 -->
   <div v-if="message.role === 'user'" class="chat chat-end animate-slide-in-right" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <!-- 压缩摘要消息特殊样式 -->
-    <div v-if="message.isCompressed" class="card bg-base-200 border border-base-300 shadow-xs">
+    <div v-if="message.isCompressed" class="card bg-base-200 border border-base-300 shadow-xs rounded-2xl">
       <div class="card-body p-0">
-        <div class="collapse collapse-arrow bg-base-200/50 p-0">
+        <div class="collapse collapse-arrow bg-base-200/50 p-0 rounded-2xl">
           <!-- 直接绑定到 isCompressedExpanded 是合理的，因为每个消息气泡组件实例都有自己的状态 -->
           <input type="checkbox" v-model="isCompressedExpanded" />
           <div class="collapse-title compressed-message-card p-0">
