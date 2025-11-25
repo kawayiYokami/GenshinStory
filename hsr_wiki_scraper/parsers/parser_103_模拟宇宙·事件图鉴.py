@@ -195,3 +195,45 @@ class RogueEventParser(BaseParser):
         branches_map = RogueEventParser._parse_branches(soup)
         dialogue_content = RogueEventParser._parse_main_flow_and_merge(soup, branches_map)
         return dialogue_content
+
+    def get_template(self) -> dict:
+        """
+        返回模拟宇宙·事件图鉴解析器的JSON模板
+
+        Returns:
+            dict: 模拟宇宙·事件图鉴数据模板
+        """
+        return {
+            "id": -1,
+            "title": "请填写事件标题",
+            "location": "请填写事件发生地",
+            "possible_outcomes": [
+                "请填写可能结果1",
+                "请填写可能结果2"
+            ],
+            "dialogue_tree": {
+                'id': 'root',
+                'option_text': '',
+                'dialogue': [
+                    {
+                        "type": "dialogue",
+                        "speaker": "请填写说话者",
+                        "line": "请填写对话内容"
+                    }
+                ],
+                "options": [
+                    {
+                        "id": "请填写节点ID",
+                        "option_text": "请填写选项文本",
+                        "dialogue": [
+                            {
+                                "type": "dialogue",
+                                "speaker": "请填写说话者",
+                                "line": "请填写对话内容"
+                            }
+                        ],
+                        "options": []
+                    }
+                ]
+            }
+        }

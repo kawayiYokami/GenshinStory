@@ -80,3 +80,20 @@ class Parser251MapText(BaseParser):
             if img_source.get('srcset'):
                 # 解析完成但不添加到result
                 pass
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回地图文本解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 地图文本数据模板
+        """
+        return {
+            "文本标题": "请填写文本标题",
+            "类型": "地图文本",
+            "地区": "请填写地区",
+            "文本内容": [
+                "请填写文本内容1",
+                "请填写文本内容2"
+            ]
+        }

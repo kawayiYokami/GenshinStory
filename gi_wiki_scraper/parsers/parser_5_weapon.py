@@ -82,3 +82,18 @@ class Parser5Weapon(BaseParser):
             "type": type_,
             "story": story
         }
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回武器解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 武器数据模板
+        """
+        return {
+            "title": "请填写武器名称",
+            "description": "请填写武器描述",
+            "rarity": 5,
+            "type": "请填写武器类型",
+            "story": "请填写武器故事"
+        }

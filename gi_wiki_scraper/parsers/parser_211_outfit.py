@@ -65,3 +65,16 @@ class Parser211Outfit(BaseParser):
                 result["简介"] = content
             elif "故事" in title_text or "衣装故事" in title_text or "风之翼故事" in title_text:
                 result["故事"] = content
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回装扮解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 装扮数据模板
+        """
+        return {
+            "名称": "请填写装扮名称",
+            "简介": "请填写装扮简介",
+            "故事": "请填写装扮故事"
+        }

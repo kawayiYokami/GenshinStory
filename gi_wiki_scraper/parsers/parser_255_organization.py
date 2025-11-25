@@ -32,7 +32,7 @@ class Parser255Organization(BaseParser):
             header = part_wrap.select_one('h2.wiki-h2, .obc-tmpl-fold__title, .timeline-title')
             if not header:
                 continue
-            
+
             header_text = header.get_text(strip=True)
 
             if "简介" in header_text:
@@ -103,9 +103,9 @@ class Parser255Organization(BaseParser):
             if i < len(images) and images[i].has_attr('srcset'):
                 entry["图片URL"] = images[i]['srcset'].split('?')[0]
             info_list.append(entry)
-            
+
         return info_list
-    
+
     def _parse_main_branch(self, container: Tag) -> Dict[str, Any]:
         """Parses a main branch like '社奉行', '天领奉行', or '勘定奉行'."""
         title_tag = container.select_one('.obc-tmpl-fold__title span')
@@ -135,10 +135,10 @@ class Parser255Organization(BaseParser):
                 text = element.get_text(strip=True)
                 if text:
                     current_chapter["内容"].append(text)
-        
+
         if current_chapter:
             branch_data["章节"].append(current_chapter)
-            
+
         return branch_data
 
     def _parse_trivia(self, container: Tag) -> List[str]:
@@ -157,3 +157,55 @@ class Parser255Organization(BaseParser):
                     "描述": desc_tag.get_text(strip=True)
                 })
         return timeline
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回组织解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 组织数据模板
+        """
+        return {
+            "名称": "请填写组织名称",
+            "类型": "组织",
+            "简介": {
+                "描述": "请填写组织描述",
+                "分支": [
+                    {
+                        "名称": "请填写分支名称",
+                        "描述": "请填写分支描述"
+                    }
+                ]
+            },
+            "基础信息": [
+                {
+                    "标题": "请填写信息标题",
+                    "图片URL": "请填写图片URL"
+                }
+            ],
+            "下属机构": [
+                {
+                    "名称": "请填写下属机构名称",
+                    "描述": "请填写描述",
+                    "章节": [
+                        {
+                            "标题": "请填写章节标题",
+                            "内容": [
+                                "请填写章节内容1",
+                                "请填写章节内容2"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "趣闻": [
+                "请填写趣闻1",
+                "请填写趣闻2"
+            ],
+            "重大事迹": [
+                {
+                    "事件": "请填写事件名称",
+                    "描述": "请填写事件描述"
+                }
+            ]
+        }

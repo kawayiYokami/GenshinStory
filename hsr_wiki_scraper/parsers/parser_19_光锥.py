@@ -44,7 +44,7 @@ class LightConeParser(BaseParser):
 
     def _extract_table_value(self, soup: BeautifulSoup, field_name: str) -> str:
         """从表格中提取指定字段的值"""
-        # 优先使���mobile版本的表格
+        # 优先使用mobile版本的表格
         table = soup.select_one('.obc-tml-light-table--mobile')
         if not table:
             # 如果没有mobile表格，使用PC版本
@@ -68,3 +68,17 @@ class LightConeParser(BaseParser):
                         return value_cell.get_text(strip=True)
 
         return ""
+
+    def get_template(self) -> dict:
+        """
+        返回光锥解析器的JSON模板
+
+        Returns:
+            dict: 光锥数据模板
+        """
+        return {
+            "title": "请填写光锥名称",
+            "path": "请填写命途",
+            "rarity": "请填写稀有度",
+            "description": "请填写光锥描述"
+        }

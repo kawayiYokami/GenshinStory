@@ -18,7 +18,7 @@ class Parser261CharacterAnecdote(BaseParser):
         Parses the HTML content of a character anecdote page.
         """
         soup = self._create_soup(html)
-        
+
         result = self._initialize_result()
 
         # Get the title from the main h1 tag
@@ -28,7 +28,7 @@ class Parser261CharacterAnecdote(BaseParser):
 
         # Initialize a variable to hold the pure character name
         pure_character_name = ""
- 
+
         main_content_body = soup.select_one('div.detail__body')
         if not main_content_body:
             return result
@@ -40,7 +40,7 @@ class Parser261CharacterAnecdote(BaseParser):
             header = module.select_one('.obc-tmpl-fold__title, h1.wiki-h1, h2.wiki-h2, .title-box .title, .timeline-title')
             if not header:
                 continue
-            
+
             header_text = header.get_text(strip=True)
 
              # Dispatch based on the header text from within each block
@@ -60,7 +60,7 @@ class Parser261CharacterAnecdote(BaseParser):
                 result["幻想真境剧诗"].extend(self._parse_generic_modules(module, pure_character_name))
             elif "生日" in header_text: # Birthday mails have a simple "生日" title
                 result["生日邮件"].extend(self._parse_birthday_mail(module, pure_character_name))
-        
+
         # Clean up any empty dictionaries that might result from modules with titles but no content
         for key in ["逸闻纪事", "剧情彩蛋", "七圣召唤", "幻想真境剧诗"]:
             result[key] = [item for item in result[key] if item]
@@ -124,7 +124,7 @@ class Parser261CharacterAnecdote(BaseParser):
 
             dialogue_section = module.select_one('.obc-tmpl-interactiveDialogue .tree-node')
             if dialogue_section: module_data["对话"] = self._parse_dialogue_tree(dialogue_section, character_name)
-            
+
             modules_data.append(module_data)
         return modules_data
 
@@ -165,7 +165,7 @@ class Parser261CharacterAnecdote(BaseParser):
             title_tag = module.select_one('.obc-tmpl-fold__title span')
             if title_tag:
                 mail_data["标题"] = title_tag.get_text(strip=True)
-            
+
             info_table = module.select_one('.obc-tmpl-richBaseInfo table')
             if info_table:
                 info_dict = {cells[0].get_text(strip=True): cells[1].get_text(strip=True)
@@ -173,7 +173,7 @@ class Parser261CharacterAnecdote(BaseParser):
                 mail_data.update({
                     "发件人": info_dict.get("发件人", ""), "时间": info_dict.get("时间", ""), "内容": info_dict.get("内容", "")
                 })
-            
+
             if mail_data.get("标题"):
                 mails_data.append(mail_data)
         return mails_data
@@ -234,3 +234,137 @@ class Parser261CharacterAnecdote(BaseParser):
                 # If no colon, assume the character_name is the speaker
                 dialogues.append({"角色": character_name, "内容": text})
         return dialogues
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回角色逸闻解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 角色逸闻数据模板
+        """
+        return {
+            "标题": "请填写标题",
+            "类型": "角色逸闻",
+            "基本信息": {
+                "角色名称": "请填写角色名称",
+                "生日": "请填写生日",
+                "所属": "请填写所属",
+                "角色介绍": "请填写角色介绍"
+            },
+            "逸闻纪事": [
+                {
+                    "标题": "请填写逸闻标题",
+                    "简介": "请填写简介",
+                    "相关奖励": [
+                        {
+                            "名称": "请填写奖励名称",
+                            "数量": 1
+                        }
+                    ],
+                    "对话": [
+                        {
+                            "角色": "请填写角色",
+                            "内容": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "剧情彩蛋": [
+                {
+                    "标题": "请填写剧情彩蛋标题",
+                    "简介": "请填写简介",
+                    "相关奖励": [
+                        {
+                            "名称": "请填写奖励名称",
+                            "数量": 1
+                        }
+                    ],
+                    "对话": [
+                        {
+                            "角色": "请填写角色",
+                            "内容": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "角色洞天": [
+                {
+                    "标题": "请填写角色洞天标题",
+                    "简介": "请填写简介",
+                    "相关奖励": [
+                        {
+                            "名称": "请填写奖励名称",
+                            "数量": 1
+                        }
+                    ],
+                    "对话": [
+                        {
+                            "角色": "请填写角色",
+                            "内容": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "角色赠礼": [
+                {
+                    "标题": "请填写角色赠礼标题",
+                    "简介": "请填写简介",
+                    "相关奖励": [
+                        {
+                            "名称": "请填写奖励名称",
+                            "数量": 1
+                        }
+                    ],
+                    "对话": [
+                        {
+                            "角色": "请填写角色",
+                            "内容": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "七圣召唤": [
+                {
+                    "标题": "请填写七圣召唤标题",
+                    "简介": "请填写简介",
+                    "相关奖励": [
+                        {
+                            "名称": "请填写奖励名称",
+                            "数量": 1
+                        }
+                    ],
+                    "对话": [
+                        {
+                            "角色": "请填写角色",
+                            "内容": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "幻想真境剧诗": [
+                {
+                    "标题": "请填写幻想真境剧诗标题",
+                    "简介": "请填写简介",
+                    "相关奖励": [
+                        {
+                            "名称": "请填写奖励名称",
+                            "数量": 1
+                        }
+                    ],
+                    "对话": [
+                        {
+                            "角色": "请填写角色",
+                            "内容": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "生日邮件": [
+                {
+                    "标题": "请填写生日邮件标题",
+                    "发件人": "请填写发件人",
+                    "时间": "请填写时间",
+                    "内容": "请填写邮件内容"
+                }
+            ]
+        }

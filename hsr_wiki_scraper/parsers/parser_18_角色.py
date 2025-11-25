@@ -14,7 +14,7 @@ class CharacterParser(BaseParser):
         解析给定的角色页面HTML，提取剧情和语音相关信息。
         """
         soup = self._create_soup(html)
-        
+
         # 页面类型识别：通过是否存在"查看全部语音"按钮来判断
         # 由于 central_hub 已经处理了所有交互，我们可以直接检查页面结构
         voice_expand_buttons = soup.select("#module-20 .wiki-btn-all")
@@ -82,7 +82,7 @@ class CharacterParser(BaseParser):
     def _parse_voices_type1(self, soup: BeautifulSoup) -> dict:
         """解析角色语音信息（仅中文）- 类型1"""
         voices = {"chinese_mandarin": []}
-        
+
         # 解析互动语音
         interaction_container = soup.select_one('.voice-dialog .card-list')
         if interaction_container:
@@ -157,7 +157,7 @@ class CharacterParser(BaseParser):
         """解析角色语音信息（仅中文）- 类型2"""
         voices = {"chinese_mandarin": []}
         voice_headers = soup.find_all('h2', string=['互动语音', '战斗语音'])
-        
+
         for header in voice_headers:
             table = header.find_next_sibling('table', class_='obc-tmpl-character__voice-pc')
             if table:
@@ -174,3 +174,32 @@ class CharacterParser(BaseParser):
                                     "text": content_div.get_text(strip=True)
                                 })
         return voices
+
+    def get_template(self) -> dict:
+        """
+        返回角色解析器的JSON模板
+
+        Returns:
+            dict: 角色数据模板
+        """
+        return {
+            "title": "请填写角色名称",
+            "metadata": {
+                "name": "请填写角色名称",
+                "camp": "请填写阵营",
+                "city_state": "请填写所属地区"
+            },
+            "summary": "请填写角色简介",
+            "story": [
+                "请填写角色故事1",
+                "请填写角色故事2"
+            ],
+            "voices": {
+                "chinese_mandarin": [
+                    {
+                        "title": "请填写语音标题",
+                        "text": "请填写语音内容"
+                    }
+                ]
+            }
+        }

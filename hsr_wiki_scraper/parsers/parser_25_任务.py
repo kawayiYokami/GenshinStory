@@ -153,3 +153,54 @@ class TaskParser(BaseParser):
         branches_map = TaskParser._parse_branches(soup)
         dialogue_content = TaskParser._parse_main_flow_and_merge(soup, branches_map)
         return dialogue_content
+
+    def get_template(self) -> dict:
+        """
+        返回任务解析器的JSON模板
+
+        Returns:
+            dict: 任务数据模板
+        """
+        return {
+            "title": "请填写任务标题",
+            "metadata": {
+                "请填写元数据键": "请填写元数据值"
+            },
+            "process": [
+                "请填写任务过程步骤1",
+                "请填写任务过程步骤2"
+            ],
+            "dialogue": [
+                {
+                    "type": "description",
+                    "text": "请填写描述文本"
+                },
+                {
+                    "type": "quote",
+                    "text": "请填写引用文本"
+                },
+                {
+                    "type": "dialogue",
+                    "speaker": "请填写说话者",
+                    "line": "请填写对话内容"
+                },
+                {
+                    "type": "narrator",
+                    "line": "请填写旁白内容"
+                },
+                {
+                    "type": "options_group",
+                    "choices": [
+                        {
+                            "option": "请填写选项文本",
+                            "reply": [
+                                {
+                                    "type": "description",
+                                    "text": "请填写回复描述"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }

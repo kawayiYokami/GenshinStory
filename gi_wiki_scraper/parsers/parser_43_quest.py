@@ -12,7 +12,7 @@ class Parser43Quest(BaseParser):
     Specific parser for 'Quest' wiki pages.
     Extracts quest details including name, conditions, NPCs, process, rewards, map info, and dialogue trees.
     """
-    
+
     def parse(self, html: str) -> Dict[str, Any]:
         """
         Parses the HTML content of a quest page.
@@ -102,7 +102,7 @@ class Parser43Quest(BaseParser):
         self._extract_dialogue_tree(scope, result)
 
         return result
-    
+
     def _extract_basic_info(self, scope, result: Dict[str, Any]) -> None:
         """Extract basic quest information."""
         # Extract trigger condition
@@ -119,7 +119,7 @@ class Parser43Quest(BaseParser):
         special_tag = scope.select_one('td:contains("特殊限制") + td')
         if special_tag:
             result["特殊限制"] = special_tag.get_text(strip=True)
-            
+
     def _extract_quest_overview(self, scope, result: Dict[str, Any]) -> None:
         """Extract quest overview information with updated selectors and format."""
 
@@ -187,7 +187,7 @@ class Parser43Quest(BaseParser):
                     text = followup_cell.get_text(strip=True)
                     if text:
                         result["任务概述"]["后续任务"].append({"名称": text})
-            
+
     def _extract_quest_process(self, scope, result: Dict[str, Any]) -> None:
         """Extract quest process information."""
         process_tags = scope.select('.obc-tmpl-collapsePanel:contains("任务过程") .obc-tmpl__paragraph-box p')
@@ -245,7 +245,7 @@ class Parser43Quest(BaseParser):
                         "choices": [item.get_text(strip=True) for item in option_items],
                         "reply": []
                     }
-                    
+
                     # Look for direct reply content
                     reply_node = node.find('div', class_='content-box', recursive=False)
                     if reply_node:
@@ -256,9 +256,9 @@ class Parser43Quest(BaseParser):
                     if nested_reply_nodes:
                         nested_replies = self._parse_linear_flow(nested_reply_nodes)
                         options_group["reply"].extend(nested_replies)
-                    
+
                     flow.append(options_group)
-                
+
                 nested_nodes = node.find_all(['div'], class_=['content-box', 'tree-node'], recursive=False)
                 if nested_nodes and not option_items:
                     flow.extend(self._parse_linear_flow(nested_nodes))
@@ -400,3 +400,42 @@ class Parser43Quest(BaseParser):
             dialogues.append({"speaker": "旁白", "text": full_text})
 
         return dialogues
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回任务解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 任务数据模板
+        """
+        return {
+            "任务标题": "请填写任务标题",
+            "任务列表": [
+                {
+                    "名称": "请填写任务名称",
+                    "任务概述": {
+                        "前置任务": [
+                            {"名称": "请填写前置任务名称"}
+                        ],
+                        "起始NPC": {"名称": "请填写起始NPC名称"},
+                        "结束NPC": {"名称": "请填写结束NPC名称"},
+                        "后续任务": [
+                            {"名称": "请填写后续任务名称"}
+                        ]
+                    },
+                    "触发条件": "请填写触发条件",
+                    "等级限制": "请填写等级限制",
+                    "特殊限制": "请填写特殊限制",
+                    "任务过程": [
+                        "请填写任务过程步骤"
+                    ],
+                    "剧情对话": [
+                        {
+                            "speaker": "请填写说话者",
+                            "text": "请填写对话内容"
+                        }
+                    ]
+                }
+            ],
+            "任务数量": 1
+        }

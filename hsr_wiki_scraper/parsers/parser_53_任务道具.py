@@ -51,10 +51,26 @@ class QuestItemParser(BaseParser):
         table = soup.select_one('table.material-table--pc')
         if not table:
             return ""
-        
+
         header = table.find('td', class_='h3', string='介绍')
         if header:
             value_cell = header.find_next_sibling('td')
             if value_cell:
                 return value_cell.get_text(separator='\n', strip=True)
         return ""
+
+    def get_template(self) -> dict:
+        """
+        返回任务道具解析器的JSON模板
+
+        Returns:
+            dict: 任务道具数据模板
+        """
+        return {
+            "title": "请填写任务道具名称",
+            "metadata": {
+                "rarity": "请填写稀有度",
+                "type": "请填写类型"
+            },
+            "description": "请填写介绍"
+        }

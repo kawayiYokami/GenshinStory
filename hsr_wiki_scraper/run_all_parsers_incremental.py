@@ -17,6 +17,7 @@ from difflib import SequenceMatcher
 
 # 使用相对导入，因为此脚本旨在作为模块运行。
 from .central_hub import WikiPageCoordinator
+from .template_generator import TemplateGenerator
 from playwright.async_api import async_playwright
 
 
@@ -45,13 +46,25 @@ async def run_all_parsers_incremental():
     只处理缺失的文件，已存在的文件会被跳过。
     只处理指定的 parser ID：18, 30, 31, 20, 53, 54, 55, 25, 157, 103
     """
+    # --- 0. 生成JSON模板文件 ---
+    print("正在生成HSR Wiki Scraper的JSON模板文件...")
+
+    # 当作为模块运行时，__file__ 指向包内的文件
+    # 项目根目录是当前包目录的父目录
+    project_root = Path(__file__).parent.parent
+
+    # 创建模板生成器并生成模板
+    parsers_dir = project_root / "hsr_wiki_scraper" / "parsers"
+    templates_dir = project_root / "hsr_wiki_scraper" / "output" / "templates"
+
+    template_generator = TemplateGenerator(parsers_dir, templates_dir)
+    template_generator.generate_all_templates()
+
     # 定义允许处理的 parser ID 列表
     allowed_parser_ids = [18, 19, 30, 31, 20, 53, 54, 55, 25, 157, 103]
 
     # --- 1. 定义路径 ---
-    # 当作为模块运行时，__file__ 指向包内的文件
-    # 项目根目录是当前包目录的父目录
-    project_root = Path(__file__).parent.parent
+    link_dir = project_root / "hsr_wiki_scraper" / "output" / "link"
     link_dir = project_root / "hsr_wiki_scraper" / "output" / "link"
     output_base_dir = project_root / "hsr_wiki_scraper" / "output" / "structured_data"
     debug_dir = project_root / "hsr_wiki_scraper" / "output" / "debug"

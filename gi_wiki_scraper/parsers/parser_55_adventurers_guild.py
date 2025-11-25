@@ -437,3 +437,32 @@ class Parser55AdventurersGuild(BaseParser):
 
         if all_dialogues:
             result["剧情对话"]["对话树"] = all_dialogues
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回冒险家协会解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 冒险家协会数据模板
+        """
+        return {
+            "任务标题": "请填写任务标题",
+            "任务列表": [
+                {
+                    "名称": "请填写任务名称",
+                    "触发条件": "请填写触发条件",
+                    "剧情对话": {
+                        "对话树": [
+                            {
+                                "speaker": "请填写说话者",
+                                "text": "请填写对话内容"
+                            }
+                        ]
+                    },
+                    "任务过程": [
+                        "请填写任务过程步骤"
+                    ]
+                }
+            ],
+            "任务数量": 1
+        }

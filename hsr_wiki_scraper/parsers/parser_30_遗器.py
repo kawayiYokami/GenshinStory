@@ -68,3 +68,24 @@ class RelicParser(BaseParser):
                 "story": story
             })
         return pieces
+
+    def get_template(self) -> dict:
+        """
+        返回遗器解析器的JSON模板
+
+        Returns:
+            dict: 遗器数据模板
+        """
+        return {
+            "title": "请填写遗器套装名称",
+            "set_effects": [
+                "请填写套装效果1",
+                "请填写套装效果2"
+            ],
+            "pieces": [
+                {
+                    "name": "请填写部件名称",
+                    "story": "请填写部件故事"
+                }
+            ]
+        }

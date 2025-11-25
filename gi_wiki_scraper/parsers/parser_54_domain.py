@@ -56,3 +56,20 @@ class Parser54Domain(BaseParser):
                         "名称": name,
                         "描述": desc
                     })
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回秘境解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 秘境数据模板
+        """
+        return {
+            "名称": "请填写秘境名称",
+            "简述": [
+                {
+                    "名称": "请填写简述名称",
+                    "描述": "请填写简述描述"
+                }
+            ]
+        }

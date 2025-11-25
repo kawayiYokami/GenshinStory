@@ -11,7 +11,7 @@ class Parser21Food(BaseParser):
     Specific parser for 'Food' wiki pages.
     Extracts food details including title and variations (Strange, Normal, Delicious) with their ingredients, descriptions, effects, etc.
     """
-    
+
     def parse(self, html: str) -> Dict[str, Any]:
         """
         Parses the HTML content of a food page using simple and robust extraction.
@@ -124,3 +124,20 @@ class Parser21Food(BaseParser):
         cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
         return cleaned
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回食物解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 食物数据模板
+        """
+        return {
+            "食物名称": "请填写食物名称",
+            "品质变体": [
+                {
+                    "名称": "请填写品质变体名称（如：奇怪的、普通的、美味的）",
+                    "描述": "请填写描述"
+                }
+            ]
+        }

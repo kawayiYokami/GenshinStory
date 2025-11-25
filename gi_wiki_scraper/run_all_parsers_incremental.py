@@ -16,6 +16,7 @@ from pathlib import Path
 
 # 使用相对导入，因为此脚本旨在作为模块运行。
 from .central_hub import WikiPageCoordinator
+from .template_generator import TemplateGenerator
 from playwright.async_api import async_playwright
 
 
@@ -72,17 +73,26 @@ async def run_all_parsers_incremental():
     增量解析所有条目的主函数。
     只处理缺失的文件，已存在的文件会被跳过。
     """
-    # --- 0. 删除包含【预告】的文件 ---
+    # --- 0. 定义项目根目录 ---
+    # 项目根目录是 'gi_wiki_scraper' 包目录的父目录。
     project_root = Path(__file__).parent.parent
+
+    # --- 1. 删除包含【预告】的文件 ---
     output_base_dir = project_root / "gi_wiki_scraper" / "output" / "structured_data"
     print("正在清理包含【预告】的JSON文件...")
     delete_preview_files(output_base_dir)
 
-    # --- 1. 定义路径 ---
-    # 项目根目录是 'gi_wiki_scraper' 包目录的父目录。
-    project_root = Path(__file__).parent.parent
+    # --- 2. 生成JSON模板文件 ---
+    print("正在生成JSON模板文件...")
+    parsers_dir = project_root / "gi_wiki_scraper" / "parsers"
+    templates_dir = project_root / "gi_wiki_scraper" / "output" / "templates"
+
+    # 创建模板生成器并生成模板
+    template_generator = TemplateGenerator(parsers_dir, templates_dir)
+    template_generator.generate_all_templates()
+
+    # --- 3. 定义路径 ---
     link_dir = project_root / "gi_wiki_scraper" / "output" / "link"
-    output_base_dir = project_root / "gi_wiki_scraper" / "output" / "structured_data"
     debug_dir = project_root / "gi_wiki_scraper" / "output" / "debug"
 
     # 确保输出目录存在

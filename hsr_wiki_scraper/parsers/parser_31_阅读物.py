@@ -46,3 +46,21 @@ class ReadingMaterialParser(BaseParser):
                     "text": text
                 })
         return content_parts
+
+    def get_template(self) -> dict:
+        """
+        返回阅读物解析器的JSON模板
+
+        Returns:
+            dict: 阅读物数据模板
+        """
+        return {
+            "title": "请填写阅读物名称",
+            "description": "请填写描述",
+            "content": [
+                {
+                    "heading": "请填写标题",
+                    "text": "请填写内容"
+                }
+            ]
+        }

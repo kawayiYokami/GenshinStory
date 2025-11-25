@@ -83,3 +83,30 @@ class Parser20Npc(BaseParser):
                     "标题": title,
                     "对话": dialogues
                 })
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回NPC解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: NPC数据模板
+        """
+        return {
+            "名称": "请填写NPC名称",
+            "性别": "请填写性别",
+            "位置": "请填写位置",
+            "对话组": [
+                {
+                    "标题": "请填写对话组标题",
+                    "对话": [
+                        {
+                            "选项": "请填写对话选项",
+                            "内容": [
+                                "请填写对话内容1",
+                                "请填写对话内容2"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }

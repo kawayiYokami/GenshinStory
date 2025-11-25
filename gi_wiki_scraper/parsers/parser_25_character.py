@@ -11,19 +11,19 @@ class Parser25Character(BaseParser):
     Specific parser for 'Character' wiki pages.
     Extracts comprehensive character details including basic info, ascension materials, talents, constellations, stories, etc.
     """
-    
+
     def parse(self, html: str) -> Dict[str, Any]:
         """
         Parses the HTML content of a character page.
-        
+
         Args:
             html (str): The full HTML content of the page.
-            
+
         Returns:
             Dict[str, Any]: A dictionary containing the parsed data.
         """
         soup = self._create_soup(html)
-        
+
         # Initialize the result dictionary with default values
         result = {
             "名称": "",
@@ -42,10 +42,10 @@ class Parser25Character(BaseParser):
             "角色语音": [],
             "角色关联语音": []
         }
-        
+
         # 1. Extract basic information
         self._extract_basic_info(soup, result)
-        
+
         # 2. Extract constellations
         self._extract_constellations(soup, result)
 
@@ -54,9 +54,9 @@ class Parser25Character(BaseParser):
 
         # 4. Extract stories, voice lines, mails, media, and timeline
         self._extract_additional_info(soup, result)
-        
+
         return result
-    
+
     def _extract_basic_info(self, soup, result: Dict[str, Any]) -> None:
         """Extract basic character information with universal parsing."""
         # Extract name
@@ -80,11 +80,11 @@ class Parser25Character(BaseParser):
                 # Store all key-value pairs in basic info without filtering
                 if key and value:
                     result["基础信息"][key] = value
-                    
-        
-        
-        
-        
+
+
+
+
+
     def _extract_constellations(self, soup, result: Dict[str, Any]) -> None:
         """Extract constellation information."""
         # Find the '命之座' header first
@@ -96,15 +96,15 @@ class Parser25Character(BaseParser):
         constellation_table = constellation_header.find_next('table')
         if not constellation_table:
             return
-            
+
         constellation_rows = constellation_table.select('tbody tr')
         constellations = []
-        
+
         for row in constellation_rows:
             # Selector based on user-provided HTML snippet
             name_tag = row.select_one('td:first-child p:last-of-type')
             desc_tag = row.select_one('td:nth-child(2) p')
-            
+
             if name_tag and desc_tag:
                 name = name_tag.get_text(strip=True)
                 description = desc_tag.get_text(strip=True)
@@ -114,11 +114,11 @@ class Parser25Character(BaseParser):
                         "名称": name,
                         "描述": description
                     })
-        
+
         # Only overwrite if we found actual constellations
         if constellations:
             result["命之座"] = constellations
-        
+
     def _extract_additional_info(self, soup, result: Dict[str, Any]) -> None:
         """Extract and classify information based on panel titles."""
         # Extract all fold panels
@@ -293,5 +293,65 @@ class Parser25Character(BaseParser):
                     })
 
         result["角色语音"] = voice_lines
-            
-        
+
+    def get_template(self) -> Dict[str, Any]:
+        """
+        返回角色解析器的JSON模板
+
+        Returns:
+            Dict[str, Any]: 角色数据模板
+        """
+        return {
+            "名称": "请填写角色名称",
+            "星级": 5,
+            "基础信息": {
+                "生日": "请填写生日",
+                "所属": "请填写所属",
+                "神之眼": "请填写神之眼属性",
+                "武器类型": "请填写武器类型",
+                "命之座": "请填写命之座",
+                "称号": "请填写称号"
+            },
+            "命之座": [
+                {
+                    "名称": "请填写命之座名称",
+                    "描述": "请填写命之座描述"
+                }
+            ],
+            "角色故事": [
+                {
+                    "标题": "请填写故事标题",
+                    "内容": "请填写故事内容"
+                }
+            ],
+            "特殊料理": "请填写特殊料理",
+            "生日邮件": [
+                "请填写生日邮件内容"
+            ],
+            "配音": {
+                "汉语": [
+                    "请填写汉语配音"
+                ],
+                "日语": [
+                    "请填写日语配音"
+                ],
+                "韩语": [
+                    "请填写韩语配音"
+                ],
+                "英语": [
+                    "请填写英语配音"
+                ]
+            },
+            "角色语音": [
+                {
+                    "场景": "请填写语音场景",
+                    "内容": "请填写语音内容"
+                }
+            ],
+            "角色关联语音": [
+                {
+                    "角色": "请填写角色名称",
+                    "内容": "请填写关联语音内容"
+                }
+            ]
+        }
