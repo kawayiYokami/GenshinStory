@@ -226,11 +226,14 @@ export class JsonParserService {
       offset = 0;
     }
 
+    // 在去除围栏前记录偏移量
+    const preStripOffset = offset;
+
     // 2) 去掉代码围栏
     jsonPart = stripCodeFences(jsonPart);
 
-    // 调整偏移量以匹配围栏移除
-    const adjustedOffset = text.indexOf(jsonPart);
+    // 使用分隔符处理后的偏移量，如果找不到则使用原始偏移量
+    const adjustedOffset = jsonPart ? text.indexOf(jsonPart) : preStripOffset;
 
     // 3) 扫描所有平衡的大括号候选
     const candidates = findJsonCandidates(jsonPart);
@@ -299,8 +302,8 @@ export class JsonParserService {
     }
 
     // 5) 决策：选择分数最高的，同分则取第一个（AI不会连续发送多个工具调用）
-    // 先按分数排序（稳定排序），然后取第一个，这样就能保证在分数相同时，选择原文中位置更靠前的
-    qualifiedJsons.sort((a, b) => a.score - b.score);
+    // 先按分数排序（稳定排序，降序），然后取第一个，这样就能保证在分数相同时，选择原文中位置更靠前的
+    qualifiedJsons.sort((a, b) => b.score - a.score);
     const bestJsonItem = qualifiedJsons[0];
 
     this.logger.info(`JsonParser: 提取成功，选择了得分最高的JSON（得分: ${bestJsonItem.score}）。`);

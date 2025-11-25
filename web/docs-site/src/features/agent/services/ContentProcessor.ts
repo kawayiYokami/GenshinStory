@@ -3,6 +3,19 @@ import jsonParserService, { ExtractionResult } from './JsonParserService';
 import toolParserService from './toolParserService';
 import type { ParsedToolCall } from './toolParserService';
 
+/**
+ * 计算字符串的简单哈希值（不用于安全目的，仅用于日志记录）
+ */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(16);
+}
+
 export interface ProcessedContent {
   cleanedContent: string;
   toolCalls: ParsedToolCall[];
@@ -124,14 +137,36 @@ export class ContentProcessor {
     const isConsistent = reconstructed === originalContent;
 
     if (!isConsistent) {
+      // 记录安全的元数据而非敏感内容
+      const diffCount = this.getDifferencesCount(originalContent, reconstructed);
       logger.warn('[ContentProcessor] 验证失败:', {
-        original: originalContent,
-        reconstructed,
-        differences: this.getDifferences(originalContent, reconstructed)
+        originalLength: originalContent.length,
+        reconstructedLength: reconstructed.length,
+        originalHash: simpleHash(originalContent),
+        reconstructedHash: simpleHash(reconstructed),
+        differencesCount: diffCount,
+        contentTruncated: `原始: ${originalContent.substring(0, 50)}...，重建: ${reconstructed.substring(0, 50)}...`
       });
     }
 
     return isConsistent;
+  }
+
+  /**
+   * 计算两个字符串的差异数量
+   */
+  private static getDifferencesCount(str1: string, str2: string): number {
+    const lines1 = str1.split('\n');
+    const lines2 = str2.split('\n');
+    let count = 0;
+
+    for (let i = 0; i < Math.max(lines1.length, lines2.length); i++) {
+      if (lines1[i] !== lines2[i]) {
+        count++;
+      }
+    }
+
+    return count;
   }
 
   /**
