@@ -1,11 +1,6 @@
 <template>
   <div class="flex items-center gap-4">
     <span class="text-lg font-bold">{{ activeAgentName }}</span>
-    <div class="h-4 border-l border-base-content/30"></div>
-    <button @click="handleNewSession" class="new-session-btn" title="新会话">
-      <MessageCirclePlus class="w-4 h-4" />
-      <span class="text-sm font-medium">新会话</span>
-    </button>
   </div>
 </template>
 

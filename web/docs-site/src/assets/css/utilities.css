@@ -91,13 +91,13 @@
   @apply collapse-title flex items-center gap-3 min-h-0 py-3;
 }
 
-/* 问题建议按钮 */
-.question-suggestion-btn {
-  @apply flex w-full items-center justify-between btn btn-ghost btn-sm h-auto min-h-0 p-3 normal-case text-left transition-all duration-200 hover:bg-primary/5 hover:border-primary/30;
+/* 问题建议标签 */
+.question-suggestion-tag {
+  @apply inline-flex items-center justify-between cursor-pointer px-2 py-1 hover:bg-primary/10 rounded-lg text-xs transition-colors min-w-0;
 }
 
 .question-suggestion-select-btn {
-  @apply btn btn-circle btn-ghost btn-xs opacity-0 hover:opacity-100 transition-opacity duration-200;
+  @apply btn btn-circle btn-ghost btn-xs opacity-0 hover:opacity-100 transition-opacity duration-200 ml-1 flex-shrink-0;
 }
 
 /* 删除对话按钮 */

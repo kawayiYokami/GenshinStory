@@ -65,6 +65,15 @@
 
       <!-- 右侧工具组 -->
       <div class="flex gap-1">
+        <!-- 新会话按钮 -->
+        <button
+          @click="handleNewSession"
+          class="new-session-btn"
+          title="新会话"
+        >
+          <MessageCirclePlus class="w-5 h-5" />
+        </button>
+
         <!-- 压缩上下文按钮 -->
         <button
           @click="handleCompressContext"
@@ -125,7 +134,8 @@ import {
   X,
   Wrench,
   AlertTriangle,
-  Archive
+  Archive,
+  MessageCirclePlus
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { simpleContextCompressor } from '../services/simpleContextCompressor';
@@ -153,7 +163,7 @@ const router = useRouter();
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
 const { availableAgents, currentRoleId, orderedMessages, isCompressing } = storeToRefs(agentStore);
-const { switchAgent, resetAgent, compressAndStartNewChat, sendMessage, startNewSession } = agentStore;
+const { switchAgent, resetAgent, compressAndStartNewChat, sendMessage, startNewSession, startNewSessionWithCurrentAgent } = agentStore;
 
 // Composables
 const {
@@ -320,6 +330,16 @@ const handleCompressContext = async () => {
     console.log('上下文压缩完成，已开启新对话');
   } catch (error) {
     console.error('上下文压缩失败:', error);
+  }
+};
+
+// 新会话处理方法
+const handleNewSession = async () => {
+  try {
+    await startNewSessionWithCurrentAgent();
+    console.log('新会话已开启');
+  } catch (error) {
+    console.error('开启新会话失败:', error);
   }
 };
 

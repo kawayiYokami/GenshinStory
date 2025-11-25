@@ -1,24 +1,24 @@
 <template>
   <div v-if="question" class="card bg-base-200 shadow-md border border-primary/20">
     <div class="card-body p-4">
-      <h3 class="card-title text-primary text-sm mb-3">{{ question.text }}</h3>
-      <div class="space-y-2">
+      <h3 class="card-title text-primary text-sm mb-2">{{ question.text }}</h3>
+      <div class="flex flex-wrap gap-2">
         <div
           v-for="(suggestion, index) in question.suggestions"
           :key="index"
-          class="question-suggestion-btn"
+          class="question-suggestion-tag"
           @click="handleSendSuggestion(suggestion)"
         >
-          <span class="flex items-baseline gap-2 flex-1">
-            <span class="badge badge-primary badge-xs">{{ index + 1 }}</span>
-            <span class="text-sm">{{ suggestion }}</span>
+          <span class="flex items-center gap-1">
+            <span class="badge badge-primary badge-xs flex-shrink-0">{{ index + 1 }}</span>
+            <span class="text-sm leading-none">{{ suggestion }}</span>
           </span>
           <button
             class="question-suggestion-select-btn"
             @click.stop="handleSelectSuggestion(suggestion)"
             :title="'添加到输入框'"
           >
-            <CornerDownLeft class="w-4 h-4" />
+            <CornerDownLeft class="w-3 h-3" />
           </button>
         </div>
       </div>

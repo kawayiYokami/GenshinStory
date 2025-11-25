@@ -203,6 +203,35 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   /**
+   * 使用当前智能体开启新会话
+   * @description 便利方法：自动获取当前域和角色，创建新会话
+   * @return {Promise<void>}
+   * @throws {Error} 当没有激活域时抛出异常
+   */
+  async function startNewSessionWithCurrentAgent(): Promise<void> {
+    const domain = currentDomain.value;
+    const roleId = currentRoleId.value;
+    if (!domain) {
+      throw new Error('当前没有激活的域，无法开启新会话');
+    }
+    await startNewSession(domain, roleId);
+  }
+
+  /**
+   * 使用当前智能体开启新聊天
+   * @description 便利方法：自动获取当前角色，开启新聊天（用于压缩后）
+   * @return {Promise<string>} 返回系统提示词
+   * @throws {Error} 当没有激活角色时抛出异常
+   */
+  async function startNewChatWithCurrentAgent(): Promise<string> {
+    const roleId = currentRoleId.value;
+    if (!roleId) {
+      throw new Error('当前没有激活的角色，无法开启新聊天');
+    }
+    return await startNewChatWithAgent(roleId);
+  }
+
+  /**
    * 切换域上下文
    * @description 切换到指定域，加载对应的代理和会话数据
    * @param {string} domain 要切换到的域名
@@ -443,13 +472,12 @@ export const useAgentStore = defineStore('agent', () => {
         const compressedMessages = [systemPrompt!, summaryMessage].filter(Boolean) as Message[];
 
         // 创建新会话
-        const roleId = currentRoleId.value;
-        if (!roleId) {
+        if (!currentRoleId.value) {
           logger.error("[AgentStore] 压缩失败：当前没有激活的角色");
           return;
         }
 
-        await startNewChatWithAgent(roleId);
+        await startNewChatWithCurrentAgent();
 
         // 将压缩后的消息添加到新会话中
         for (const message of compressedMessages) {
@@ -462,13 +490,12 @@ export const useAgentStore = defineStore('agent', () => {
         const compressedMessages = result.history!;
 
         // 创建新会话
-        const roleId = currentRoleId.value;
-        if (!roleId) {
+        if (!currentRoleId.value) {
           logger.error("[AgentStore] 压缩失败：当前没有激活的角色");
           return;
         }
 
-        await startNewChatWithAgent(roleId);
+        await startNewChatWithCurrentAgent();
 
         // 将压缩后的消息添加到新会话中
         for (const message of compressedMessages) {
@@ -570,7 +597,7 @@ export const useAgentStore = defineStore('agent', () => {
     appendMessageContent: messageManager.appendMessageContent,
     markStreamAsCompleted: messageManager.markStreamAsCompleted,
     // SessionManager actions (proxies or direct)
-    switchSession, deleteSession, renameSession, startNewChatWithAgent,
+    switchSession, deleteSession, renameSession, startNewChatWithAgent, startNewSessionWithCurrentAgent, startNewChatWithCurrentAgent,
     markAllAsSent, deleteMessagesFrom, initializeStoreFromCache,
     // SessionManager utility methods
     isSessionEmpty: (session: Session | null) => sessionManager.isSessionEmpty(session),
