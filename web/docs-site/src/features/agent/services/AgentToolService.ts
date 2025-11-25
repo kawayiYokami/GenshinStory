@@ -66,6 +66,7 @@ export class AgentToolService {
     const statusMessage = await this.messageManager.addMessage({
       role: 'assistant', type: 'tool_status',
       content: toolParserService.createStatusMessage(parsedTool),
+      status: 'rendering'
     });
     if (!statusMessage) return { status: 'error' };
 

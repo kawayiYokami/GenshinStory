@@ -52,8 +52,26 @@ export class PersistenceManagerImpl implements PersistenceManager {
       } else {
         const { sessions: cachedSessions, activeSessionIds: cachedActiveIds } = cachedState.data;
         sessions.value = (typeof cachedSessions === 'object' && cachedSessions !== null) ? cachedSessions : {};
-        logger.log(`[AgentStore] 已恢复 ${Object.keys(sessions.value).length} 个会话。`);
-        
+
+        // 修复过去记录中的 tool_result 消息状态
+        Object.keys(sessions.value).forEach(sessionId => {
+          const session = sessions.value[sessionId];
+          if (session && session.messages) {
+            session.messages.forEach(message => {
+              // 确保所有 tool_result 消息状态为 'done'
+              if (message.type === 'tool_result' && message.status !== 'done') {
+                message.status = 'done';
+              }
+              // 确保所有 tool_status 消息如果没有状态，设置为 'done'
+              if (message.type === 'tool_status' && !message.status) {
+                message.status = 'done';
+              }
+            });
+          }
+        });
+
+        logger.log(`[AgentStore] 已恢复 ${Object.keys(sessions.value).length} 个会话，并修复了消息状态。`);
+
         const defaultIds = { gi: null, hsr: null };
         activeSessionIds.value = (typeof cachedActiveIds === 'object' && cachedActiveIds !== null)
                                  ? { ...defaultIds, ...cachedActiveIds }

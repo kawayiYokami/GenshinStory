@@ -1,6 +1,6 @@
 <template>
   <!-- 用户消息：保持简单的气泡设计 -->
-  <div v-if="message.role === 'user'" class="chat chat-end animate-fade-in" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
+  <div v-if="message.role === 'user'" class="chat chat-end animate-slide-in-right" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <!-- 压缩摘要消息特殊样式 -->
     <div v-if="message.isCompressed" class="card bg-base-200 border border-base-300 shadow-xs">
       <div class="card-body p-0">
@@ -55,7 +55,7 @@
   </div>
 
   <!-- 助理消息：简化为直接内容展示，靠左对齐，右侧留空 -->
-  <div v-else class="message-container animate-fade-in mr-12" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
+  <div v-else class="message-container animate-slide-in-left" :class="{ 'streaming-message': !message.streamCompleted && message.type === 'text', 'typing-indicator': !message.streamCompleted && message.type === 'text' }" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <!-- DEBUG: Raw Content View -->
     <pre v-if="showRawContent" class="raw-content-debug">{{ message }}</pre>
 
@@ -248,6 +248,7 @@ watchEffect(async () => {
 // 新增的 watch，用于在消息变化时重置状态
 watch(() => props.message.id, () => {
   hasSignaledRenderComplete.value = false;
+  console.log(`Message ID changed, reset hasSignaledRenderComplete for ${props.message.id}`);
 }, { immediate: false });
 
 // 优化后的消息监听，只监听必要属性
@@ -261,6 +262,11 @@ watch([() => props.message.type, () => props.message.status], ([newType, newStat
       // 设置标志位为 true，防止重复发送信号
       hasSignaledRenderComplete.value = true;
     }
+  }
+
+  // 添加调试日志
+  if (newType === 'tool_result') {
+    console.log(`ToolResultCard Status: ${props.message.id} - status: ${newStatus}, hasSignaled: ${hasSignaledRenderComplete.value}`);
   }
 }, { immediate: true });
 
@@ -297,16 +303,73 @@ const handleDocClick = (path: string): void => {
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes typing-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
   }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.typing-indicator::after {
+  content: '▊';
+  animation: typing-cursor 1s infinite;
+  color: hsl(var(--bc));
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+.streaming-message {
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
 }
 
 /* 用户消息样式 */

@@ -442,19 +442,4 @@ defineExpose({
 }
 
 
-.transparent-dropdown :deep(.dropdown-content) {
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-}
-
-.transparent-dropdown :deep(.dropdown-content li:hover) {
-  background: rgba(0, 0, 0, 0.05) !important;
-}
-
-.transparent-dropdown :deep(.dropdown-content li[aria-selected="true"]) {
-  background: rgba(59, 130, 246, 0.1) !important;
-  color: rgb(59, 130, 246) !important;
-}
 </style>

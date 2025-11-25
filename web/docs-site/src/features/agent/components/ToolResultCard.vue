@@ -31,5 +31,32 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <style scoped>
-/* All styles are handled by Tailwind utility classes. */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.streaming-card {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.1) 20%,
+    rgba(255,255,255,0.2) 60%,
+    rgba(255,255,255,0.1) 80%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 3s linear infinite;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+/* 当工具结果完成时，移除动画 */
+.streaming-card.completed {
+  background: transparent;
+  animation: none;
+}
 </style>
