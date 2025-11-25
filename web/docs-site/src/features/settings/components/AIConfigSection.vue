@@ -243,7 +243,11 @@ const maxTokensOptions = [
   { value: 32768, label: '32K' },
   { value: 65536, label: '64K' },
   { value: 131072, label: '128K' },
-  { value: 262144, label: '256K' }
+  { value: 153600, label: '150K' },
+  { value: 204800, label: '200K' },
+  { value: 262144, label: '256K' },
+  { value: 524288, label: '512K' },
+  { value: 1048576, label: '1024K' }
 ];
 
 // Methods

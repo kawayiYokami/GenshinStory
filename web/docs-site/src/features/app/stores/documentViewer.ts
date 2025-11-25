@@ -24,26 +24,26 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
     documentContent.value = ''; // 清除先前的内容
 
     try {
-      const xmlResult = await localToolsService.readDoc(path);
-      
+      const jsonResult = await localToolsService.readDoc([{ path, preserveMarkdown: true }]);
+
       try {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlResult, "text/xml");
+        const parsedResult = JSON.parse(jsonResult);
 
-        const parserError = xmlDoc.querySelector("parsererror");
-        if (parserError) {
-          throw new Error(`XML 解析错误: ${parserError.textContent}`);
-        }
+        // 检查是否有文档数据
+        if (parsedResult.docs && parsedResult.docs.length > 0) {
+          const doc = parsedResult.docs[0];
 
-        const contentNode = xmlDoc.querySelector("doc > content");
-        const errorNode = xmlDoc.querySelector("doc > error");
+          if (doc.error) {
+            throw new Error(doc.error);
+          }
 
-        if (contentNode) {
-          documentContent.value = contentNode.textContent || '';
-        } else if (errorNode) {
-          throw new Error(errorNode.textContent || '发生未知错误');
+          if (doc.content) {
+            documentContent.value = doc.content;
+          } else {
+            throw new Error('文档内容为空');
+          }
         } else {
-          throw new Error('在返回的 XML 中没有找到 <content> 或 <error> 标签。');
+          throw new Error('返回的 JSON 中没有找到文档数据');
         }
       } catch (e) {
         throw new Error(`从工具结果解析文档内容失败: ${(e as Error).message}`);

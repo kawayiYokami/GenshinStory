@@ -26,13 +26,13 @@
               <ArrowUp class="w-5 h-5 text-primary-content" />
             </div>
             <div class="w-10 h-10 rounded bg-secondary flex items-center justify-center">
-              <ArrowUpIcon class="w-5 h-5 text-secondary-content" />
+              <ArrowUp class="w-5 h-5 text-secondary-content" />
             </div>
             <div class="w-10 h-10 rounded bg-accent flex items-center justify-center">
-              <ArrowUpIcon class="w-5 h-5 text-accent-content" />
+              <ArrowUp class="w-5 h-5 text-accent-content" />
             </div>
             <div class="w-10 h-10 rounded bg-neutral flex items-center justify-center">
-              <ArrowUpIcon class="w-5 h-5 text-neutral-content" />
+              <ArrowUp class="w-5 h-5 text-neutral-content" />
             </div>
           </div>
 

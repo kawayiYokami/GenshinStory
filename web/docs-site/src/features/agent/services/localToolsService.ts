@@ -10,6 +10,7 @@ import { stripMarkdown } from '@/lib/markdown/markdownStripper';
 export interface DocRequest {
     path: string;
     lineRanges?: string[];
+    preserveMarkdown?: boolean; // 新增：是否保留 Markdown 格式
 }
 
 interface SearchResult {
@@ -226,9 +227,9 @@ class LocalToolsService {
   public async readDoc(rawRequests: string | string[] | DocRequest[]): Promise<string> {
     let docRequests: DocRequest[];
     if (typeof rawRequests === 'string') {
-      docRequests = [{ path: rawRequests, lineRanges: [] }];
+      docRequests = [{ path: rawRequests, lineRanges: [], preserveMarkdown: false }];
     } else if (Array.isArray(rawRequests) && rawRequests.every(item => typeof item === 'string')) {
-      docRequests = (rawRequests as string[]).map(path => ({ path, lineRanges: [] }));
+      docRequests = (rawRequests as string[]).map(path => ({ path, lineRanges: [], preserveMarkdown: false }));
     } else {
       docRequests = rawRequests as DocRequest[];
     }
@@ -243,7 +244,7 @@ class LocalToolsService {
     }
 
     const contentPromises = docRequests.map(async (request) => {
-        let { path, lineRanges } = request;
+        let { path, lineRanges, preserveMarkdown = false } = request;
 
         // 修复: 增强 lineRanges 的健壮性
         if (typeof lineRanges === 'string') {
@@ -317,11 +318,15 @@ class LocalToolsService {
           // 计算剩余字数
           docResult.remainingTokens = totalTokens - docResult.returnedTokens;
         } else {
-          // 没有行范围时，返回完整内容但去除 Markdown 格式
-          const strippedContent = stripMarkdown(content);
-          docResult.content = strippedContent;
+          // 根据 preserveMarkdown 参数决定是否保留 Markdown 格式
+          if (preserveMarkdown) {
+            docResult.content = content; // 保留完整的 Markdown 格式
+          } else {
+            const strippedContent = stripMarkdown(content);
+            docResult.content = strippedContent;
+          }
           // 计算实际返回内容的 token 数
-          docResult.returnedTokens = tokenizerService.countTokens(strippedContent);
+          docResult.returnedTokens = tokenizerService.countTokens(docResult.content);
           // 计算剩余 token 数，确保不为负数
           docResult.remainingTokens = Math.max(0, totalTokens - docResult.returnedTokens);
         }
