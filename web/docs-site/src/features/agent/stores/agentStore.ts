@@ -457,7 +457,7 @@ export const useAgentStore = defineStore('agent', () => {
     const messages = orderedMessages.value;
     const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
 
-    if (lastAssistantMessage && !lastAssistantMessage.tool_calls?.length) {
+    if (lastAssistantMessage && !lastAssistantMessage.tool_calls?.length && !lastAssistantMessage.question) {
       const feedbackPrompt = await getToolFeedbackPrompt();
       await messageManager.addMessage({
         role: 'user',

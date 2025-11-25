@@ -22,36 +22,37 @@
     </div>
 
     <!-- 普通用户消息 -->
-    <div v-else class="chat-bubble chat-bubble-primary">
-      <div v-if="Array.isArray(message.content)" class="space-y-2">
-        <div v-for="(item, index) in message.content" :key="index">
-          <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm">{{ item.text }}</p>
-          <div v-if="item.type === 'image_url' && item.image_url" class="card bg-base-100 shadow-xl">
-            <figure class="px-2 pt-2">
-              <img :src="item.image_url.url" class="rounded-lg max-h-64 object-contain" alt="User uploaded content"/>
-            </figure>
-          </div>
-          <div v-if="item.type === 'doc' && item.path" class="card card-compact bg-base-100 shadow-xl border-l-4 border-primary">
-            <div class="card-body">
-              <a :href="item.path"
-                 @click.prevent="handleDocClick(item.path!)"
-                 class="link link-primary font-medium"
-                 :class="{ 'link-error': item.error }"
-                 :data-raw-link="`[[${item.name}|path:${item.path}]]`"
-              >
-                {{ item.name }}
-              </a>
+    <div v-else class="chat-bubble-container">
+      <button class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
+        <Trash2 class="w-4 h-4" />
+      </button>
+      <div class="chat-bubble chat-bubble-primary">
+        <div v-if="Array.isArray(message.content)" class="space-y-2">
+          <div v-for="(item, index) in message.content" :key="index">
+            <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm">{{ item.text }}</p>
+            <div v-if="item.type === 'image_url' && item.image_url" class="card bg-base-100 shadow-xl">
+              <figure class="px-2 pt-2">
+                <img :src="item.image_url.url" class="rounded-lg max-h-64 object-contain" alt="User uploaded content"/>
+              </figure>
+            </div>
+            <div v-if="item.type === 'doc' && item.path" class="card card-compact bg-base-100 shadow-xl border-l-4 border-primary">
+              <div class="card-body">
+                <a :href="item.path"
+                   @click.prevent="handleDocClick(item.path!)"
+                   class="link link-primary font-medium"
+                   :class="{ 'link-error': item.error }"
+                   :data-raw-link="`[[${item.name}|path:${item.path}]]`"
+                >
+                  {{ item.name }}
+                </a>
+              </div>
             </div>
           </div>
         </div>
+        <span v-else class="whitespace-pre-wrap text-sm">{{ message.content }}</span>
       </div>
-      <span v-else class="whitespace-pre-wrap text-sm">{{ message.content }}</span>
     </div>
 
-    <!-- 删除按钮：与消息容器同级 -->
-    <button v-if="!message.isCompressed" class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
-      <Trash2 class="w-4 h-4" />
-    </button>
   </div>
 
   <!-- 助理消息：简化为直接内容展示，靠左对齐，右侧留空 -->
@@ -65,14 +66,14 @@
 
       <!-- 工具调用 -->
       <template v-if="message.tool_calls && message.tool_calls.length > 0">
-        <div class="divider divider-start text-xs opacity-60 mt-4">工具调用</div>
+        <div class="divider divider-start text-xs opacity-60">工具调用</div>
         <div class="flex flex-wrap gap-2">
           <ToolCallCard v-for="toolCall in message.tool_calls" :key="toolCall.name + JSON.stringify(toolCall.params)" :tool-call="toolCall" />
         </div>
       </template>
 
       <!-- 建议问题 -->
-      <div v-if="message.question" class="mt-4">
+      <div v-if="message.question" class="">
         <QuestionSuggestions
           :question="message.question"
           @select-suggestion="handleSuggestionClick"
@@ -375,14 +376,15 @@ const handleDocClick = (path: string): void => {
 /* 用户消息样式 */
 .chat {
   position: relative;
-  padding: 1px 0;
+  padding: 8px 0;
 }
 
-/* 助理消息容器 */
-.message-container {
+.chat-bubble-container {
   position: relative;
-  padding: 2px 0;
-  max-width: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 /* 删除按钮 */
@@ -390,15 +392,31 @@ const handleDocClick = (path: string): void => {
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms ease-in-out;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.chat:hover .delete-from-here-button {
+.chat-bubble-container:hover .delete-from-here-button {
   opacity: 0.8;
   pointer-events: auto;
 }
 
 .delete-from-here-button:hover {
   opacity: 1;
+  background: hsl(var(--bc) / 0.1);
+}
+
+/* 助理消息容器 */
+.message-container {
+  position: relative;
+  padding: 8px 0;
+  max-width: none;
 }
 
 /* Debug 模式 */
