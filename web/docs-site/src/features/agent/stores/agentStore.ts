@@ -14,8 +14,6 @@ import localTools from '@/features/agent/services/localToolsService';
 import type { Ref } from 'vue';
 import type { LogEntry } from '@/features/app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
-
-// --- 导入类型定义 ---
 import type { MessageContentPart, Message, Session, AgentInfo, Command } from '../types';
 
 // --- 导入管理器和服务模块 ---
@@ -24,6 +22,10 @@ import { SessionManagerImpl, type SessionManager } from '@/features/agent/servic
 import { PersistenceManagerImpl, sessionsStore, lastUsedRolesStore, forceClearAgentCache } from './persistence';
 import promptService from '@/features/agent/services/promptService';
 import { AgentService } from '../services/agentService';
+import { simpleContextCompressor } from '../services/simpleContextCompressor';
+import contextOptimizerService from '../services/contextOptimizerService';
+
+// --- 导入类型定义 ---
 
 export type { MessageContentPart, Message, Session, AgentInfo, Command };
 
@@ -48,6 +50,7 @@ export const useAgentStore = defineStore('agent', () => {
   const availableAgents = ref<{ [key: string]: AgentInfo[] }>({ gi: [], hsr: [] });
   const activeRoleId = ref<{ [key: string]: string | null }>({ gi: null, hsr: null });
   const isLoading = ref(false);
+  const isCompressing = ref(false);
   const error = ref<Error | string | null>(null);
   const logMessages: Ref<LogEntry[]> = ref(logs);
   const activeAgentName = ref('AI');
@@ -394,6 +397,100 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  /**
+   * 压缩上下文并开启新对话
+   * @description 压缩当前对话内容并创建新的会话，以压缩内容作为首条消息
+   * @return {Promise<void>}
+   */
+  async function compressAndStartNewChat(): Promise<void> {
+    if (!orderedMessages.value || orderedMessages.value.length === 0) {
+      logger.error("[AgentStore] 压缩上下文失败：没有可压缩的消息");
+      return;
+    }
+
+    // 设置压缩状态
+    isCompressing.value = true;
+    stopAgent(); // 停止当前对话
+
+    try {
+      logger.log("[AgentStore] 开始压缩上下文...");
+
+      // 使用原有的AI压缩服务强制压缩消息（不管是否超限）
+      const configStore = useConfigStore();
+      const { activeConfig } = storeToRefs(configStore);
+      const maxTokens = activeConfig.value?.maxTokens || 128000;
+
+      // 强制进行压缩，不检查阈值
+      const result = await contextOptimizerService.processContext(orderedMessages.value, maxTokens);
+
+      // 如果没有压缩（因为上下文未超限），强制进行摘要
+      if (result.status === 'SUCCESS' && result.history === orderedMessages.value) {
+        logger.log("[AgentStore] 强制压缩：即使未超限也进行摘要");
+        // 手动调用摘要功能
+        const systemPrompt = orderedMessages.value.find(m => m.role === 'system');
+        const chatHistory = orderedMessages.value.filter(m => m.role !== 'system');
+
+        const summary = await contextOptimizerService['_summarizeHistory'](chatHistory);
+        const summaryMessage: Message = {
+          role: 'user',
+          content: `[系统摘要] ${summary}`,
+          id: `msg_${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          type: 'compression_summary',
+          isCompressed: true
+        };
+
+        const compressedMessages = [systemPrompt!, summaryMessage].filter(Boolean) as Message[];
+
+        // 创建新会话
+        const roleId = currentRoleId.value;
+        if (!roleId) {
+          logger.error("[AgentStore] 压缩失败：当前没有激活的角色");
+          return;
+        }
+
+        await startNewChatWithAgent(roleId);
+
+        // 将压缩后的消息添加到新会话中
+        for (const message of compressedMessages) {
+          if (message.role !== 'system') { // 系统消息会自动添加
+            await messageManager.addMessage(message);
+          }
+        }
+      } else if (result.status === 'SUCCESS') {
+        // 正常的压缩结果
+        const compressedMessages = result.history!;
+
+        // 创建新会话
+        const roleId = currentRoleId.value;
+        if (!roleId) {
+          logger.error("[AgentStore] 压缩失败：当前没有激活的角色");
+          return;
+        }
+
+        await startNewChatWithAgent(roleId);
+
+        // 将压缩后的消息添加到新会话中
+        for (const message of compressedMessages) {
+          if (message.role !== 'system') { // 系统消息会自动添加
+            await messageManager.addMessage(message);
+          }
+        }
+      } else {
+        logger.error(`[AgentStore] 压缩失败: ${result.userMessage}`);
+        throw new Error(result.userMessage || '压缩失败');
+      }
+
+      logger.log("[AgentStore] 上下文压缩完成，已开启新对话");
+    } catch (error) {
+      logger.error("[AgentStore] 压缩上下文失败:", error);
+      throw error;
+    } finally {
+      // 无论成功失败都要重置压缩状态
+      isCompressing.value = false;
+    }
+  }
+
   function stopAgent() {
     agentService.stopAgent();
   }
@@ -457,14 +554,14 @@ export const useAgentStore = defineStore('agent', () => {
 
   return {
     // State
-    sessions, activeSessionIds, isLoading, error, logMessages, activeSessionId,
+    sessions, activeSessionIds, isLoading, isCompressing, error, logMessages, activeSessionId,
     currentSession, activeAgentName, availableAgents, currentRoleId, messagesById,
     orderedMessages, consecutiveToolErrors, consecutiveAiTurns,
     isProcessing, // Exposed from AgentService
 
     // Actions
     switchDomainContext, fetchAvailableAgents, switchAgent, startNewSession,
-    sendMessage, stopAgent, resetAgent,
+    sendMessage, stopAgent, resetAgent, compressAndStartNewChat,
     // MessageManager actions (proxies)
     addMessage: messageManager.addMessage,
     updateMessage: messageManager.updateMessage,

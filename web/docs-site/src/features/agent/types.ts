@@ -38,13 +38,15 @@ export interface Message {
     /** 消息内容 */
     content: string | MessageContentPart[];
     /** 消息类型 */
-    type?: 'text' | 'error' | 'tool_status' | 'tool_result' | 'system';
+    type?: 'text' | 'error' | 'tool_status' | 'tool_result' | 'system' | 'compression_summary';
     /** 消息状态 */
     status?: 'streaming' | 'done' | 'error' | 'rendering';
     /** 流是否完成 */
     streamCompleted?: boolean;
     /** 是否隐藏 */
     is_hidden?: boolean;
+    /** 是否为压缩摘要消息 */
+    isCompressed?: boolean;
     /** 工具名称（用于tool角色） */
     name?: string;
     /** 工具调用列表 */

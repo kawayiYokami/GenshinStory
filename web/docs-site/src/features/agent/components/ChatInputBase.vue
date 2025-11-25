@@ -20,9 +20,9 @@
     <!-- 发送/停止按钮 -->
     <button
       @click="isLoading ? stopAgent() : handleSend()"
-      :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0 && attachedReferences.length === 0)"
+      :disabled="!isLoading && (!modelValue.trim() && attachedImages.length === 0 && attachedReferences.length === 0) || isContextOverLimit || isCompressing"
       class="btn btn-circle btn-primary btn-sm w-8 h-8 min-h-8"
-      :title="isLoading ? '停止生成' : '发送消息'"
+      :title="isLoading ? '停止生成' : (isCompressing ? '正在压缩上下文...' : (isContextOverLimit ? '上下文已达到上限，请压缩上下文' : '发送消息'))"
     >
       <Square v-if="isLoading" class="w-5 h-5" />
       <Send v-else class="w-5 h-5" />
@@ -49,9 +49,11 @@ import {
   FileText,
   Image,
   X,
-  Wrench
+  Wrench,
+  AlertTriangle
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
+import tokenizerService from '@/lib/tokenizer/tokenizerService';
 
 interface ReferenceItem {
   path: string;
@@ -73,7 +75,7 @@ const router = useRouter();
 
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
-const { availableAgents, currentRoleId } = storeToRefs(agentStore);
+const { availableAgents, currentRoleId, orderedMessages, isCompressing } = storeToRefs(agentStore);
 const { switchAgent, resetAgent } = agentStore;
 
 
@@ -121,6 +123,18 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const currentModel = ref('');
 const isDevMode = import.meta.env.DEV;
 const showDebugPanel = ref(false);
+
+// Computed
+const isContextOverLimit = computed(() => {
+  if (!orderedMessages.value || orderedMessages.value.length === 0) return false;
+  const currentTokens = tokenizerService.countTokens(
+    orderedMessages.value.map(m =>
+      Array.isArray(m.content) ? m.content.map(c => c.text || '').join(' ') : m.content || ''
+    ).join('\n')
+  );
+  const maxTokens = activeConfig.value?.maxTokens || 128000;
+  return currentTokens > maxTokens * 0.9;
+});
 
 // Methods
 const toggleDebugPanel = () => {

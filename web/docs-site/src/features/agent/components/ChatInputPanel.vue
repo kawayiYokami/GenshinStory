@@ -2,6 +2,12 @@
   <div class="flex flex-col gap-2 card bg-base-200 rounded-3xl shadow-lg">
     <!-- 主要输入区域 -->
     <div class="flex flex-col gap-2 px-2 pt-2">
+      <!-- 上下文超限警告 -->
+      <div v-if="isContextOverLimit" class="alert alert-warning mb-2">
+        <AlertTriangle class="w-4 h-4 inline mr-2" />
+        <span>上下文已达到上限，请开启新对话或压缩上下文</span>
+      </div>
+
       <!-- 状态指示器（极简） -->
       <div v-if="isLoading || isProcessing" class="flex gap-1 py-1">
         <div class="thinking-dot"></div>
@@ -59,6 +65,21 @@
 
       <!-- 右侧工具组 -->
       <div class="flex gap-1">
+        <!-- 压缩上下文按钮 -->
+        <button
+          @click="handleCompressContext"
+          :disabled="!canCompress || isCompressing"
+          class="debug-panel-btn"
+          title="压缩上下文"
+        >
+          <Archive class="w-5 h-5" v-if="!isCompressing" />
+          <div v-if="isCompressing" class="thinking-dots">
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+          </div>
+        </button>
+
         <!-- 调试按钮 (仅在开发模式下显示) -->
         <button
           v-if="isDevMode"
@@ -66,9 +87,8 @@
           class="debug-panel-btn"
           title="调试面板"
         >
-          <Wrench class="w-4 h-4" />
+          <Wrench class="w-5 h-5" />
         </button>
-
 
       </div>
     </div>
@@ -103,9 +123,13 @@ import {
   FileText,
   Image,
   X,
-  Wrench
+  Wrench,
+  AlertTriangle,
+  Archive
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
+import { simpleContextCompressor } from '../services/simpleContextCompressor';
+import tokenizerService from '@/lib/tokenizer/tokenizerService';
 
 interface ReferenceItem {
   path: string;
@@ -128,8 +152,8 @@ const router = useRouter();
 
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
-const { availableAgents, currentRoleId } = storeToRefs(agentStore);
-const { switchAgent, resetAgent } = agentStore;
+const { availableAgents, currentRoleId, orderedMessages, isCompressing } = storeToRefs(agentStore);
+const { switchAgent, resetAgent, compressAndStartNewChat, sendMessage, startNewSession } = agentStore;
 
 // Composables
 const {
@@ -187,6 +211,22 @@ const chatInputBaseRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 const hasAttachments = computed(() =>
   attachedImages.value.length > 0 || attachedReferences.value.length > 0
 );
+
+// 上下文检查
+const isContextOverLimit = computed(() => {
+  if (!orderedMessages.value || orderedMessages.value.length === 0) return false;
+  const currentTokens = tokenizerService.countTokens(
+    orderedMessages.value.map(m =>
+      Array.isArray(m.content) ? m.content.map(c => c.text || '').join(' ') : m.content || ''
+    ).join('\n')
+  );
+  const maxTokens = activeConfig.value?.maxTokens || 128000;
+  return currentTokens > maxTokens * 0.9;
+});
+
+const canCompress = computed(() => {
+  return orderedMessages.value.length > 3; // 只要有足够的消息就可以压缩
+});
 
 // 下拉框选项
 const configOptions = computed(() => {
@@ -271,6 +311,18 @@ const handleReferenceSelect = (item: ReferenceItem) => {
   });
 };
 
+// 压缩处理方法
+const handleCompressContext = async () => {
+  if (!canCompress.value || isCompressing.value) return;
+
+  try {
+    await compressAndStartNewChat();
+    console.log('上下文压缩完成，已开启新对话');
+  } catch (error) {
+    console.error('上下文压缩失败:', error);
+  }
+};
+
 // Watchers
 // 同步模型名称
 watch(() => activeConfig.value?.modelName, (newModelName) => {
@@ -340,7 +392,12 @@ defineExpose({
   }
 }
 
-/* 文本截断（Tailwind已有，但保留以防兼容性问题） */
+/* 压缩时的思考点动画容器 */
+.thinking-dots {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
 .line-clamp-2 {
   overflow: hidden;
   display: -webkit-box;

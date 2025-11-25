@@ -1,10 +1,27 @@
 <template>
   <!-- 用户消息：保持简单的气泡设计 -->
   <div v-if="message.role === 'user'" class="chat chat-end animate-fade-in" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
-    <button class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
-      <Trash2 class="w-4 h-4" />
-    </button>
-    <div class="chat-bubble chat-bubble-primary">
+    <!-- 压缩摘要消息特殊样式 -->
+    <div v-if="message.isCompressed" class="card bg-base-200 border border-base-300 shadow-xs">
+      <div class="card-body p-0">
+        <div class="collapse collapse-arrow bg-base-200/50 p-0">
+          <input type="checkbox" v-model="isCompressedExpanded" />
+          <div class="collapse-title compressed-message-card p-0">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20">
+              <Archive class="h-4 w-4 text-primary" />
+            </div>
+            <span class="font-medium text-sm">对话摘要</span>
+          </div>
+          <div class="collapse-content">
+            <div class="divider mt-0 mb-3"></div>
+            <div class="whitespace-pre-wrap text-sm bg-transparent p-0">{{ message.content }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 普通用户消息 -->
+    <div v-else class="chat-bubble chat-bubble-primary">
       <div v-if="Array.isArray(message.content)" class="space-y-2">
         <div v-for="(item, index) in message.content" :key="index">
           <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm">{{ item.text }}</p>
@@ -29,6 +46,11 @@
       </div>
       <span v-else class="whitespace-pre-wrap text-sm">{{ message.content }}</span>
     </div>
+
+    <!-- 删除按钮：与消息容器同级 -->
+    <button v-if="!message.isCompressed" class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
+      <Trash2 class="w-4 h-4" />
+    </button>
   </div>
 
   <!-- 助理消息：简化为直接内容展示，靠左对齐，右侧留空 -->
@@ -89,7 +111,7 @@ import { ref, watch, computed, nextTick, onMounted, watchEffect, type Ref } from
 import { useToast } from 'vue-toastification';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 import { useSmartBuffer } from '@/composables/useSmartBuffer';
-import { Trash2, RefreshCw } from 'lucide-vue-next';
+import { Trash2, RefreshCw, ChevronDown, ChevronUp, Archive } from 'lucide-vue-next';
 import ToolCallCard from './ToolCallCard.vue';
 import ToolResultCard from './ToolResultCard.vue';
 import QuestionSuggestions from './QuestionSuggestions.vue';
@@ -117,12 +139,13 @@ interface Question {
 interface Message {
   id: string;
   role: 'user' | 'assistant';
-  type?: 'text' | 'tool_status' | 'tool_result' | 'error';
+  type?: 'text' | 'tool_status' | 'tool_result' | 'error' | 'compression_summary';
   content: string | ContentPart[];
   tool_calls?: ToolCall[];
   question?: Question;
   streamCompleted?: boolean;
   status?: string;
+  isCompressed?: boolean;
 }
 
 interface Props {
@@ -154,6 +177,9 @@ const hasSignaledRenderComplete = ref<boolean>(false);
 
 // 内容容器引用
 const contentContainer = ref<HTMLElement | null>(null);
+
+// 压缩消息展开/折叠状态
+const isCompressedExpanded = ref<boolean>(false);
 
 // 导入工具函数
 import { cleanContentFromToolCalls } from '../utils/messageUtils';
@@ -326,5 +352,19 @@ const handleDocClick = (path: string): void => {
   border-radius: 4px;
   margin: 0;
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* 压缩消息卡片样式 - 参考ToolResultCard */
+.compressed-message-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.compressed-message-card:hover {
+  background-color: hsl(var(--b2));
+  border-radius: 0.5rem;
 }
 </style>

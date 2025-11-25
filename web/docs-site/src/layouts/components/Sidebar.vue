@@ -190,7 +190,7 @@ const getSessionSummary = (session: Session): string => {
         }
       }
       if (textContent) {
-        const maxLength = 30;
+        const maxLength = 20;
         return textContent.length > maxLength ? textContent.substring(0, maxLength) + '...' : textContent;
       }
     }
