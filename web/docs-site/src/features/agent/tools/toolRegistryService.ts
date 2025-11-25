@@ -1,6 +1,6 @@
 import logger from '../../app/services/loggerService';
 import yaml from 'js-yaml';
-import type { Tool, PromptTrigger } from './tool';
+import type { Tool } from './tool';
 
 // 需要忽略的非工具文件列表
 const IGNORED_FILES = [
@@ -82,28 +82,6 @@ class ToolRegistryService {
 
   getToolNames(): string[] {
     return Array.from(this.tools.keys());
-  }
-
-  /**
-   * 获取所有应在初始系统提示中提供的工具
-   */
-  getInitialSystemTools(): Tool[] {
-    return Array.from(this.tools.values()).filter(tool => 
-      tool.prompt_trigger === 'system'
-    );
-  }
-
-  /**
-   * 获取所有应在指定工具执行后作为后续提示提供的工具
-   * @param toolName 前置工具名称
-   */
-  getFollowUpTools(toolName: string): Tool[] {
-    return Array.from(this.tools.values()).filter(tool => {
-      if (typeof tool.prompt_trigger === 'object' && tool.prompt_trigger && tool.prompt_trigger.on_tool_result) {
-        return tool.prompt_trigger.on_tool_result.includes(toolName);
-      }
-      return false;
-    });
   }
 }
 

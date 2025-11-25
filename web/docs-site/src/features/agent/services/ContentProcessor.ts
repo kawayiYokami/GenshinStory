@@ -36,11 +36,8 @@ export class ContentProcessor {
    * 从原始内容中提取工具调用，返回清理后的内容和工具调用
    */
   static extract(originalContent: string): ProcessedContent {
-    logger.log('[ContentProcessor] 开始处理内容:', originalContent.substring(0, 100) + '...');
-
     // 使用 JsonParserService 提取JSON（带位置信息）
     const extractedResult = jsonParserService.extractJson(originalContent);
-    logger.log('[ContentProcessor] 提取到的JSON数量:', extractedResult ? 1 : 0);
 
     const toolCalls: ParsedToolCall[] = [];
     let cleanedContent = originalContent;
@@ -56,26 +53,11 @@ export class ContentProcessor {
 
         // 从JSON起点删除到末尾
         cleanedContent = originalContent.substring(0, extractedResult.startIndex);
-
-        logger.log('[ContentProcessor] 成功提取并删除工具调用:', toolCall.name);
-        logger.log('[ContentProcessor] 删除位置:', {
-          startIndex: extractedResult.startIndex,
-          endIndex: extractedResult.endIndex,
-          deletedLength: extractedResult.endIndex - extractedResult.startIndex
-        });
-      } else {
-        logger.log('[ContentProcessor] JSON不是工具调用，保留在内容中');
       }
     }
 
     // 清理多余的空白行
     cleanedContent = cleanedContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-
-    logger.log('[ContentProcessor] 最终清理结果:', {
-      hasToolCalls: toolCalls.length > 0,
-      cleanedContentLength: cleanedContent.length,
-      originalContentLength: originalContent.length
-    });
 
     return {
       cleanedContent,
@@ -139,14 +121,6 @@ export class ContentProcessor {
     if (!isConsistent) {
       // 记录安全的元数据而非敏感内容
       const diffCount = this.getDifferencesCount(originalContent, reconstructed);
-      logger.warn('[ContentProcessor] 验证失败:', {
-        originalLength: originalContent.length,
-        reconstructedLength: reconstructed.length,
-        originalHash: simpleHash(originalContent),
-        reconstructedHash: simpleHash(reconstructed),
-        differencesCount: diffCount,
-        contentTruncated: `原始: ${originalContent.substring(0, 50)}...，重建: ${reconstructed.substring(0, 50)}...`
-      });
     }
 
     return isConsistent;

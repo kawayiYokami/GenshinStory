@@ -14,8 +14,8 @@ class ToolPromptService {
   }
 
   getSystemPrompt(): string {
-    // 只获取应在初始系统提示中提供的工具
-    const tools = toolRegistryService.getInitialSystemTools();
+    // 获取所有工具，全部添加到系统提示中
+    const tools = toolRegistryService.getAllTools();
     if (tools.length === 0) {
       return '';
     }
@@ -30,14 +30,14 @@ class ToolPromptService {
       systemPrompt += `${tool.name}\n`;
       systemPrompt += `Description: ${tool.description}\n`;
       systemPrompt += `Usage:\n${tool.usage}\n`;
-      
+
       if (tool.examples && tool.examples.length > 0) {
         systemPrompt += `Examples:\n`;
         tool.examples.forEach(example => {
           systemPrompt += `- ${example}\n`;
         });
       }
-      
+
       systemPrompt += `Error Guidance: ${tool.error_guidance}\n\n`;
     }
 

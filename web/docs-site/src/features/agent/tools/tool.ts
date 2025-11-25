@@ -8,11 +8,6 @@ export interface ToolExecutionResult {
   followUpPrompt?: string;
 }
 
-// 工具提示触发条件类型
-export interface PromptTrigger {
-  on_tool_result?: string[];
-}
-
 export interface Tool<P = any> {
   name: string;
   type: 'ui' | 'execution';
@@ -20,7 +15,6 @@ export interface Tool<P = any> {
   usage: string;
   examples: string[];
   error_guidance: string;
-  prompt_trigger?: 'system' | PromptTrigger;
 
   // 工具的执行逻辑，返回一个包含结果和可选后续提示的对象
   execute(params: P): Promise<ToolExecutionResult>;

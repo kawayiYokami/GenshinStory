@@ -43,4 +43,3 @@ examples:
       }
     }
 error_guidance: "问题不明确或建议选项不足时返回错误，确保问题具体且有2-4个相关选项"
-prompt_trigger: 'system'

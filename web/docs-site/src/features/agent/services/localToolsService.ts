@@ -4,6 +4,7 @@ import { useAppStore } from '@/features/app/stores/app';
 import type { IndexItem } from '@/features/app/stores/data';
 import pathService from '../../app/services/pathService';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
+import { stripMarkdown } from '@/lib/markdown/markdownStripper';
 
 // --- 类型定义 ---
 export interface DocRequest {
@@ -209,7 +210,9 @@ class LocalToolsService {
     const dataStore = useDataStore();
 
     if (!docRequests || docRequests.length === 0) {
-      return '<docs><error><![CDATA[错误：未提供任何文档读取请求。]]></error></docs>';
+      return JSON.stringify({
+        error: "错误：未提供任何文档读取请求"
+      });
     }
 
     const contentPromises = docRequests.map(async (request) => {
@@ -258,44 +261,100 @@ class LocalToolsService {
         const content = this._applyLineRanges(fullContent, lineRanges);
         logger.log(`文档读取成功: ${path}`, { lineRanges, originalPath });
 
-        // 构建 <content> 标签，如果指定了行号范围，则添加 lines 属性
-        let contentTag = '<content';
-        if (lineRanges && lineRanges.length > 0) {
-            // 将行号范围数组 join 成字符串，例如 "1-10, 20-30"
-            const linesAttrValue = lineRanges.join(', ');
-            contentTag += ` lines="${linesAttrValue}"`;
-        }
-        contentTag += '>';
+        // 获取文档元数据
+        const lines = fullContent.split('\n');
+        const totalLines = lines.length;
+        const totalTokens = tokenizerService.countTokens(fullContent);
 
-        // 使用 CDATA 包裹内容以处理特殊字符
-        return `<doc><path>${path}</path>${contentTag}<![CDATA[${content}]]></content></doc>`;
+        // 使用 JSON 格式返回文档内容
+        const hasLineRanges = lineRanges && lineRanges.length > 0;
+        const docResult: any = {
+          path,
+          totalLines,
+          totalTokens
+        };
+
+        if (hasLineRanges) {
+          docResult.content = content;
+          // 计算单一连续的行号范围
+          const actualLines = content.split('\n').filter(line => line.trim());
+          if (actualLines.length > 0) {
+            const firstLineMatch = actualLines[0].match(/^(\d+)\s*\|/);
+            const lastLineMatch = actualLines[actualLines.length - 1].match(/^(\d+)\s*\|/);
+            if (firstLineMatch && lastLineMatch) {
+              docResult.lineRange = `${firstLineMatch[1]}-${lastLineMatch[1]}`;
+            }
+          }
+          // 计算本次调用返回内容的字数
+          docResult.returnedTokens = tokenizerService.countTokens(content);
+          // 计算剩余字数
+          docResult.remainingTokens = totalTokens - docResult.returnedTokens;
+        } else {
+          docResult.content = stripMarkdown(content);
+          docResult.returnedTokens = totalTokens;
+          docResult.remainingTokens = 0;
+        }
+
+        return JSON.stringify(docResult);
     });
 
     const results = await Promise.allSettled(contentPromises);
 
-    const docElements: string[] = [];
+    const docElements: any[] = [];
 
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
           if (typeof result.value === 'string') {
-              docElements.push(result.value);
+              // 解析 JSON 格式的结果
+              try {
+                const docResult = JSON.parse(result.value);
+                docElements.push(docResult);
+              } catch (parseError) {
+                // 如果解析失败，作为错误处理
+                docElements.push({
+                  path: docRequests[index].path,
+                  error: "返回格式解析失败"
+                });
+              }
           } else if (result.value && (result.value as any).error) {
               const { path: failedPath, error: errorMessage } = result.value as any;
               logger.error(`读取文档失败 (settled): ${failedPath}`, { reason: errorMessage });
-              // 错误信息也使用 CDATA 包裹以防特殊字符
-              docElements.push(`<doc><path>${failedPath}</path><error><![CDATA[${errorMessage}]]></error></doc>`);
+              docElements.push({
+                path: failedPath,
+                error: errorMessage
+              });
           }
       } else {
           const failedPath = docRequests[index].path;
           logger.error(`读取文档时发生意外的Promise拒绝: ${failedPath}`, { reason: result.reason });
-          const errorMessage = `错误：处理文档 '${failedPath}' 时发生意外错误。`;
-          docElements.push(`<doc><path>${failedPath}</path><error><![CDATA[${errorMessage}]]></error></doc>`);
+          docElements.push({
+            path: failedPath,
+            error: "处理文档时发生意外错误"
+          });
       }
     });
 
-    // 构建最终的 XML 结构
-    const xmlContent = docElements.join('');
-    return `<docs>${xmlContent}</docs>`;
+    // 构建最终的 JSON 结构
+    return JSON.stringify({
+      docs: docElements.map(element => {
+        // 解析 XML 元素，提取数据
+        if (typeof element === 'object' && element.path) {
+          return element; // 已经是 JSON 对象
+        }
+
+        // 兼容旧的 XML 字符串格式
+        const docMatch = element.match(/<doc><path>(.*?)<\/path>(?:<content[^>]*>(.*?)<\/content>)?(?:<error><!\[CDATA\[(.*?)\]\]><\/error>)?<\/doc>/);
+        if (docMatch) {
+          const [, path, content, error] = docMatch;
+          return {
+            path,
+            ...(content && { content }),
+            ...(error && { error })
+          };
+        }
+        return { error: "解析文档元素失败" };
+      }).filter(doc => doc.path || doc.error)
+    });
   }
 
    private async _performSingleSearch(query: string): Promise<SearchResult[]> {
@@ -362,6 +421,9 @@ class LocalToolsService {
                        const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
                        snippet = snippet.replace(regex, `**${query}**`);
 
+                       // 对 snippet 应用 markdown 清洗以减少 token 使用
+                       snippet = stripMarkdown(snippet);
+
                        results.push({ path: logicalPath, line: foundLine, snippet: snippet });
                        const currentCount = fileSnippetCount.get(logicalPath) || 0;
                        fileSnippetCount.set(logicalPath, currentCount + 1);
@@ -376,20 +438,98 @@ class LocalToolsService {
        return results;
    }
 
-    public async searchDocs(query: string): Promise<string> {
+   private async _searchInSpecificDocument(query: string, docPath: string, currentDomain: string, dataStore: any): Promise<string> {
+     try {
+       // 获取文档内容
+       const physicalPath = this._getPhysicalPathFromLogicalPath(docPath);
+       const content = await dataStore.fetchMarkdownContent(physicalPath);
+       const lines = content.split('\n');
+
+       // 计算文档元数据
+       const totalLines = lines.length;
+       const totalTokens = tokenizerService.countTokens(content);
+
+       const results: any[] = [];
+       let matchCount = 0;
+
+       // 搜索匹配的行
+       for (let i = 0; i < lines.length; i++) {
+         if (lines[i].toLowerCase().includes(query.toLowerCase())) {
+           if (matchCount >= 10) break; // 限制最多返回10个匹配
+
+           const lineNum = i + 1;
+           let snippet = lines[i].trim();
+
+           if (snippet.length > 50) {
+             snippet = snippet.substring(0, 50) + '...';
+           }
+
+           const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+           snippet = snippet.replace(regex, `**${query}**`);
+
+           results.push({
+             path: docPath,
+             line: lineNum,
+             snippet: snippet,
+             totalLines,
+             totalTokens
+           });
+
+           matchCount++;
+         }
+       }
+
+       if (results.length === 0) {
+         return JSON.stringify({
+           query,
+           docPath,
+           message: "在指定文档中未找到相关内容"
+         });
+       }
+
+       return JSON.stringify({
+         query,
+         docPath,
+         results: results
+       });
+
+     } catch (error) {
+       logger.error(`指定文档搜索失败: ${docPath}`, error);
+       return JSON.stringify({
+         query,
+         docPath,
+         error: "指定文档搜索失败，请检查文档路径是否正确"
+       });
+     }
+   }
+
+    public async searchDocs(query: string, docPath?: string): Promise<string> {
      if (typeof query !== 'string' || !query.trim()) {
        const errorMsg = "错误：查询工具收到了无效或缺失的查询参数。";
-       logger.error(errorMsg, { query });
-       return `<search_results query="${query}"><error><![CDATA[${errorMsg}]]></error></search_results>`;
+       logger.error(errorMsg, { query, docPath });
+       return JSON.stringify({
+         query,
+         docPath,
+         error: errorMsg
+       });
      }
 
-     logger.log(`执行高级搜索...`, { query });
+     logger.log(`执行高级搜索...`, { query, docPath });
      const dataStore = useDataStore();
      const appStore = useAppStore();
      const currentDomain = appStore.currentDomain;
 
      if (!currentDomain) {
-         return `<search_results query="${query}"><error><![CDATA[错误：当前域未设置。]]></error></search_results>`;
+         return JSON.stringify({
+           query,
+           docPath,
+           error: "错误：当前域未设置"
+         });
+     }
+
+     // 如果指定了文档路径，进行指定文档搜索
+     if (docPath && docPath.trim()) {
+       return this._searchInSpecificDocument(query.trim(), docPath.trim(), currentDomain, dataStore);
      }
 
      if (!dataStore.indexData || dataStore.indexData.length === 0) {
@@ -398,13 +538,19 @@ class LocalToolsService {
          await dataStore.fetchIndex(currentDomain);
        } catch (e) {
          logger.error(`错误：为域 '${currentDomain}' 自动加载知识库索引失败:`, e);
-         return `<search_results query="${query}"><error><![CDATA[错误: 无法加载知识库索引。]]></error></search_results>`;
+         return JSON.stringify({
+           query,
+           error: "错误: 无法加载知识库索引"
+         });
        }
      }
 
      try {
         const orGroups = query.split('|').map(g => g.trim()).filter(g => g);
-        if (orGroups.length === 0) return `<search_results query="${query}"><message><![CDATA[请输入有效的查询词。]]></message></search_results>`;
+        if (orGroups.length === 0) return JSON.stringify({
+           query,
+           message: "请输入有效的查询词"
+         });
 
         const allGroupResults = await Promise.all(orGroups.map(async (group) => {
             const andTerms = group.split(/\s+/).map(t => t.trim()).filter(t => t);
@@ -459,7 +605,10 @@ class LocalToolsService {
        logger.log("高级搜索成功。", { count: finalResults.length });
 
        if (finalResults.length === 0) {
-         return `<search_results query="${query}"><message><![CDATA[未找到相关文档。]]></message></search_results>`;
+         return JSON.stringify({
+           query,
+           message: "未找到相关文档"
+         });
        }
 
        finalResults.sort((a, b) => {
@@ -468,18 +617,42 @@ class LocalToolsService {
          return a.line - b.line;
        });
 
-       // 构建 XML 结果
-       let resultElements = '';
-       for (const result of finalResults) {
-         // 使用 CDATA 包裹代码片段以处理特殊字符
-         resultElements += `<result><path>${result.path}</path><line>${result.line}</line><snippet><![CDATA[${result.snippet}]]></snippet></result>`;
-       }
+       return JSON.stringify({
+         query,
+         results: await Promise.all(finalResults.map(async (r) => {
+           // 为每个结果获取文档元数据
+           try {
+             const physicalPath = this._getPhysicalPathFromLogicalPath(r.path);
+             const content = await dataStore.fetchMarkdownContent(physicalPath);
+             const totalLines = content.split('\n').length;
+             const totalTokens = tokenizerService.countTokens(content);
 
-       return `<search_results query="${query}">${resultElements}</search_results>`;
+             return {
+               path: r.path,
+               line: r.line,
+               snippet: r.snippet,
+               totalLines,
+               totalTokens
+             };
+           } catch (e) {
+             // 如果获取元数据失败，返回基本结果
+             return {
+               path: r.path,
+               line: r.line,
+               snippet: r.snippet,
+               totalLines: 0,
+               totalTokens: 0
+             };
+           }
+         }))
+       });
 
      } catch (e: any) {
        logger.error("高级搜索时发生异常:", e);
-       return `<search_results query="${query}"><error><![CDATA[错误：在执行高级搜索时发生异常: ${e.message}]]></error></search_results>`;
+       return JSON.stringify({
+         query,
+         error: `错误：在执行高级搜索时发生异常: ${e.message}`
+       });
      }
     }
 

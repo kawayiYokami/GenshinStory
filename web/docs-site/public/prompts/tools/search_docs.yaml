@@ -1,12 +1,23 @@
 name: "search_docs"
 type: "execution"
-description: "搜索包含查询词的相关文档，返回匹配的文档路径、行号和上下文片段"
+description: "搜索功能：1) 全文搜索包含查询词的相关文档；2) 在指定文档内搜索关键词。返回匹配的文档路径、行号、上下文片段，以及每个文档的元数据"
 usage: |
+  全文搜索：
   {
     "tool_call": {
       "name": "search_docs",
       "arguments": {
         "query": "关键词A|关键词B"
+      }
+    }
+  }
+  指定文档搜索：
+  {
+    "tool_call": {
+      "name": "search_docs",
+      "arguments": {
+        "query": "关键词",
+        "doc_path": "指定文档路径.md"
       }
     }
   }
@@ -25,9 +36,9 @@ examples:
       "tool_call": {
         "name": "search_docs",
         "arguments": {
-          "query": "任务 剧情"
+          "query": "任务 剧情",
+          "doc_path": "guide/storyline.md"
         }
       }
     }
-error_guidance: "查询参数无效或缺失时返回错误，查询结果过大时提示上下文限制"
-prompt_trigger: 'system'
+error_guidance: "查询参数无效或缺失时返回错误，查询结果过大时提示上下文限制，文档路径不存在时提示有效路径"

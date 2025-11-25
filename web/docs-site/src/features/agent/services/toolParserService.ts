@@ -2,7 +2,6 @@
 import logger from '../../app/services/loggerService';
 import { toolPromptService } from './toolPromptService';
 import { toolRegistryService } from '../tools/toolRegistryService';
-import { toolStateService } from '../tools/toolStateService';
 import type { DocRequest } from './localToolsService';
 import parserAdapter, { type ParsedToolCall as AdapterParsedToolCall } from './parserAdapter';
 
@@ -25,8 +24,7 @@ interface ParsedQuestion {
     suggestions: string[];
 }
 
-const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs', 'ask'];
-const RETRYABLE_TOOLS = ['search_docs', 'read_doc', 'list_docs'];
+const VALID_TOOLS = ['search_docs', 'read_doc', 'ask'];
 let linkPromptContent: string | null = null;
 
 /**
@@ -69,9 +67,8 @@ function convertParams(toolName: string, params: Record<string, any>): ToolCallP
             break;
 
         case 'search_docs':
-        case 'list_docs':
         default:
-            // 其他工具保持原有逻辑
+            // 其他工具保持原有逻辑，支持 doc_path 参数
             for (const [key, value] of Object.entries(params)) {
                 if (typeof value === 'string') {
                     converted[key] = value;
@@ -182,6 +179,7 @@ function parseToolCall(input: string): ParsedToolCall | null {
 
 /**
  * 解析 read_doc 工具调用的参数。
+ * 简化格式：只支持单个文档和单一行范围
  */
 function parseReadDocRequests(argsContent: string): DocRequest[] {
     if (!argsContent || typeof argsContent !== 'string') {
@@ -197,35 +195,39 @@ function parseReadDocRequests(argsContent: string): DocRequest[] {
 
         const docRequests: DocRequest[] = [];
 
-        // 处理单个文档请求
+        // 处理简单路径格式
+        if (parsed.path) {
+            const path = Array.isArray(parsed.path) ? parsed.path[0] : parsed.path;
+            if (typeof path === 'string') {
+                docRequests.push({
+                    path: path,
+                    lineRanges: []
+                });
+            }
+        }
+
+        // 处理复杂格式，但只取第一个文档
         if (parsed.doc) {
             const docs = Array.isArray(parsed.doc) ? parsed.doc : [parsed.doc];
-            for (const doc of docs) {
-                if (doc.path) {
-                    const lineRanges = doc.line_range ?
-                        (Array.isArray(doc.line_range) ? doc.line_range : [doc.line_range]) : [];
-                    docRequests.push({
-                        path: doc.path,
-                        lineRanges: lineRanges.filter((r: any) => typeof r === 'string')
-                    });
+            const doc = docs[0]; // 只取第一个文档
+            if (doc && doc.path) {
+                let lineRanges: string[] = [];
+                if (doc.line_range) {
+                    // 只取第一个行范围
+                    const range = Array.isArray(doc.line_range) ? doc.line_range[0] : doc.line_range;
+                    if (typeof range === 'string') {
+                        lineRanges = [range];
+                    }
                 }
+                docRequests.push({
+                    path: doc.path,
+                    lineRanges: lineRanges
+                });
             }
         }
 
-        // 处理简单路径列表
-        if (parsed.path) {
-            const paths = Array.isArray(parsed.path) ? parsed.path : [parsed.path];
-            for (const path of paths) {
-                if (typeof path === 'string') {
-                    docRequests.push({
-                        path: path,
-                        lineRanges: []
-                    });
-                }
-            }
-        }
-
-        return docRequests;
+        // 只返回第一个有效的文档请求
+        return docRequests.slice(0, 1);
     } catch (error) {
         logger.error('[ToolParserService] read_doc 参数解析错误:', error);
         return [];
@@ -242,8 +244,6 @@ function createStatusMessage(parsedTool: ParsedToolCall): string {
             return `正在搜索 "${params.query || params.regex || ''}" 的相关文档...`;
         case 'read_doc':
             return `正在读取文档...`;
-        case 'list_docs':
-            return `正在查看目录: \`${params.path || '/'}\`...`;
         case 'ask':
             return `正在向用户提问...`;
         default:
@@ -280,25 +280,10 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'succe
 
         let finalResult = executionResult.result;
 
-        // 对于执行工具，处理后续提示逻辑
+        // 对于执行工具，简化逻辑，移除后续提示
         if (tool.type === 'execution') {
-            // 获取所有应在当前工具执行后作为后续提示提供的工具
-            const followUpTools = toolRegistryService.getFollowUpTools(name);
-
-            // 遍历后续工具，检查状态并追加提示
-            for (const followUpTool of followUpTools) {
-                if (!toolStateService.hasPromptBeenSent(followUpTool.name)) {
-                    // 格式化后续工具提示
-                    const followUpPrompt = formatFollowUpPrompt(followUpTool);
-                    finalResult += `\n\n---\n\n${followUpPrompt}`;
-
-                    // 标记提示为已发送
-                    toolStateService.markPromptAsSent(followUpTool.name);
-                }
-            }
-
-            // 对于 list_docs 和 search_docs，附加 link_prompt（保持向后兼容）
-            if (['search_docs', 'list_docs'].includes(name) && finalResult && !finalResult.startsWith("错误：")) {
+            // 对于 search_docs，附加 link_prompt（保持向后兼容）
+            if (['search_docs'].includes(name) && finalResult && !finalResult.startsWith("错误：")) {
                 const linkPrompt = await _getLinkPrompt();
                 if (linkPrompt) {
                     finalResult = `${finalResult}\n\n---\n\n${linkPrompt}`;
@@ -306,10 +291,7 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'succe
             }
         }
 
-        // 返回成功状态、结果和后续提示
-        // 重置当前工具的提示状态，以便下次调用时可以重新显示提示
-        toolStateService.resetToolPromptState(name);
-
+        // 返回成功状态和结果
         return {
             status: 'success',
             result: finalResult,
@@ -326,7 +308,7 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'succe
 }
 
 /**
- * 格式化后续工具提示
+ * 格式化后续工具提示（已废弃，保持向后兼容）
  */
 function formatFollowUpPrompt(tool: any): string {
     let prompt = `**下一步操作建议**\n`;
@@ -361,7 +343,7 @@ function parseAskCall(jsonString: string): ParsedQuestion | null {
 }
 
 export function isToolRetryable(toolName: string): boolean {
-    return RETRYABLE_TOOLS.includes(toolName);
+    return ['search_docs', 'read_doc'].includes(toolName);
 }
 
 export { convertParams };

@@ -4,7 +4,7 @@
  * @author yokami
  */
 
-// 引入滚动模式枚举（从useScrollManager导入）
+// 引入Vue和Pinia核心功能
 import { ref, computed, watch, nextTick } from 'vue';
 import { defineStore, storeToRefs } from 'pinia';
 import { nanoid } from 'nanoid';
