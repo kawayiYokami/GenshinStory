@@ -64,7 +64,7 @@ const handleMessageRendered = (messageId: string) => {
       if (historyPanel.value) {
         const isNearBottom = historyPanel.value.scrollTop +
                           historyPanel.value.clientHeight >=
-                          historyPanel.value.scrollHeight - 100;
+                          historyPanel.value.scrollHeight - 500;
         if (isNearBottom) {
           historyPanel.value.scrollTo({
             top: historyPanel.value.scrollHeight,
@@ -74,6 +74,16 @@ const handleMessageRendered = (messageId: string) => {
       }
     });
   }
+};
+
+/**
+ * 检查面板是否接近底部（与 handleMessageRendered 使用相同的阈值）
+ */
+const isHistoryPanelNearBottom = (): boolean => {
+  if (!historyPanel.value) return false;
+  return historyPanel.value.scrollTop +
+         historyPanel.value.clientHeight >=
+         historyPanel.value.scrollHeight - 500;
 };
 
 const handleHistoryPanelClick = async (event: Event) => {
@@ -98,11 +108,14 @@ onMounted(() => {
   if (messageContainer.value && historyPanel.value) {
     mutationObserver = new MutationObserver(() => {
       nextTick(() => {
-        if (historyPanel.value) {
-          historyPanel.value.scrollTo({
-            top: historyPanel.value.scrollHeight,
-            behavior: 'smooth'
-          });
+        // 仅当面板接近底部时才自动滚动，避免打断用户阅读历史
+        if (isHistoryPanelNearBottom()) {
+          if (historyPanel.value) {
+            historyPanel.value.scrollTo({
+              top: historyPanel.value.scrollHeight,
+              behavior: 'smooth'
+            });
+          }
         }
       });
     });

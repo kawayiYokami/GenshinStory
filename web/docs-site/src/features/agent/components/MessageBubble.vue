@@ -168,8 +168,15 @@ watch(() => props.message.content, (newContent) => {
   localContent.value = cleanContentFromToolCalls(contentStr, props.message.tool_calls);
 });
 
-watch(() => props.message.streamCompleted, (newValue) => {
+watch(() => props.message.streamCompleted, async (newValue) => {
   renderCompleted.value = newValue || false;
+
+  // 当流式消息完成时（从 false 变为 true），等待 DOM 更新后发出 rendered 事件
+  if (newValue === true && !hasSignaledRenderComplete.value) {
+    await nextTick();
+    emit('rendered', props.message.id);
+    hasSignaledRenderComplete.value = true;
+  }
 });
 
 // 监听 tool_calls 的变化
@@ -179,16 +186,16 @@ watch(() => props.message.tool_calls, (newToolCalls) => {
 }, { deep: true });
 
 // 在 onMounted 中，对于已完成的消息，强制重新执行一次"流式"渲染
-onMounted(() => {
+onMounted(async () => {
   if (props.message.streamCompleted) {
     renderCompleted.value = false; // 强制进入"流式"状态
-    nextTick(() => {
-      renderCompleted.value = true; // 在下一个 tick 立即"完成"流
-    });
+    await nextTick();
+    renderCompleted.value = true; // 在下一个 tick 立即"完成"流
+    // 等待 DOM 更新完成后再发出 rendered 事件
+    await nextTick();
+    emit('rendered', props.message.id);
   }
-
-  // 通知父组件消息已渲染完成
-  emit('rendered', props.message.id);
+  // 如果消息正在流式传输，不在这里发出 rendered，等待 streamCompleted 变化
 });
 
 import { renderMarkdownSync, replaceLinkPlaceholders } from '@/features/viewer/services/MarkdownRenderingService'; // 导入渲染函数
@@ -219,7 +226,7 @@ watchEffect(async () => {
 // 新增的 watch，用于在消息变化时重置状态
 watch(() => props.message.id, () => {
   hasSignaledRenderComplete.value = false;
-});
+}, { immediate: false });
 
 // 优化后的消息监听，只监听必要属性
 watch([() => props.message.type, () => props.message.status], ([newType, newStatus]) => {
