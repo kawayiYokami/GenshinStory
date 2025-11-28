@@ -3,43 +3,31 @@ type: "ui"
 description: "向用户提问以澄清模糊指令、获取缺失信息或在多个选项间做出决策"
 usage: |
   {
-    "tool_call": {
-      "name": "ask",
-      "arguments": {
-        "question": "问题内容",
-        "suggest": [
-          "建议选项A",
-          "建议选项B"
-        ]
-      }
-    }
+    "tool": "ask",
+    "question": "问题内容",
+    "suggestions": [
+      "建议选项A",
+      "建议选项B"
+    ]
   }
 examples:
   - |-
     {
-      "tool_call": {
-        "name": "ask",
-        "arguments": {
-          "question": "您想搜索哪个游戏的角色信息？",
-          "suggest": [
-            "原神",
-            "星穹铁道"
-          ]
-        }
-      }
+      "tool": "ask",
+      "question": "您想搜索哪个游戏的角色信息？",
+      "suggestions": [
+        "原神",
+        "星穹铁道"
+      ]
     }
   - |-
     {
-      "tool_call": {
-        "name": "ask",
-        "arguments": {
-          "question": "需要读取文档的哪个部分？",
-          "suggest": [
-            "全部内容",
-            "前50行",
-            "特定行范围"
-          ]
-        }
-      }
+      "tool": "ask",
+      "question": "需要读取文档的哪个部分？",
+      "suggestions": [
+        "全部内容",
+        "前50行",
+        "特定行范围"
+      ]
     }
 error_guidance: "问题不明确或建议选项不足时返回错误，确保问题具体且有2-4个相关选项"

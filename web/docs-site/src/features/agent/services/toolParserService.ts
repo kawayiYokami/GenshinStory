@@ -3,7 +3,8 @@ import logger from '../../app/services/loggerService';
 import { toolPromptService } from './toolPromptService';
 import { toolRegistryService } from '../tools/toolRegistryService';
 import type { DocRequest } from './localToolsService';
-import parserAdapter, { type ParsedToolCall as AdapterParsedToolCall } from './parserAdapter';
+import jsonParserService from './JsonParserService';
+import { FlatToolCall, NestedToolCall, isFlatToolCall, convertToFlatToolCall } from '../types';
 
 // --- 类型定义 ---
 interface ToolCallParams {
@@ -28,7 +29,7 @@ const VALID_TOOLS = ['search_docs', 'read_doc', 'ask'];
 let linkPromptContent: string | null = null;
 
 /**
- * 智能转换工具参数
+ * 智能转换工具参数（支持平铺和嵌套格式）
  */
 function convertParams(toolName: string, params: Record<string, any>): ToolCallParams {
     const converted: ToolCallParams = {};
@@ -53,10 +54,10 @@ function convertParams(toolName: string, params: Record<string, any>): ToolCallP
             break;
 
         case 'ask':
-            // ask 工具需要特殊处理数组类型的 suggestions
+            // ask 工具的 suggestions 字段统一处理为平铺格式
             for (const [key, value] of Object.entries(params)) {
-                if (key === 'suggest' && Array.isArray(value)) {
-                    // suggestions 字段保持数组不变
+                if (key === 'suggestions' && Array.isArray(value)) {
+                    // 平铺格式的suggestions字段保持数组不变
                     converted[key] = value;
                 } else if (typeof value === 'string') {
                     converted[key] = value;
@@ -102,137 +103,45 @@ async function _getLinkPrompt(): Promise<string> {
 }
 
 /**
- * 从 API 的结构化 JSON 格式解析工具调用。
- */
-function parseJsonToolCall(toolCall: any): ParsedToolCall | null {
-    // 直接解析 JSON 工具调用
-    if (!toolCall || !toolCall.function) return null;
-
-    const { name, arguments: args } = toolCall.function;
-
-    if (!VALID_TOOLS.includes(name)) {
-        logger.log(`[ParserAdapter] 忽略无效工具: ${name}`);
-        return null;
-    }
-
-    try {
-        let params: any;
-
-        if (typeof args === 'string') {
-            // 处理字符串形式的 JSON
-            try {
-                params = JSON.parse(args);
-            } catch (jsonError) {
-                // 如果 JSON 解析失败，将整个字符串作为 args 参数
-                params = { args };
-            }
-        } else if (args !== null && typeof args === 'object') {
-            // 处理已经是对象的参数
-            params = args;
-        } else {
-            // 处理其他类型（包括 null 和 undefined）
-            params = { args: String(args) };
-        }
-
-        // 智能转换参数类型
-        const convertedParams = convertParams(name, params);
-
-        // 构建 XML 字符串，确保对 JSON 进行转义
-        let xmlContent: string;
-        try {
-            xmlContent = JSON.stringify(params);
-        } catch (stringifyError) {
-            // 如果 stringify 失败，使用一个简单的表示
-            xmlContent = '[Object object]';
-        }
-
-        return {
-            name,
-            params: convertedParams,
-            original: `<${name}>${xmlContent}</${name}>`,
-        };
-    } catch (error) {
-        logger.error(`[ParserAdapter] JSON 解析错误 (${name}):`, error);
-        return null;
-    }
-}
-
-/**
- * 解析工具调用字符串（仅支持JSON格式）。
+ * 解析工具调用字符串（使用JsonParserService统一处理）
  */
 function parseToolCall(input: string): ParsedToolCall | null {
     if (typeof input !== 'string') return null;
 
-    // 使用 parserAdapter 解析工具调用（仅支持JSON格式）
-    const result = parserAdapter.parseSingleToolCall(input);
-    if (!result) return null;
+    // 使用 JsonParserService 直接解析
+    const parsedResult = jsonParserService.parseLlmResponse(input);
+    if (!parsedResult || !parsedResult.tool) {
+        return null;
+    }
 
-    // 智能转换参数类型
-    const params = convertParams(result.name, result.params);
+    // 转换为 ParsedToolCall 格式
+    const params: ToolCallParams = {};
+
+    // 根据工具类型提取参数
+    switch (parsedResult.tool) {
+        case 'search_docs':
+            if (parsedResult.query) params.query = parsedResult.query;
+            if (parsedResult.path) params.path = parsedResult.path;
+            if (parsedResult.limit) params.limit = parsedResult.limit;
+            break;
+        case 'read_doc':
+            if (parsedResult.path) params.path = parsedResult.path;
+            if (parsedResult.target) params.target = parsedResult.target;
+            if (parsedResult.line_range) params.line_range = parsedResult.line_range;
+            break;
+        case 'ask':
+            if (parsedResult.question) params.question = parsedResult.question;
+            if (parsedResult.suggestions) params.suggestions = parsedResult.suggestions;
+            break;
+    }
 
     return {
-        name: result.name,
-        params,
-        original: result.original
+        name: parsedResult.tool,
+        params: convertParams(parsedResult.tool, params),
+        original: input
     };
 }
 
-/**
- * 解析 read_doc 工具调用的参数。
- * 简化格式：只支持单个文档和单一行范围
- */
-function parseReadDocRequests(argsContent: string): DocRequest[] {
-    if (!argsContent || typeof argsContent !== 'string') {
-        return [];
-    }
-
-    try {
-        const parsed = JSON.parse(argsContent);
-
-        if (!parsed || typeof parsed !== 'object') {
-            return [];
-        }
-
-        const docRequests: DocRequest[] = [];
-
-        // 处理简单路径格式
-        if (parsed.path) {
-            const path = Array.isArray(parsed.path) ? parsed.path[0] : parsed.path;
-            if (typeof path === 'string') {
-                docRequests.push({
-                    path: path,
-                    lineRanges: []
-                });
-            }
-        }
-
-        // 处理复杂格式，但只取第一个文档
-        if (parsed.doc) {
-            const docs = Array.isArray(parsed.doc) ? parsed.doc : [parsed.doc];
-            const doc = docs[0]; // 只取第一个文档
-            if (doc && doc.path) {
-                let lineRanges: string[] = [];
-                if (doc.line_range) {
-                    // 只取第一个行范围
-                    const range = Array.isArray(doc.line_range) ? doc.line_range[0] : doc.line_range;
-                    if (typeof range === 'string') {
-                        lineRanges = [range];
-                    }
-                }
-                docRequests.push({
-                    path: doc.path,
-                    lineRanges: lineRanges
-                });
-            }
-        }
-
-        // 只返回第一个有效的文档请求
-        return docRequests.slice(0, 1);
-    } catch (error) {
-        logger.error('[ToolParserService] read_doc 参数解析错误:', error);
-        return [];
-    }
-}
 
 /**
  * 为工具调用创建面向用户的状态消息。
@@ -308,37 +217,21 @@ async function executeTool(parsedTool: ParsedToolCall): Promise<{ status: 'succe
 }
 
 /**
- * 格式化后续工具提示（已废弃，保持向后兼容）
- */
-function formatFollowUpPrompt(tool: any): string {
-    let prompt = `**下一步操作建议**\n`;
-    prompt += `您可以使用 ${tool.name} 工具来：${tool.description}\n\n`;
-    prompt += `**使用方法:**\n${tool.usage}\n\n`;
-
-    if (tool.examples && tool.examples.length > 0) {
-        prompt += `**示例:**\n`;
-        tool.examples.forEach((example: string) => {
-            prompt += `- ${example}\n`;
-        });
-    }
-
-    return prompt;
-}
-
-/**
- * 从JSON字符串中解析 ask UI 指令。
+ * 从JSON字符串中解析 ask UI 指令（使用JsonParserService）
  */
 function parseAskCall(jsonString: string): ParsedQuestion | null {
     if (typeof jsonString !== 'string') return null;
 
-    // 使用 parserAdapter 解析 ask 调用
-    const result = parserAdapter.parseAskCall(jsonString);
-    if (!result) return null;
+    // 直接使用 JsonParserService 解析
+    const parsedResult = jsonParserService.parseLlmResponse(jsonString);
+    if (!parsedResult || parsedResult.tool !== 'ask') {
+        return null;
+    }
 
     return {
-        original: result.original,
-        question: result.question,
-        suggestions: result.suggestions
+        original: jsonString,
+        question: parsedResult.question || '',
+        suggestions: parsedResult.suggestions || []
     };
 }
 
@@ -350,12 +243,8 @@ export { convertParams };
 
 export default {
     parseToolCall,
-    parseJsonToolCall,
-    parseReadDocRequests,
     createStatusMessage,
     executeTool,
     parseAskCall,
     isToolRetryable,
 };
-
-export { parseReadDocRequests };

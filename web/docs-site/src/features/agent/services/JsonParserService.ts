@@ -1,16 +1,11 @@
-interface JsonCandidate {
-  json: any;
-  score: number;
-  startIndex: number;
-  endIndex: number;
-  original: string;
-}
+import { FlatToolCall, isFlatToolCall } from '../types';
 
-export interface ExtractionResult {
+interface ExtractionResult {
   json: Record<string, any>;
   startIndex: number;
   endIndex: number;
   original: string;
+  repairs?: string[];
 }
 
 function stripCodeFences(text: string): string {
@@ -18,178 +13,204 @@ function stripCodeFences(text: string): string {
   return text.replace(/```json/gi, '').replace(/```/g, '').trim();
 }
 
-function findJsonCandidates(text: string): { content: string; startIndex: number; endIndex: number }[] {
-  const candidates: { content: string; startIndex: number; endIndex: number }[] = [];
-  if (!text) return candidates;
-
-  let inString = false;
-  let escape = false;
-  let depth = 0;
-  let startIdx: number | null = null;
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-
-    if (inString) {
-      if (escape) {
-        escape = false;
-      } else if (ch === '\\') {
-        escape = true;
-      } else if (ch === '"') {
-        inString = false;
-      }
-      continue;
-    }
-
-    if (ch === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (ch === '{') {
-      if (depth === 0) {
-        startIdx = i;
-      }
-      depth++;
-    } else if (ch === '}') {
-      if (depth > 0) {
-        depth--;
-        if (depth === 0 && startIdx !== null) {
-          candidates.push({
-            content: text.substring(startIdx, i + 1),
-            startIndex: startIdx,
-            endIndex: i + 1
-          });
-          startIdx = null;
-        }
-      }
-    }
-  }
-
-  return candidates;
-}
-
+/**
+ * 简化的JSON解析服务 - 只保留核心功能
+ */
 export class JsonParserService {
-  parseLlmResponse(responseText: string): Record<string, any> | null {
-    const result = this.extractJson(responseText);
+  private readonly VALID_TOOLS = ['search_docs', 'read_doc', 'ask'];
 
-    if (result === null) {
-      return null;
-    }
+  /**
+   * 根据字段类型智能匹配工具参数
+   */
+  private matchToolFields(obj: Record<string, any>): FlatToolCall | null {
+    const result: any = {};
+    let toolName: string | undefined;
 
-    const jsonData = result.json;
-
-    if ('feedback_data' in jsonData) {
-      let feedbackData = jsonData.feedback_data;
-
-      if (typeof feedbackData === 'string') {
-        try {
-          feedbackData = JSON.parse(feedbackData);
-        } catch (error) {
-          return null;
-        }
-      }
-
-      return feedbackData as Record<string, any>;
-    } else {
-      return jsonData;
-    }
-  }
-
-  extractJson(
-    text: string,
-    separator: string = '---JSON---',
-    requiredFields: string[] | null = null,
-    optionalFields: string[] | null = null
-  ): ExtractionResult | null {
-    if (typeof text !== 'string') {
-      return null;
-    }
-
-    if (!text.trim()) {
-      return null;
-    }
-
-    let jsonPart = text;
-    let offset = 0;
-
-    if (text.includes(separator)) {
-      const parts = text.split(separator);
-      if (parts.length > 1) {
-        jsonPart = parts[1].trim();
-        offset = text.indexOf(jsonPart);
-      } else {
-        return null;
-      }
-    } else {
-      offset = 0;
-    }
-
-    const preStripOffset = offset;
-    jsonPart = stripCodeFences(jsonPart);
-    const adjustedOffset = jsonPart ? text.indexOf(jsonPart) : preStripOffset;
-
-    const candidates = findJsonCandidates(jsonPart);
-    const qualifiedJsons: JsonCandidate[] = [];
-
-    for (const candidate of candidates) {
-      try {
-        const parsedJson = JSON.parse(candidate.content);
-        if (typeof parsedJson !== 'object' || parsedJson === null || Array.isArray(parsedJson)) {
-          continue;
-        }
-
-        if (!parsedJson.tool_call) {
-          continue;
-        }
-
-        const toolCall = parsedJson.tool_call;
-        if (!toolCall.name || !toolCall.arguments) {
-          continue;
-        }
-
-        const VALID_TOOLS = ['search_docs', 'read_doc', 'list_docs', 'ask'];
-        if (!VALID_TOOLS.includes(toolCall.name)) {
-          continue;
-        }
-
-        if (requiredFields) {
-          if (!requiredFields.every(field => field in parsedJson)) {
-            continue;
+    // 遍历所有字段进行分类
+    for (const [key, value] of Object.entries(obj)) {
+      // 1. 识别工具名
+      if (this.isValidToolName(key)) {
+        toolName = key;
+        // 根据工具类型映射默认值
+        if (typeof value === 'string') {
+          switch (key) {
+            case 'search_docs':
+              result.query = value;
+              break;
+            case 'ask':
+              result.question = value;
+              break;
+            case 'read_doc':
+              result.path = value;
+              break;
           }
         }
-
-        let score = 0;
-        if (optionalFields) {
-          score = optionalFields.filter(field => field in parsedJson).length;
-        }
-
-        qualifiedJsons.push({
-          json: parsedJson,
-          score,
-          startIndex: adjustedOffset + candidate.startIndex,
-          endIndex: adjustedOffset + candidate.endIndex,
-          original: candidate.content
-        });
-
-      } catch (error) {
         continue;
       }
+
+      // 2. 路径识别
+      if (typeof value === 'string' && value.includes('/') && this.isValidPath(value)) {
+        result.path = value;
+        continue;
+      }
+
+      // 3. 行范围识别
+      if (typeof value === 'string' && value.includes('-') && /^\d+-\d+$/.test(value)) {
+        result.line_range = value;
+        continue;
+      }
+
+      // 4. 数组直接保留
+      if (Array.isArray(value)) {
+        result[key] = value;
+        continue;
+      }
+
+      // 5. 其他字段直接保留
+      result[key] = value;
     }
 
-    if (qualifiedJsons.length === 0) {
+    // 如果没有找到工具名，尝试通过name字段
+    if (!toolName && obj.name && typeof obj.name === 'string' && this.isValidToolName(obj.name)) {
+      toolName = obj.name;
+    }
+
+    if (!toolName) {
       return null;
     }
 
-    qualifiedJsons.sort((a, b) => b.score - a.score);
-    const bestJsonItem = qualifiedJsons[0];
-
     return {
-      json: bestJsonItem.json,
-      startIndex: bestJsonItem.startIndex,
-      endIndex: bestJsonItem.endIndex,
-      original: bestJsonItem.original
+      tool: toolName,
+      ...result
     };
+  }
+
+  /**
+   * 验证是否为有效路径
+   */
+  private isValidPath(path: string): boolean {
+    const invalidChars = [' ', '&', '<', '>', '|', '"', "'", '`', '\n', '\r', '\t', '\0'];
+
+    for (const char of invalidChars) {
+      if (path.includes(char)) return false;
+    }
+
+    if (path.startsWith('.') || path.endsWith('.') || path.endsWith(' ') || path.startsWith(' ')) {
+      return false;
+    }
+
+    if (/^\d+\.\d+\/\d+\.\d+$/.test(path) || /^v\d+\.\d+\/\w+/.test(path)) {
+      return false;
+    }
+
+    if (path.includes('version') || path.includes('release') || path.includes('alpha') || path.includes('beta') || path.includes('patch')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 展开嵌套结构为平铺对象
+   */
+  private flattenNestedObject(obj: any): Record<string, any> {
+    if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+      return obj;
+    }
+
+    // 处理嵌套的 tool_call 结构
+    if (obj.tool_call && obj.tool_call.name) {
+      const flattened: Record<string, any> = {
+        name: obj.tool_call.name
+      };
+
+      // 展开arguments或args中的所有字段
+      const args = obj.tool_call.arguments || obj.tool_call.args || {};
+      if (typeof args === 'object' && args !== null && !Array.isArray(args)) {
+        Object.assign(flattened, args);
+      }
+
+      return flattened;
+    }
+
+    return obj;
+  }
+
+  /**
+   * 验证工具名称
+   */
+  private isValidToolName(name: string): boolean {
+    return this.VALID_TOOLS.includes(name);
+  }
+
+  /**
+   * 解析LLM响应 - 统一重新构造平铺格式
+   */
+  parseLlmResponse(responseText: string): Record<string, any> | null {
+    if (typeof responseText !== 'string' || !responseText.trim()) {
+      return null;
+    }
+
+    // 查找最后一个行首的 {
+    const lines = responseText.split('\n');
+    let lastBraceIndex = -1;
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (line.startsWith('{')) {
+        // 找到该行在原字符串中的位置
+        const lineStartPos = responseText.lastIndexOf('\n' + line) + 1;
+        if (responseText.substring(lineStartPos).startsWith(line)) {
+          lastBraceIndex = lineStartPos;
+          break;
+        }
+        // 处理第一行的情况
+        if (i === 0 && responseText.startsWith(line)) {
+          lastBraceIndex = 0;
+          break;
+        }
+      }
+    }
+
+    if (lastBraceIndex === -1) {
+      return null;
+    }
+
+    // 从找到的位置开始截取
+    const jsonContent = responseText.substring(lastBraceIndex);
+    const cleanedJson = stripCodeFences(jsonContent);
+
+    try {
+      const parsed = JSON.parse(cleanedJson);
+
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return null;
+      }
+
+      // 处理feedback_data格式
+      let finalObj = parsed;
+      if ('feedback_data' in parsed) {
+        let feedbackData = parsed.feedback_data;
+        if (typeof feedbackData === 'string') {
+          feedbackData = JSON.parse(feedbackData);
+        }
+        finalObj = feedbackData as Record<string, any>;
+      }
+
+      // 展开嵌套结构
+      const flattenedObj = this.flattenNestedObject(finalObj);
+
+      // 统一对所有格式进行字段匹配和重新构造
+      const toolCall = this.matchToolFields(flattenedObj);
+      if (toolCall) {
+        return toolCall;
+      }
+
+      return flattenedObj;
+    } catch (error) {
+      console.warn('[JsonParserService] JSON解析失败:', error);
+      return null;
+    }
   }
 }
 

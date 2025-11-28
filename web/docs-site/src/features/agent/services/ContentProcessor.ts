@@ -1,5 +1,5 @@
 import logger from '@/features/app/services/loggerService';
-import jsonParserService, { ExtractionResult } from './JsonParserService';
+import jsonParserService from './JsonParserService';
 import toolParserService from './toolParserService';
 import type { ParsedToolCall } from './toolParserService';
 
@@ -36,23 +36,30 @@ export class ContentProcessor {
    * 从原始内容中提取工具调用，返回清理后的内容和工具调用
    */
   static extract(originalContent: string): ProcessedContent {
-    // 使用 JsonParserService 提取JSON（带位置信息）
-    const extractedResult = jsonParserService.extractJson(originalContent);
+    // 使用 JsonParserService 解析LLM响应
+    const parsedResult = jsonParserService.parseLlmResponse(originalContent);
 
     const toolCalls: ParsedToolCall[] = [];
     let cleanedContent = originalContent;
 
-    // 处理提取到的JSON
-    if (extractedResult) {
-      // 尝试解析为工具调用
-      const jsonString = JSON.stringify(extractedResult.json);
-      const toolCall = toolParserService.parseToolCall(jsonString);
+    // 处理解析到的结果
+    if (parsedResult) {
+      // 检查是否为工具调用
+      if ('tool' in parsedResult && typeof parsedResult.tool === 'string') {
+        // 转换为toolParserService期望的格式
+        const jsonString = JSON.stringify(parsedResult);
+        const toolCall = toolParserService.parseToolCall(jsonString);
 
-      if (toolCall) {
-        toolCalls.push(toolCall);
+        if (toolCall) {
+          toolCalls.push(toolCall);
 
-        // 从JSON起点删除到末尾
-        cleanedContent = originalContent.substring(0, extractedResult.startIndex);
+          // 查找JSON在原始内容中的位置并清理
+          const jsonMatch = originalContent.match(/\{[\s\S]*\}$/);
+          if (jsonMatch) {
+            const jsonStartIndex = originalContent.lastIndexOf(jsonMatch[0]);
+            cleanedContent = originalContent.substring(0, jsonStartIndex);
+          }
+        }
       }
     }
 

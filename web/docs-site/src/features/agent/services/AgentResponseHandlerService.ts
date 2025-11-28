@@ -3,7 +3,7 @@ import toolParserService from '@/features/agent/services/toolParserService';
 import logger from '@/features/app/services/loggerService';
 import jsonParserService from '@/features/agent/services/JsonParserService';
 import { ContentProcessor } from './ContentProcessor';
-import type { Message, Session } from '../types';
+import type { Message, Session, ToolCall } from '../types';
 import type { ParsedToolCall } from './toolParserService';
 import type { MessageManager } from '../stores/messageManager';
 
@@ -65,7 +65,7 @@ export class AgentResponseHandlerService {
           content: processed.cleanedContent,
           question: {
             text: askToolCall.params.question,
-            suggestions: askToolCall.params.suggest || []
+            suggestions: askToolCall.params.suggestions || []
           }
         }
       });
@@ -76,9 +76,15 @@ export class AgentResponseHandlerService {
     if (processed.toolCalls.length > 0) {
 
       // 更新消息内容为清洗后的内容，并添加工具调用
+      // 转换 ParsedToolCall 到 ToolCall 格式
+      const toolCalls: ToolCall[] = processed.toolCalls.map(parsedTool => ({
+        tool: parsedTool.name as any,
+        ...parsedTool.params
+      }));
+
       await this.messageManager.updateMessage({
         messageId: assistantMessage.id,
-        updates: { content: processed.cleanedContent, tool_calls: processed.toolCalls }
+        updates: { content: processed.cleanedContent, tool_calls: toolCalls }
       });
 
       // 返回第一个工具调用（保持原有逻辑）

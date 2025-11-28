@@ -5,6 +5,104 @@
  */
 
 // --- 类型定义 ---
+
+/**
+ * 平铺工具调用接口
+ * @description 定义扁平化的工具调用格式，替代嵌套的tool_call结构
+ */
+export interface FlatToolCall {
+  /** 工具名称 */
+  tool: 'search_docs' | 'read_doc' | 'ask';
+
+  // 共用参数
+  /** 路径参数 - search_docs: 搜索目录路径, read_doc: 读取文件路径 */
+  path?: string;
+
+  // search_docs 专用参数
+  /** 搜索查询关键词 */
+  query?: string;
+  /** 搜索结果数量限制 */
+  limit?: number;
+
+  // read_doc 专用参数
+  /** 读取目标描述 */
+  target?: string;
+  /** 行范围，格式如 "15-30" */
+  line_range?: string;
+
+  // ask 专用参数
+  /** 问题文本 */
+  question?: string;
+  /** 建议选项列表 */
+  suggestions?: string[];
+
+  // 元数据字段
+  /** 工具调用唯一ID */
+  action_id?: string;
+  /** 调用时间戳 */
+  timestamp?: string;
+  /** 执行结果 */
+  result?: any;
+  /** 执行状态 */
+  status?: 'pending' | 'executing' | 'completed' | 'failed';
+}
+
+/**
+ * 嵌套工具调用接口（向后兼容）
+ * @description 保留原有的嵌套格式以维持向后兼容性
+ */
+export interface NestedToolCall {
+  tool_call: {
+    name: string;
+    arguments: Record<string, any>;
+  };
+}
+
+/**
+ * 工具调用联合类型
+ * @description 支持平铺和嵌套两种格式
+ */
+export type ToolCall = FlatToolCall | NestedToolCall;
+
+/**
+ * 格式检测辅助函数
+ * @description 检测工具调用是否为平铺格式
+ */
+export function isFlatToolCall(tool: any): tool is FlatToolCall {
+  return tool && typeof tool === 'object' && 'tool' in tool && !('tool_call' in tool);
+}
+
+/**
+ * 格式转换辅助函数
+ * @description 将嵌套格式转换为平铺格式
+ */
+export function convertToFlatToolCall(nestedTool: NestedToolCall): FlatToolCall {
+  const { name, arguments: args } = nestedTool.tool_call;
+
+  const flatTool: FlatToolCall = {
+    tool: name as any,
+    ...args
+  };
+
+  // 根据工具类型映射特定字段
+  switch (name) {
+    case 'search_docs':
+      if (!flatTool.query && args.query) flatTool.query = args.query;
+      break;
+    case 'read_doc':
+      if (!flatTool.target && args.target) flatTool.target = args.target;
+      break;
+    case 'ask':
+      if (!flatTool.question && args.question) flatTool.question = args.question;
+      if (args.suggestions && Array.isArray(args.suggestions)) {
+        flatTool.suggestions = args.suggestions;
+      }
+      break;
+  }
+
+  return flatTool;
+}
+
 /**
  * 消息内容部分接口
  * @description 定义消息内容的各个部分，支持文本、图片和文档类型
@@ -49,8 +147,10 @@ export interface Message {
     isCompressed?: boolean;
     /** 工具名称（用于tool角色） */
     name?: string;
-    /** 工具调用列表 */
-    tool_calls?: any[];
+    /** 工具调用列表（支持平铺和嵌套格式） */
+    tool_calls?: ToolCall[];
+    /** 平铺工具调用列表（新增字段，优先使用） */
+    tiled_tools?: FlatToolCall[];
     /** 问题建议（用于assistant角色） */
     question?: {
         /** 问题文本 */

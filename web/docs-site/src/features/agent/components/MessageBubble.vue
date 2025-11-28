@@ -68,7 +68,7 @@
       <template v-if="message.tool_calls && message.tool_calls.length > 0">
         <div class="divider divider-start text-xs opacity-60">工具调用</div>
         <div class="flex flex-wrap gap-2">
-          <ToolCallCard v-for="toolCall in message.tool_calls" :key="toolCall.name + JSON.stringify(toolCall.params)" :tool-call="toolCall" />
+          <ToolCallCard v-for="toolCall in message.tool_calls" :key="toolCall.tool + JSON.stringify(toolCall.params)" :tool-call="toolCall" />
         </div>
       </template>
 
