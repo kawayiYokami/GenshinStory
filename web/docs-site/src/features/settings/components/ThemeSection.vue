@@ -1,5 +1,5 @@
 <template>
-  <div class="card card-border bg-base-200 shadow-md mb-6">
+  <div class="card card-border bg-base-100 shadow-md mb-6">
     <div class="card-body">
       <ThemePreview />
     </div>

@@ -26,7 +26,7 @@
       <button class="delete-from-here-button" @click="handleDeleteFromHere" title="从此处删除后续对话">
         <Trash2 class="w-4 h-4" />
       </button>
-      <div class="chat-bubble chat-bubble-primary">
+      <div class="bg-primary text-primary-content rounded-2xl px-4 py-2 shadow-sm border border-primary">
         <div v-if="Array.isArray(message.content)" class="space-y-2">
           <div v-for="(item, index) in message.content" :key="index">
             <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm">{{ item.text }}</p>

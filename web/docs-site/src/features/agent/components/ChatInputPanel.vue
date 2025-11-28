@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-2 card bg-base-200 rounded-3xl shadow-lg">
+  <div class="flex flex-col gap-2 card bg-base-100 rounded-3xl shadow-lg border border-base-300">
     <!-- 主要输入区域 -->
     <div class="flex flex-col gap-2 px-2 pt-2">
       <!-- 上下文超限警告 -->

@@ -1,7 +1,7 @@
 <template>
-  <div v-if="question" class="card bg-base-200 shadow-sm rounded-2xl">
+  <div v-if="question" class="card bg-base-100 shadow-sm rounded-2xl">
     <div class="card-body p-4">
-      <h3 class="card-title text-primary text-sm mb-2">{{ question.text }}</h3>
+      <h3 class="card-title text-base-content text-sm mb-2">{{ question.text }}</h3>
       <div class="flex flex-wrap gap-2">
         <div
           v-for="(suggestion, index) in question.suggestions"

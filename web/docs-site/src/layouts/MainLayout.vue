@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-base-100 drawer mx-auto lg:drawer-open">
+  <div class="bg-base-200 drawer mx-auto lg:drawer-open">
     <input id="drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content flex flex-col" :style="{ height: '100dvh' }">
       <!-- Navbar -->

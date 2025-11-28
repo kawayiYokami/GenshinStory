@@ -1,15 +1,15 @@
 <template>
-  <div class="card card-compact bg-base-200 border border-base-300 shadow-xs rounded-2xl" ref="toolResultCard">
+  <div class="card card-compact bg-base-100 border border-base-300 shadow-xs rounded-2xl" ref="toolResultCard">
     <div class="card-body p-0">
       <div class="collapse collapse-arrow rounded-2xl ">
         <input type="checkbox" />
         <div class="collapse-title p-0 min-h-0">
           <div class="tool-result-card items-center">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 shrink-0">
-              <Info class="h-4 w-4 text-primary" />
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-success shrink-0">
+              <Info class="h-4 w-4 text-base-content" />
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-primary">检索结果</div>
+              <div class="text-sm font-medium text-base-content">检索结果</div>
               <div class="text-xs opacity-70 truncate">{{ searchQuery }}</div>
             </div>
           </div>
@@ -35,7 +35,7 @@
                   <div class="flex items-start justify-between gap-3 w-full">
                     <div class="flex items-center gap-2 min-w-0">
                       <span
-                        class="font-semibold text-sm text-base-content group-hover:text-primary transition-colors truncate"
+                        class="font-semibold text-sm text-base-content group-hover:text-accent-content transition-colors truncate"
                       >
                         {{ item.title || extractFileName(item.path || '') }}
                       </span>
@@ -47,7 +47,7 @@
 
                   <!-- 摘要 -->
                   <div v-if="item.snippet" class="relative pl-3 w-full">
-                    <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-base-300 group-hover:bg-primary/50 transition-colors rounded-full"></div>
+                    <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-base-300 group-hover:bg-accent-content transition-colors rounded-full"></div>
                     <div class="text-xs text-base-content/70 line-clamp-2 leading-relaxed font-mono">
                       {{ item.snippet }}
                     </div>

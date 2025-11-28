@@ -1,9 +1,9 @@
 <template>
   <div class="drawer-side">
     <label for="drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-    <div class="bg-base-200 text-base-content h-full w-80 grid grid-rows-[auto_1fr_auto]">
+    <div class="bg-base-300 text-base-content h-full w-80 grid grid-rows-[auto_1fr_auto]">
       <!-- Header -->
-      <div class="p-4 flex justify-between items-center border-b border-base-300/50 bg-base-200/80 backdrop-blur-md">
+      <div class="p-4 flex justify-between items-center border-b border-base-300/50 bg-base-300 backdrop-blur-md">
         <div class="tabs tabs-border">
           <input
             v-for="domain in domains"
