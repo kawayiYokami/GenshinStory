@@ -1,7 +1,7 @@
 
 export interface ToolCall {
   original: string;
-  name: string;
+  tool: string;
   params: Record<string, any>;
 }
 

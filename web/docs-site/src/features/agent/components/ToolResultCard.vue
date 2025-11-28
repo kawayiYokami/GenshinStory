@@ -1,17 +1,72 @@
 <template>
-  <div class="card bg-base-200 border border-base-300 shadow-xs rounded-2xl">
+  <div class="card card-compact bg-base-200 border border-base-300 shadow-xs rounded-2xl" ref="toolResultCard">
     <div class="card-body p-0">
-      <div class="collapse collapse-arrow bg-base-200/50 p-0 rounded-2xl">
+      <div class="collapse collapse-arrow rounded-2xl ">
         <input type="checkbox" />
-        <div class="tool-result-card p-0">
-          <div class="flex h-7 w-7 items-center justify-center rounded-full bg-info/20">
-            <Info class="h-4 w-4 text-info" />
+        <div class="collapse-title p-0 min-h-0">
+          <div class="tool-result-card items-center">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 shrink-0">
+              <Info class="h-4 w-4 text-primary" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-primary">检索结果</div>
+              <div class="text-xs opacity-70 truncate">{{ searchQuery }}</div>
+            </div>
           </div>
-          <span class="font-medium text-sm">资料</span>
         </div>
-        <div class="collapse-content">
-          <div class="divider mt-0 mb-3"></div>
-          <pre v-if="content" class="whitespace-pre-wrap break-all font-mono text-xs bg-base-200 p-3">{{ content }}</pre>
+        <div class="collapse-content ">
+          <div class="pt-0 p-0">
+            <div v-if="parsedResults.length > 0" class="search-results-list">
+              <div class="flex items-center justify-between mb-2 px-1">
+                <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">
+                  找到 {{ parsedResults.length }} 个相关结果
+                </span>
+              </div>
+              <div class="space-y-2">
+                <button
+                  v-for="(item, index) in parsedResults"
+                  :key="index"
+                  class="search-result-item internal-doc-link w-full text-left group relative flex flex-col gap-2 p-3 rounded-xl bg-base-100 border border-base-200 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
+                  :data-path="item.path || ''"
+                  :data-raw-link="`[[${item.title || extractFileName(item.path || '')}|path:${item.path || ''}]]`"
+                  @click="handleLinkClick"
+                >
+                  <!-- 标题行 -->
+                  <div class="flex items-start justify-between gap-3 w-full">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span
+                        class="font-semibold text-sm text-base-content group-hover:text-primary transition-colors truncate"
+                      >
+                        {{ item.title || extractFileName(item.path || '') }}
+                      </span>
+                    </div>
+                    <div v-if="item.line" class="badge badge-sm badge-ghost shrink-0 font-mono text-[10px] opacity-70">
+                      Ln {{ item.line }}
+                    </div>
+                  </div>
+
+                  <!-- 摘要 -->
+                  <div v-if="item.snippet" class="relative pl-3 w-full">
+                    <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-base-300 group-hover:bg-primary/50 transition-colors rounded-full"></div>
+                    <div class="text-xs text-base-content/70 line-clamp-2 leading-relaxed font-mono">
+                      {{ item.snippet }}
+                    </div>
+                  </div>
+
+                  <!-- 路径 -->
+                  <div class="flex items-center gap-1.5 px-1 mt-0.5 w-full">
+                    <span class="text-[10px] text-base-content/40 truncate font-mono">{{ item.path }}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 原始内容作为后备 -->
+            <div v-if="!hasValidResults" class="mt-2">
+              <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-2">原始响应内容</div>
+              <pre class="whitespace-pre-wrap break-all font-mono text-xs bg-base-100 border border-base-200 p-3 rounded-xl text-base-content/80">{{ formattedContent }}</pre>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -19,44 +74,138 @@
 </template>
 
 <script setup lang="ts">
-import { Info } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { Info, ExternalLink } from 'lucide-vue-next';
+import { processSingleLinkText } from '@/features/viewer/services/MarkdownRenderingService';
+import { extractFileName } from '@/utils/pathUtils';
+import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
+import linkProcessorService from '@/lib/linkProcessor/linkProcessorService';
+import type { LinkResolutionResult } from '@/lib/linkProcessor/linkProcessorService';
+
+interface SearchResult {
+  path?: string;
+  line?: number;
+  snippet?: string;
+  totalLines?: number;
+  totalTokens?: number;
+  title?: string;
+}
 
 interface Props {
   content?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   content: ''
 });
+
+const toolResultCard = ref<HTMLElement | null>(null);
+
+// 处理内部链接点击
+const handleLinkClick = async (event: Event) => {
+  const target = (event.target as HTMLElement).closest('.internal-doc-link') as HTMLElement | null;
+  if (target && target.dataset.rawLink) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rawLink = target.dataset.rawLink;
+    if (rawLink) {
+      try {
+        const result: LinkResolutionResult = await linkProcessorService.resolveLink(rawLink);
+
+        if (result.isValid && result.resolvedPath) {
+          const docViewerStore = useDocumentViewerStore();
+          docViewerStore.open(result.resolvedPath);
+        } else {
+          alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
+        }
+      } catch (error) {
+        console.error('处理链接点击时出错:', error);
+        alert(`链接处理失败: ${error}`);
+      }
+    }
+  }
+};
+
+// 组件挂载时添加事件监听
+onMounted(() => {
+  if (toolResultCard.value) {
+    toolResultCard.value.addEventListener('click', handleLinkClick);
+  }
+});
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  if (toolResultCard.value) {
+    toolResultCard.value.removeEventListener('click', handleLinkClick);
+  }
+});
+
+// 解析搜索结果
+const parsedData = computed(() => {
+  if (!props.content) return { query: '', results: [] };
+
+  try {
+    // 尝试从内容中提取JSON部分
+    let jsonStr = props.content;
+
+    // 如果内容包含非JSON文本，尝试查找JSON对象
+    const jsonMatch = props.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[0];
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    if (parsed.query && Array.isArray(parsed.results)) {
+      // 搜索结果格式: {"query": "...", "results": [...]}
+      return {
+        query: parsed.query,
+        results: parsed.results
+      };
+    } else if (parsed.docs && Array.isArray(parsed.docs)) {
+      // 文档列表格式: {"docs": [...]}
+      return {
+        query: '展开查看文档',
+        results: parsed.docs
+      };
+    }
+  } catch (error) {
+    console.error('Failed to parse tool result:', error);
+    console.log('Content that failed to parse:', props.content);
+  }
+
+  return { query: '', results: [] };
+});
+
+const searchQuery = computed(() => parsedData.value.query);
+const parsedResults = computed(() => parsedData.value.results as SearchResult[]);
+const hasValidResults = computed(() => parsedResults.value.length > 0);
+
+// 格式化原始内容为后备显示
+const formattedContent = computed(() => {
+  try {
+    // 尝试从内容中提取JSON部分
+    let jsonStr = props.content;
+
+    // 如果内容包含非JSON文本，尝试查找JSON对象
+    const jsonMatch = props.content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[0];
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    return JSON.stringify(parsed, null, 2); // 格式化JSON
+  } catch {
+    return props.content;
+  }
+});
+
+// 导航到文档（保留作为后备）
+const navigateToDocument = (path?: string) => {
+  if (!path) return;
+
+  // 发送自定义事件给父组件处理导航
+  const event = new CustomEvent('navigate-to-document', { detail: { path } });
+  window.dispatchEvent(event);
+};
 </script>
-
-<style scoped>
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.streaming-card {
-  background: linear-gradient(90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.1) 20%,
-    rgba(255,255,255,0.2) 60%,
-    rgba(255,255,255,0.1) 80%,
-    rgba(255,255,255,0) 100%
-  );
-  background-size: 1000px 100%;
-  animation: shimmer 3s linear infinite;
-  border-radius: 0.75rem;
-  transition: all 0.3s ease;
-}
-
-/* 当工具结果完成时，移除动画 */
-.streaming-card.completed {
-  background: transparent;
-  animation: none;
-}
-</style>

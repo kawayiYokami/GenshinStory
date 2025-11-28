@@ -88,7 +88,7 @@
 
 /* 工具结果卡片 */
 .tool-result-card {
-  @apply collapse-title flex items-center gap-3 min-h-0 py-3;
+  @apply collapse-title flex items-center gap-3 min-h-0 p-2;
 }
 
 /* 问题建议标签 */
