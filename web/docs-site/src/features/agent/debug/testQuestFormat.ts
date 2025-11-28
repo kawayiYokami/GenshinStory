@@ -43,7 +43,7 @@ testCases.forEach((testCase, index) => {
       console.log('期望:', testCase.expected);
     }
   } catch (error) {
-    console.log('✗ 解析异常:', error.message);
+    console.log('✗ 解析异常:', error instanceof Error ? error.message : String(error));
   }
 });
 

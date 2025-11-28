@@ -254,18 +254,47 @@ const handleSend = async (payload: string | { text: string; images?: string[]; r
     return;
   }
 
-  // 如果当前正在加载，先停止智能体
-  if (isLoading.value) {
-    logger.log("--- UI: Sending message while loading. Stopping agent first. ---");
-    stopAgent();
-    // 关键修改：在调用 stopAgent 后直接返回，不再执行后续代码
-    return;
+  // 如果当前正在处理（加载或AI处理中），先停止智能体
+  if (isLoading.value || isProcessing.value) {
+    logger.log("--- UI: Sending message while processing. Stopping agent first. ---");
+
+    // 等待停止完成
+    await stopAgent();
+
+    // 使用轮询方式检查状态，最多等待2秒
+    const maxWaitTime = 2000; // 2秒超时
+    const pollInterval = 50;  // 50ms轮询间隔
+    let totalWaitTime = 0;
+
+    while ((isLoading.value || isProcessing.value) && totalWaitTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      totalWaitTime += pollInterval;
+    }
+
+    // 如果仍然在处理中，显示取消提示并返回
+    if (isLoading.value || isProcessing.value) {
+      logger.log("--- UI: Agent still processing after stop, aborting send. ---");
+
+      // 创建一个临时的用户提示消息
+      await agentStore.addMessage({
+        role: 'assistant',
+        content: "*上一个请求仍在处理中，已取消发送新消息。*",
+        type: 'text',
+        is_hidden: false // 显示给用户
+      });
+
+      // 滚动到底部以显示提示消息
+      await nextTick();
+      scrollManager.scrollToBottom();
+
+      return;
+    }
   }
 
   // 发送消息到智能体
   await sendMessage(messageToSend);
 
-  // 关键修改：等待DOM更新后直接滚动到底部
+  // 等待DOM更新后直接滚动到底部
   await nextTick(); // 确保 DOM 更新
   scrollManager.scrollToBottom(); // 直接滚动到底部
 

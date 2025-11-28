@@ -205,22 +205,31 @@ export class JsonParserService {
     const lines = responseText.split('\n');
     let lastBraceIndex = -1;
 
+    // 修复：使用迭代方式计算每行的准确起始位置，避免重复文本的问题
+    let currentPos = responseText.length;
     for (let i = lines.length - 1; i >= 0; i--) {
       const line = lines[i];
 
-      // 修复：查找包含{的行，不一定是行首
+      // 计算当前行的起始位置
+      const lineLength = line.length;
+      const lineStart = currentPos - lineLength;
+
+      // 检查并调整前一个换行符
+      let adjustedLineStart = lineStart;
+      if (i > 0 && currentPos < responseText.length && responseText.charAt(currentPos - lineLength - 1) === '\n') {
+        adjustedLineStart = lineStart - 1;
+      }
+
+      // 查找包含{的行
       const bracePos = line.indexOf('{');
       if (bracePos !== -1) {
-        // 找到该行在原字符串中的位置
-        const lineStartPos = responseText.lastIndexOf('\n' + line) + 1;
-        if (lineStartPos === 0 && responseText.startsWith(line)) {
-          // 第一行的情况
-          lastBraceIndex = bracePos;
-        } else if (lineStartPos > 0) {
-          lastBraceIndex = lineStartPos + bracePos;
-        }
+        // 计算大括号在原始文本中的准确位置
+        lastBraceIndex = adjustedLineStart + bracePos;
         break;
       }
+
+      // 更新当前位置为当前行开始的位置减去换行符的长度
+      currentPos = adjustedLineStart - (i > 0 ? 1 : 0);
     }
 
     if (lastBraceIndex === -1) {
@@ -253,7 +262,7 @@ export class JsonParserService {
               feedbackData = JSON.parse(feedbackData);
             } catch (e2) {
               // 如果还是失败，尝试使用简单的字符替换
-              feedbackData = JSON.parse(feedbackData.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\'));
+              feedbackData = JSON.parse(feedbackData.replace(/\\\\/g, '\\').replace(/\\"/g, '"').replace(/\\n/g, '\n'));
             }
           }
         }

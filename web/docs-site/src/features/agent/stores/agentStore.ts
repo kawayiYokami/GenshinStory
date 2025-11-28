@@ -108,6 +108,9 @@ export const useAgentStore = defineStore('agent', () => {
    * @return {Promise<void>}
    */
   async function switchSession(sessionId: string): Promise<void> {
+    // 在切换会话前先停止当前正在进行的请求
+    await stopAgent();
+
     await sessionManager.switchSession(sessionId, currentDomain.value);
   }
 
@@ -270,6 +273,9 @@ export const useAgentStore = defineStore('agent', () => {
    * @throws {Error} 当切换域失败时抛出异常
    */
   async function switchDomainContext(domain: string): Promise<void> {
+    // 在切换域前先停止当前正在进行的请求
+    await stopAgent();
+
     await sessionManager.switchDomainContext(
       domain,
       fetchAvailableAgents,
@@ -488,6 +494,10 @@ export const useAgentStore = defineStore('agent', () => {
    */
   async function resetAgent(): Promise<void> {
     logger.log("Agent Store: 重置 Agent... (将开启新会话)");
+
+    // 在重置前先停止当前正在进行的请求
+    await stopAgent();
+
     if(currentDomain.value) {
         await startNewSession(currentDomain.value, activeRoleId.value[currentDomain.value]);
     }
@@ -506,7 +516,7 @@ export const useAgentStore = defineStore('agent', () => {
 
     // 设置压缩状态
     isCompressing.value = true;
-    stopAgent(); // 停止当前对话
+    await stopAgent(); // 停止当前对话
 
     try {
       logger.log("[AgentStore] 开始压缩上下文...");
@@ -585,8 +595,8 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  function stopAgent() {
-    agentService.stopAgent();
+  async function stopAgent() {
+    await agentService.stopAgent();
   }
 
   function markAllAsSent(): void {
@@ -600,8 +610,8 @@ export const useAgentStore = defineStore('agent', () => {
     });
   }
 
-  function deleteMessagesFrom(messageId: string): void {
-    stopAgent();
+  async function deleteMessagesFrom(messageId: string): Promise<void> {
+    await stopAgent();
     const session = currentSession.value;
     if (!session) return;
 

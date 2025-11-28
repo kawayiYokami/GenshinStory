@@ -264,10 +264,10 @@ const handleNewChatWithCurrentAgent = () => {
   resetAgent();
 };
 
-const handleNewChatWithAgentId = (agentId: string) => {
+const handleNewChatWithAgentId = async (agentId: string) => {
   // 先切换到指定的智能体，然后新建会话
   if (agentId !== currentRoleId.value) {
-    switchAgent(agentId);
+    await switchAgent(agentId);
   }
   resetAgent();
 };

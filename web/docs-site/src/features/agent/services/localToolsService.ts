@@ -519,6 +519,7 @@ class LocalToolsService {
 
        if (results.length === 0) {
          return JSON.stringify({
+           tool: 'search_docs',
            query,
            docPath,
            message: "在指定文档中未找到相关内容"
@@ -526,6 +527,7 @@ class LocalToolsService {
        }
 
        return JSON.stringify({
+         tool: 'search_docs',
          query,
          docPath,
          results: results
@@ -534,6 +536,7 @@ class LocalToolsService {
      } catch (error) {
        logger.error(`指定文档搜索失败: ${docPath}`, error);
        return JSON.stringify({
+         tool: 'search_docs',
          query,
          docPath,
          error: "指定文档搜索失败，请检查文档路径是否正确"
@@ -546,6 +549,7 @@ class LocalToolsService {
        const errorMsg = "错误：查询工具收到了无效或缺失的查询参数。";
        logger.error(errorMsg, { query, docPath });
        return JSON.stringify({
+         tool: 'search_docs',
          query,
          docPath,
          error: errorMsg
@@ -559,6 +563,7 @@ class LocalToolsService {
 
      if (!currentDomain) {
          return JSON.stringify({
+           tool: 'search_docs',
            query,
            docPath,
            error: "错误：当前域未设置"
@@ -577,6 +582,7 @@ class LocalToolsService {
        } catch (e) {
          logger.error(`错误：为域 '${currentDomain}' 自动加载知识库索引失败:`, e);
          return JSON.stringify({
+           tool: 'search_docs',
            query,
            error: "错误: 无法加载知识库索引"
          });
@@ -586,6 +592,7 @@ class LocalToolsService {
      try {
         const orGroups = query.split('|').map(g => g.trim()).filter(g => g);
         if (orGroups.length === 0) return JSON.stringify({
+           tool: 'search_docs',
            query,
            message: "请输入有效的查询词"
          });
@@ -644,6 +651,7 @@ class LocalToolsService {
 
        if (finalResults.length === 0) {
          return JSON.stringify({
+           tool: 'search_docs',
            query,
            message: "未找到相关文档"
          });
@@ -674,6 +682,7 @@ class LocalToolsService {
      } catch (e: any) {
        logger.error("高级搜索时发生异常:", e);
        return JSON.stringify({
+         tool: 'search_docs',
          query,
          error: `错误：在执行高级搜索时发生异常: ${e.message}`
        });

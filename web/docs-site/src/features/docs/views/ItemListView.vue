@@ -59,7 +59,7 @@
                 v-for="item in getPaginatedItems(subCategory)"
                 :key="item.path"
                 @click="docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))"
-                class="card card-compact bg-neutral shadow cursor-pointer hover:shadow-md transition-shadow"
+                class="card card-compact bg-base-100 shadow cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div class="card-body">
                   <h3 class="card-title text-sm">{{ item.name }}</h3>

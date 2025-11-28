@@ -26,7 +26,7 @@
                 <button
                   v-for="(item, index) in parsedResults"
                   :key="index"
-                  class="search-result-item internal-doc-link w-full text-left group relative flex flex-col gap-2 p-3 rounded-xl bg-base-100 border border-base-200 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
+                  class="search-result-item internal-doc-link w-full text-left group relative flex flex-col gap-2 p-3 rounded-xl bg-base-300 border border-base-200 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
                   :data-path="item.path || ''"
                   :data-raw-link="`[[${item.title || extractFileName(item.path || '')}|path:${item.path || ''}]]`"
                   @click="handleLinkClick"

@@ -54,7 +54,7 @@ function convertParams(toolName: string, params: Record<string, any>): ToolCallP
             break;
 
         case 'ask_choice':
-            // ask 工具的 suggestions 字段统一处理为平铺格式
+            // ask_choice 工具的 suggestions 字段统一处理为平铺格式
             for (const [key, value] of Object.entries(params)) {
                 if (key === 'suggestions' && Array.isArray(value)) {
                     // 平铺格式的suggestions字段保持数组不变

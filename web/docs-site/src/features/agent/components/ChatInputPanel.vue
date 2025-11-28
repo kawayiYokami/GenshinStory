@@ -340,6 +340,12 @@ const handleCompressContext = async () => {
 // 新会话处理方法
 const handleNewSession = async () => {
   try {
+    // 在开启新会话前先停止当前正在进行的请求
+    stopAgent();
+
+    // 等待一小段时间确保中断完成
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     await startNewSessionWithCurrentAgent();
     console.log('新会话已开启');
   } catch (error) {
@@ -372,10 +378,22 @@ const handleScreenshot = async () => {
     historyPanel.style.maxHeight = 'unset';
     historyPanel.style.overflow = 'unset';
 
-    console.log('已解除滚动限制');
+    // 修复动画和透明度问题 - 临时禁用所有动画和过渡
+    const style = document.createElement('style');
+    style.textContent = `
+      .overflow-y-auto.scrollbar-hide.flex-1 * {
+        transition: none !important;
+        animation: none !important;
+        animation-play-state: paused !important;
+      }
+    `;
+    document.head.appendChild(style);
 
-    // 等待DOM更新
+    console.log('已解除滚动限制并禁用动画');
+
+    // 等待DOM更新和动画停止
     await nextTick();
+    await new Promise(resolve => setTimeout(resolve, 100)); // 等待动画完全停止
 
     console.log('开始生成截图...');
 
@@ -399,7 +417,12 @@ const handleScreenshot = async () => {
     historyPanel.style.maxHeight = originalMaxHeight;
     historyPanel.style.overflow = originalOverflow;
 
-    console.log('已恢复原始样式');
+    // 移除临时样式，恢复动画
+    if (style.parentNode) {
+      style.parentNode.removeChild(style);
+    }
+
+    console.log('已恢复原始样式和动画');
 
     // 下载图片
     const link = document.createElement('a');

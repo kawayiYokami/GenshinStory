@@ -50,9 +50,19 @@ export class AgentService {
   /**
    * 停止代理
    * @description 停止当前正在进行的代理处理流程
+   * @return {Promise<void>} 停止完成的 Promise
    */
-  public stopAgent() {
-    this.flowService.stopAgent();
+  public stopAgent(): Promise<void> {
+    return this.flowService.stopAgent();
+  }
+
+  /**
+   * 等待停止操作完成
+   * @description 等待代理停止操作完成
+   * @return {Promise<void>} 停止完成的 Promise
+   */
+  public waitForStop(): Promise<void> {
+    return this.flowService.waitForStop();
   }
 
   /**

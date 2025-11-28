@@ -93,16 +93,16 @@ export class ContentProcessor {
         // 历史消息中总是使用标准化格式进行错误纠正学习
         // 这样LLM会在对话历史中看到正确的工具调用格式
         const standardizedFormat = {
-          tool: toolCall.name,
-          ...toolCall.params
+          ...toolCall.params,
+          tool: toolCall.name
         };
         toolCallContent = JSON.stringify(standardizedFormat);
       } else {
         toolCallContent = JSON.stringify(toolCall.params, null, 2);
       }
 
-      // 直接内嵌到内容末尾，不加换行符避免视觉拆分
-      reconstructed += toolCallContent;
+      // 内嵌到内容末尾，保留换行符确保解析一致性
+      reconstructed += '\n' + toolCallContent;
     }
 
     return reconstructed;
