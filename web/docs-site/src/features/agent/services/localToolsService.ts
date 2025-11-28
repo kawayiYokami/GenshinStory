@@ -666,6 +666,7 @@ class LocalToolsService {
        }));
 
        return JSON.stringify({
+         tool: 'search_docs',
          query,
          results: resultsWithMetadata
        });

@@ -19,13 +19,13 @@ export interface ParsedToolCall {
 }
 
 interface ParsedQuestion {
-    /** 原始的 ask 调用字符串（JSON格式） */
+    /** 原始的 ask_choice 调用字符串（JSON格式） */
     original: string;
     question: string;
     suggestions: string[];
 }
 
-const VALID_TOOLS = ['search_docs', 'read_doc', 'ask'];
+const VALID_TOOLS = ['search_docs', 'read_doc', 'ask_choice'];
 let linkPromptContent: string | null = null;
 
 /**
@@ -53,7 +53,7 @@ function convertParams(toolName: string, params: Record<string, any>): ToolCallP
             }
             break;
 
-        case 'ask':
+        case 'ask_choice':
             // ask 工具的 suggestions 字段统一处理为平铺格式
             for (const [key, value] of Object.entries(params)) {
                 if (key === 'suggestions' && Array.isArray(value)) {
@@ -105,11 +105,19 @@ async function _getLinkPrompt(): Promise<string> {
 /**
  * 解析工具调用字符串（使用JsonParserService统一处理）
  */
-function parseToolCall(input: string): ParsedToolCall | null {
-    if (typeof input !== 'string') return null;
+function parseToolCall(input: string | Record<string, any>): ParsedToolCall | null {
+    let parsedResult: any;
 
-    // 使用 JsonParserService 直接解析
-    const parsedResult = jsonParserService.parseLlmResponse(input);
+    if (typeof input === 'string') {
+        // 使用 JsonParserService 直接解析
+        parsedResult = jsonParserService.parseLlmResponse(input);
+    } else if (typeof input === 'object' && input !== null) {
+        // 直接处理对象格式
+        parsedResult = input;
+    } else {
+        return null;
+    }
+
     if (!parsedResult || !parsedResult.tool) {
         return null;
     }
@@ -129,7 +137,7 @@ function parseToolCall(input: string): ParsedToolCall | null {
             if (parsedResult.target) params.target = parsedResult.target;
             if (parsedResult.line_range) params.line_range = parsedResult.line_range;
             break;
-        case 'ask':
+        case 'ask_choice':
             if (parsedResult.question) params.question = parsedResult.question;
             if (parsedResult.suggestions) params.suggestions = parsedResult.suggestions;
             break;
@@ -138,7 +146,7 @@ function parseToolCall(input: string): ParsedToolCall | null {
     return {
         name: parsedResult.tool,
         params: convertParams(parsedResult.tool, params),
-        original: input
+        original: typeof input === 'string' ? input : JSON.stringify(input)
     };
 }
 
@@ -153,7 +161,7 @@ function createStatusMessage(parsedTool: ParsedToolCall): string {
             return `正在搜索 "${params.query || params.regex || ''}" 的相关文档...`;
         case 'read_doc':
             return `正在读取文档...`;
-        case 'ask':
+        case 'ask_choice':
             return `正在向用户提问...`;
         default:
             return `正在执行工具: ${name}...`;
@@ -224,7 +232,7 @@ function parseAskCall(jsonString: string): ParsedQuestion | null {
 
     // 直接使用 JsonParserService 解析
     const parsedResult = jsonParserService.parseLlmResponse(jsonString);
-    if (!parsedResult || parsedResult.tool !== 'ask') {
+    if (!parsedResult || parsedResult.tool !== 'ask_choice') {
         return null;
     }
 

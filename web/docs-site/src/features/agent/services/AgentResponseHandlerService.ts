@@ -56,7 +56,7 @@ export class AgentResponseHandlerService {
     const processed = ContentProcessor.extract(content);
 
     // 特殊处理 ask 工具调用
-    const askToolCall = processed.toolCalls.find(tool => tool.name === 'ask');
+    const askToolCall = processed.toolCalls.find(tool => tool.name === 'ask_choice');
     if (askToolCall) {
 
       await this.messageManager.updateMessage({

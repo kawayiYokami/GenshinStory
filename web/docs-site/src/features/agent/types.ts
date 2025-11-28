@@ -12,7 +12,7 @@
  */
 export interface FlatToolCall {
   /** 工具名称 */
-  tool: 'search_docs' | 'read_doc' | 'ask';
+  tool: 'search_docs' | 'read_doc' | 'ask_choice';
 
   // 共用参数
   /** 路径参数 - search_docs: 搜索目录路径, read_doc: 读取文件路径 */
@@ -30,7 +30,7 @@ export interface FlatToolCall {
   /** 行范围，格式如 "15-30" */
   line_range?: string;
 
-  // ask 专用参数
+  // ask_choice 专用参数
   /** 问题文本 */
   question?: string;
   /** 建议选项列表 */
@@ -92,7 +92,7 @@ export function convertToFlatToolCall(nestedTool: NestedToolCall): FlatToolCall 
     case 'read_doc':
       if (!flatTool.target && args.target) flatTool.target = args.target;
       break;
-    case 'ask':
+    case 'ask_choice':
       if (!flatTool.question && args.question) flatTool.question = args.question;
       if (args.suggestions && Array.isArray(args.suggestions)) {
         flatTool.suggestions = args.suggestions;

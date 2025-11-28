@@ -1,9 +1,9 @@
-name: "ask"
+name: "ask_choice"
 type: "ui"
 description: "向用户提问以澄清模糊指令、获取缺失信息或在多个选项间做出决策"
 usage: |
   {
-    "tool": "ask",
+    "tool": "ask_choice",
     "question": "问题内容",
     "suggestions": [
       "建议选项A",
@@ -13,7 +13,7 @@ usage: |
 examples:
   - |-
     {
-      "tool": "ask",
+      "tool": "ask_choice",
       "question": "您想搜索哪个游戏的角色信息？",
       "suggestions": [
         "原神",
@@ -22,7 +22,7 @@ examples:
     }
   - |-
     {
-      "tool": "ask",
+      "tool": "ask_choice",
       "question": "需要读取文档的哪个部分？",
       "suggestions": [
         "全部内容",

@@ -141,7 +141,7 @@ onUnmounted(() => {
   }
 });
 
-// 解析搜索结果
+// 解析搜索结果 - 支持新的平铺格式和旧格式
 const parsedData = computed(() => {
   if (!props.content) return { query: '', results: [] };
 
@@ -156,14 +156,23 @@ const parsedData = computed(() => {
     }
 
     const parsed = JSON.parse(jsonStr);
+
+    // 新的平铺格式：{"tool": "search_docs", "query": "玛拉妮", "results": [...]}
+    if (parsed.tool === 'search_docs') {
+      return {
+        query: parsed.query || '',
+        results: parsed.results || []
+      };
+    }
+
+    // 兼容旧格式：{"query": "...", "results": [...]}
     if (parsed.query && Array.isArray(parsed.results)) {
-      // 搜索结果格式: {"query": "...", "results": [...]}
       return {
         query: parsed.query,
         results: parsed.results
       };
     } else if (parsed.docs && Array.isArray(parsed.docs)) {
-      // 文档列表格式: {"docs": [...]}
+      // 兼容旧文档列表格式：{"docs": [...]}
       return {
         query: '展开查看文档',
         results: parsed.docs

@@ -9,6 +9,8 @@
           <FileText v-else-if="toolCall.tool === 'read_doc'" class="h-4 w-4 text-primary" />
           <!-- List Docs Icon -->
           <List v-else-if="toolCall.tool === 'list_docs'" class="h-4 w-4 text-primary" />
+          <!-- Ask Choice Icon -->
+          <List v-else-if="toolCall.tool === 'ask_choice'" class="h-4 w-4 text-primary" />
           <!-- Default/Generic Tool Icon -->
           <Wrench v-else class="h-4 w-4 text-primary" />
         </div>
@@ -51,7 +53,8 @@ const props = defineProps<Props>();
 const toolNameMap: Record<string, string> = {
   search_docs: '检索文档',
   read_doc: '阅读文档',
-  list_docs: '列出文档'
+  list_docs: '列出文档',
+  ask_choice: '询问选择'
 };
 
 const formattedToolName = computed(() => {
@@ -66,7 +69,7 @@ const displayValue = computed(() => {
       const path = props.toolCall.path;
       return path ? extractFileName(path) : '';
     }
-    case 'ask':
+    case 'ask_choice':
       return props.toolCall.question || '';
     default:
       return JSON.stringify(props.toolCall);

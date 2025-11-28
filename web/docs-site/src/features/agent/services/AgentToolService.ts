@@ -81,7 +81,6 @@ export class AgentToolService {
         return { status: 'error' };
       }
 
-      await this.messageManager.addMessage({ role: 'user', content: toolResult, is_hidden: true });
       await this.messageManager.replaceMessage(statusMessage.id, {
         role: 'assistant', type: 'tool_result', content: toolResult, status: 'done', is_hidden: false
       });

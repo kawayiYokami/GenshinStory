@@ -35,11 +35,29 @@ export class AgentApiService {
   /**
    * 格式化消息用于API调用
    * @description 将内部消息格式转换为API兼容格式，过滤掉UI专用消息类型
+   *
+   * !!! 重要：必读 !!!
+   * 1. API请求体中不允许出现tool_calls字段
+   * 2. tool_calls的JSON必须拼接到content里面
+   *
+   * 所以最终API请求格式应该是：
+   * {
+   *   "role": "assistant",
+   *   "content": "好的，旅行者，你对教令院感兴趣吗？{"tool":"search_docs","query":"教令院"}"
+   * }
+   *
+   * 不是：
+   * {
+   *   "role": "assistant",
+   *   "content": "好的，旅行者，你对教令院感兴趣吗？",
+   *   "tool_calls": [...]
+   * }
+   *
    * @param {Message[]} history 消息历史记录
    * @return {any[]} 格式化后的消息数组
    */
   private formatMessagesForApi(history: Message[]): any[] {
-    return history
+    const formattedMessages = history
       .filter(m => {
         // 过滤掉状态消息和错误消息
         if (m.type === 'tool_status' || m.type === 'error') {
@@ -49,7 +67,31 @@ export class AgentApiService {
         return true;
       })
       .map(m => {
-        const messageForApi: any = { role: m.role, content: m.content };
+        let messageForApi: any = { role: m.role, content: m.content };
+
+        // 处理工具结果消息的角色转换
+        if (m.type === 'tool_result' && m.role === 'assistant') {
+          messageForApi.role = 'user';
+        }
+
+        // 处理工具调用消息：将tool_calls拼接到content中
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          const toolCallJsons = m.tool_calls.map(call => {
+            const { tool, ...params } = call;
+            return JSON.stringify({tool, ...params});
+          });
+          messageForApi.content += toolCallJsons.join('');
+        }
+
+        // 处理question字段：转换为ask_choice工具调用
+        if (m.question && m.question.text) {
+          const askChoiceCall = {
+            tool: "ask_choice",
+            question: m.question.text,
+            suggestions: m.question.suggestions || []
+          };
+          messageForApi.content += JSON.stringify(askChoiceCall);
+        }
 
         if (m.role === 'user') {
           // 用户消息：将MessageContentPart[]转换为API格式
@@ -58,9 +100,20 @@ export class AgentApiService {
             : [{ type: 'text', text: m.content }];
         }
 
-        // 注意：不发送tool_calls字段，工具调用只是文本中的上下文语法
         return messageForApi;
       });
+
+    // 检查最后一条消息是否有question字段，如果有，添加到context最后
+    const lastMessage = history[history.length - 1];
+    if (lastMessage?.question?.text) {
+      const askChoiceContext = {
+        role: 'system',
+        content: `用户当前面临选择：${lastMessage.question.text}\n可选方案：${lastMessage.question.suggestions?.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n') || ''}`
+      };
+      formattedMessages.push(askChoiceContext);
+    }
+
+    return formattedMessages;
   }
 
   /**

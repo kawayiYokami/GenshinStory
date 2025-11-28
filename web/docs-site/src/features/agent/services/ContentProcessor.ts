@@ -46,9 +46,8 @@ export class ContentProcessor {
     if (parsedResult) {
       // 检查是否为工具调用
       if ('tool' in parsedResult && typeof parsedResult.tool === 'string') {
-        // 转换为toolParserService期望的格式
-        const jsonString = JSON.stringify(parsedResult);
-        const toolCall = toolParserService.parseToolCall(jsonString);
+        // 修复：直接传递对象给toolParserService，避免不必要的字符串化
+        const toolCall = toolParserService.parseToolCall(parsedResult);
 
         if (toolCall) {
           toolCalls.push(toolCall);
@@ -75,6 +74,7 @@ export class ContentProcessor {
 
   /**
    * 从清理后的内容和工具调用重建原始内容
+   * 用于历史消息传递给LLM时，使用标准化的正确格式进行错误纠正学习
    */
   static reconstruct(processed: ProcessedContent, options: ReconstructOptions = {}): string {
     const { includeToolCalls = true, toolCallFormat = 'original' } = options;
@@ -85,13 +85,24 @@ export class ContentProcessor {
 
     let reconstructed = processed.cleanedContent;
 
-    // 在内容末尾添加工具调用
+    // 修复：直接内嵌工具调用到内容末尾，避免视觉拆分
     for (const toolCall of processed.toolCalls) {
-      const toolCallContent = toolCallFormat === 'original'
-        ? toolCall.original
-        : JSON.stringify(toolCall.params, null, 2);
+      let toolCallContent: string;
 
-      reconstructed += '\n\n' + toolCallContent;
+      if (toolCallFormat === 'original') {
+        // 历史消息中总是使用标准化格式进行错误纠正学习
+        // 这样LLM会在对话历史中看到正确的工具调用格式
+        const standardizedFormat = {
+          tool: toolCall.name,
+          ...toolCall.params
+        };
+        toolCallContent = JSON.stringify(standardizedFormat);
+      } else {
+        toolCallContent = JSON.stringify(toolCall.params, null, 2);
+      }
+
+      // 直接内嵌到内容末尾，不加换行符避免视觉拆分
+      reconstructed += toolCallContent;
     }
 
     return reconstructed;

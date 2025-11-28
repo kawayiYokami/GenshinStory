@@ -1,5 +1,31 @@
 import { FlatToolCall, isFlatToolCall } from '../types';
 
+/**
+ * 将带转义符的 JSON 字符串（通常作为另一个 JSON 字段的值）还原为可用的 JSON 对象。
+ *
+ * @param escapedJsonString - 包含转义 JSON 结构的外部 JSON 字符串。
+ * @param keyToUnescape - 包含内部转义 JSON 字符串的字段名。
+ * @returns 还原后的内部 JSON 对象。
+ */
+function unescapeAndParseJson(escapedJsonString: string, keyToUnescape: string): any {
+    // 1. 第一次解析：解析外部 JSON 结构。
+    const outerObject = JSON.parse(escapedJsonString);
+
+    // 检查字段是否存在
+    if (!outerObject || typeof outerObject[keyToUnescape] !== 'string') {
+        throw new Error(`字段 '${keyToUnescape}' 不存在或不是字符串类型。`);
+    }
+
+    // 获取内部带转义符的 JSON 字符串值
+    const innerEscapedString: string = outerObject[keyToUnescape];
+
+    // 2. 第二次解析：解析内部字符串值，完成还原。
+    // JSON.parse() 会自动处理 " 还原为 "，\\n 还原为 \n 等操作。
+    const finalJsonObject = JSON.parse(innerEscapedString);
+
+    return finalJsonObject;
+}
+
 interface ExtractionResult {
   json: Record<string, any>;
   startIndex: number;
@@ -17,7 +43,7 @@ function stripCodeFences(text: string): string {
  * 简化的JSON解析服务 - 只保留核心功能
  */
 export class JsonParserService {
-  private readonly VALID_TOOLS = ['search_docs', 'read_doc', 'ask'];
+  private readonly VALID_TOOLS = ['search_docs', 'read_doc', 'ask_choice'];
 
   /**
    * 根据字段类型智能匹配工具参数
@@ -37,13 +63,16 @@ export class JsonParserService {
             case 'search_docs':
               result.query = value;
               break;
-            case 'ask':
+            case 'ask_choice':
               result.question = value;
               break;
             case 'read_doc':
               result.path = value;
               break;
           }
+        } else if (Array.isArray(value) && key === 'ask_choice') {
+          // 处理quest格式的suggestions数组
+          result.suggestions = value;
         }
         continue;
       }
@@ -133,6 +162,27 @@ export class JsonParserService {
       return flattened;
     }
 
+    // 处理quest格式：{ask_choice: {question: "...", suggestions: [...]}}
+    if (obj.ask_choice && typeof obj.ask_choice === 'object') {
+      const flattened: Record<string, any> = {
+        ask_choice: obj.ask_choice.question || ''
+      };
+
+      // 展开suggestions
+      if (Array.isArray(obj.ask_choice.suggestions)) {
+        flattened.suggestions = obj.ask_choice.suggestions;
+      }
+
+      // 展开其他字段
+      for (const [key, value] of Object.entries(obj.ask_choice)) {
+        if (key !== 'question' && key !== 'suggestions') {
+          flattened[key] = value;
+        }
+      }
+
+      return flattened;
+    }
+
     return obj;
   }
 
@@ -151,24 +201,25 @@ export class JsonParserService {
       return null;
     }
 
-    // 查找最后一个行首的 {
+    // 查找最后一个 {
     const lines = responseText.split('\n');
     let lastBraceIndex = -1;
 
     for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i].trim();
-      if (line.startsWith('{')) {
+      const line = lines[i];
+
+      // 修复：查找包含{的行，不一定是行首
+      const bracePos = line.indexOf('{');
+      if (bracePos !== -1) {
         // 找到该行在原字符串中的位置
         const lineStartPos = responseText.lastIndexOf('\n' + line) + 1;
-        if (responseText.substring(lineStartPos).startsWith(line)) {
-          lastBraceIndex = lineStartPos;
-          break;
+        if (lineStartPos === 0 && responseText.startsWith(line)) {
+          // 第一行的情况
+          lastBraceIndex = bracePos;
+        } else if (lineStartPos > 0) {
+          lastBraceIndex = lineStartPos + bracePos;
         }
-        // 处理第一行的情况
-        if (i === 0 && responseText.startsWith(line)) {
-          lastBraceIndex = 0;
-          break;
-        }
+        break;
       }
     }
 
@@ -181,6 +232,7 @@ export class JsonParserService {
     const cleanedJson = stripCodeFences(jsonContent);
 
     try {
+      // 先尝试直接解析
       const parsed = JSON.parse(cleanedJson);
 
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
@@ -192,7 +244,18 @@ export class JsonParserService {
       if ('feedback_data' in parsed) {
         let feedbackData = parsed.feedback_data;
         if (typeof feedbackData === 'string') {
-          feedbackData = JSON.parse(feedbackData);
+          // 尝试使用反转义方法
+          try {
+            feedbackData = unescapeAndParseJson(cleanedJson, 'feedback_data');
+          } catch (e) {
+            // 如果失败，尝试直接解析
+            try {
+              feedbackData = JSON.parse(feedbackData);
+            } catch (e2) {
+              // 如果还是失败，尝试使用简单的字符替换
+              feedbackData = JSON.parse(feedbackData.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\'));
+            }
+          }
         }
         finalObj = feedbackData as Record<string, any>;
       }
@@ -208,8 +271,53 @@ export class JsonParserService {
 
       return flattenedObj;
     } catch (error) {
-      console.warn('[JsonParserService] JSON解析失败:', error);
-      return null;
+      // 如果直接解析失败，尝试清理转义符后解析
+      console.warn('[JsonParserService] 直接解析失败，尝试清理转义符:', error);
+
+      try {
+        // 尝试使用简单的字符替换来处理转义符
+        const escapedCleanedJson = cleanedJson.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+        const parsed = JSON.parse(escapedCleanedJson);
+
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          return null;
+        }
+
+        // 处理feedback_data格式
+        let finalObj = parsed;
+        if ('feedback_data' in parsed) {
+          let feedbackData = parsed.feedback_data;
+          if (typeof feedbackData === 'string') {
+            // 尝试使用反转义方法
+            try {
+              feedbackData = unescapeAndParseJson(escapedCleanedJson, 'feedback_data');
+            } catch (e) {
+              // 如果失败，尝试直接解析
+              try {
+                feedbackData = JSON.parse(feedbackData);
+              } catch (e2) {
+                // 如果还是失败，尝试使用简单的字符替换
+                feedbackData = JSON.parse(feedbackData.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\'));
+              }
+            }
+          }
+          finalObj = feedbackData as Record<string, any>;
+        }
+
+        // 展开嵌套结构
+        const flattenedObj = this.flattenNestedObject(finalObj);
+
+        // 统一对所有格式进行字段匹配和重新构造
+        const toolCall = this.matchToolFields(flattenedObj);
+        if (toolCall) {
+          return toolCall;
+        }
+
+        return flattenedObj;
+      } catch (secondError) {
+        console.warn('[JsonParserService] 智能JSON解析失败:', secondError);
+        return null;
+      }
     }
   }
 }
