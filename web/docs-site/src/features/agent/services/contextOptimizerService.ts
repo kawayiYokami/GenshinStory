@@ -33,13 +33,13 @@ class ContextOptimizerService {
     /**
      * 主公共入口点，用于处理和优化对话历史记录。
      * @param history 完整的当前消息历史记录。
-     * @param maxTokens 模型上下文允许的最大 Token 数。
+     * @param maxContextLength 模型上下文允许的最大 Token 数。
      * @returns 一个包含优化状态和结果的对象。
      */
-    public async processContext(history: Message[], maxTokens: number): Promise<OptimizationResult> {
+    public async processContext(history: Message[], maxContextLength: number): Promise<OptimizationResult> {
         logger.log('[优化器] 开始上下文处理...');
 
-        const threshold = maxTokens * 0.9;
+        const threshold = maxContextLength * 0.9;
         const initialTokenCount = this._calculateTotalTokens(history);
 
         if (initialTokenCount <= threshold) {

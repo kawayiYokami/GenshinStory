@@ -18,7 +18,7 @@ export interface Config {
     modelName: string;
     temperature: number;
     stream: boolean;
-    maxTokens: number;
+    maxContextLength: number;
     requestInterval: number;
     availableModels: string[];
     modelsLastFetched: number | null;
@@ -47,7 +47,7 @@ function migrateFromOldStorage(): Config[] | null {
     modelName: modelName,
     temperature: parseFloat(localStorage.getItem('temperature') || '0.7'),
     stream: true,
-    maxTokens: parseInt(localStorage.getItem('maxTokens') || '128000', 10),
+    maxContextLength: parseInt(localStorage.getItem('maxContextLength') || '128000', 10),
     requestInterval: parseInt(localStorage.getItem('requestInterval') || '1000', 10),
     availableModels: [],
     modelsLastFetched: null,
@@ -58,7 +58,7 @@ function migrateFromOldStorage(): Config[] | null {
   localStorage.removeItem('apiKey');
   localStorage.removeItem('modelName');
   localStorage.removeItem('temperature');
-  localStorage.removeItem('maxTokens');
+  localStorage.removeItem('maxContextLength');
   localStorage.removeItem('requestInterval');
 
   logger.log("旧版配置已成功迁移并清理。");
@@ -157,7 +157,7 @@ export const useConfigStore = defineStore('config', () => {
       modelName: 'gpt-4-turbo',
       temperature: 0.7,
       stream: true,
-      maxTokens: 65536,
+      maxContextLength: 65536,
       requestInterval: 1000,
       availableModels: [],
       modelsLastFetched: null,

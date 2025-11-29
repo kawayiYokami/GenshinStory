@@ -243,8 +243,8 @@ const isContextOverLimit = computed(() => {
       Array.isArray(m.content) ? m.content.map(c => c.text || '').join(' ') : m.content || ''
     ).join('\n')
   );
-  const maxTokens = activeConfig.value?.maxTokens || 128000;
-  return currentTokens > maxTokens * 0.9;
+  const maxContextLength = activeConfig.value?.maxContextLength || 128000;
+  return currentTokens > maxContextLength * 0.9;
 });
 
 const canCompress = computed(() => {

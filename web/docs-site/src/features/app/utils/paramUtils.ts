@@ -41,7 +41,7 @@ export function isValidParamKey(key: string): boolean {
     // 检查是否与保留字段冲突
     const reservedKeys = [
         'model', 'messages', 'temperature', 'stream', 'max_tokens',
-        'apiUrl', 'apiKey', 'modelName', 'maxTokens', 'requestInterval'
+        'apiUrl', 'apiKey', 'modelName', 'maxContextLength', 'requestInterval'
     ];
 
     return !reservedKeys.includes(key);

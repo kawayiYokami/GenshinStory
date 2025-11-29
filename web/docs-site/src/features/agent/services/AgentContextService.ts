@@ -28,12 +28,12 @@ export class AgentContextService {
   public async checkAndCompressContextIfNeeded(): Promise<void> {
     const currentHistory = this.orderedMessages;
     const currentTokens = contextOptimizerService.calculateHistoryTokens(currentHistory);
-    const maxTokens = this.activeConfig.value?.maxTokens || 128000;
-    const threshold = maxTokens * 0.9;
+    const maxContextLength = this.activeConfig.value?.maxContextLength || 128000;
+    const threshold = maxContextLength * 0.9;
 
     if (currentTokens > threshold) {
       logger.log(`[AgentContextService] 上下文 (${currentTokens}) 超出动态阈值 (${threshold})，触发主动压缩。`);
-      const optimizationResult = await contextOptimizerService.processContext(currentHistory, maxTokens);
+      const optimizationResult = await contextOptimizerService.processContext(currentHistory, maxContextLength);
 
       if (optimizationResult.status === 'SUCCESS' && optimizationResult.history) {
         const newMessagesById: { [key: string]: Message } = {};

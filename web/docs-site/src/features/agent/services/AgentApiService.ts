@@ -150,7 +150,6 @@ export class AgentApiService {
       messages: apiMessages,
       temperature: this.activeConfig.value.temperature,
       stream: this.activeConfig.value.stream,
-      max_tokens: this.activeConfig.value.maxTokens,
     };
 
     // 添加自定义参数

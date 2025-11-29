@@ -123,11 +123,11 @@
           </div>
 
           <div>
-            <label class="label label-text" for="max-tokens">上下文上限 (Max Tokens)</label>
+            <label class="label label-text" for="max-context-length">上下文上限 (Max Context)</label>
             <DaisyDropdown
-              :model-value="activeConfig.maxTokens || undefined"
-              :options="maxTokensOptions"
-              @update:model-value="value => { if (activeConfig) activeConfig.maxTokens = Number(value) }"
+              :model-value="activeConfig.maxContextLength || undefined"
+              :options="maxContextLengthOptions"
+              @update:model-value="value => { if (activeConfig) activeConfig.maxContextLength = Number(value) }"
               class="w-full"
             />
           </div>
@@ -285,7 +285,7 @@ const modelOptions = computed(() => {
   }))
 });
 
-const maxTokensOptions = [
+const maxContextLengthOptions = [
   { value: 4096, label: '4K' },
   { value: 8192, label: '8K' },
   { value: 16384, label: '16K' },

@@ -524,10 +524,10 @@ export const useAgentStore = defineStore('agent', () => {
       // 使用原有的AI压缩服务强制压缩消息（不管是否超限）
       const configStore = useConfigStore();
       const { activeConfig } = storeToRefs(configStore);
-      const maxTokens = activeConfig.value?.maxTokens || 128000;
+      const maxContextLength = activeConfig.value?.maxContextLength || 128000;
 
       // 强制进行压缩，不检查阈值
-      const result = await contextOptimizerService.processContext(orderedMessages.value, maxTokens);
+      const result = await contextOptimizerService.processContext(orderedMessages.value, maxContextLength);
 
       // 如果没有压缩（因为上下文未超限），强制进行摘要
       if (result.status === 'SUCCESS' && result.history === orderedMessages.value) {

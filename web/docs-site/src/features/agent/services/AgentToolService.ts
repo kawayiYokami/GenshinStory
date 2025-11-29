@@ -53,8 +53,8 @@ export class AgentToolService {
     }
 
     const predictedTotalTokens = await contextOptimizerService.calculateHistoryTokens(historyForCalculation);
-    const configMaxTokens = this.activeConfig.value?.maxTokens || 128000;
-    const predictionThreshold = Math.floor(configMaxTokens * 0.9);
+    const configMaxContextLength = this.activeConfig.value?.maxContextLength || 128000;
+    const predictionThreshold = Math.floor(configMaxContextLength * 0.9);
 
     if (predictedTotalTokens > predictionThreshold) {
       return { feedback: `错误：工具返回的结果过大 (${resultTokens} tokens)。上下文总大小将达到 ${predictedTotalTokens} tokens，超过 ${predictionThreshold} tokens 的限制。` };
