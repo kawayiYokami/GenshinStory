@@ -27,6 +27,7 @@
     "lodash.debounce": "^4.0.8",
     "lucide-vue-next": "^0.542.0",
     "markdown-it": "^14.1.0",
+    "msgpack-lite": "^0.1.26",
     "nanoid": "^5.0.7",
     "openai": "^5.11.0",
     "pinia": "^3.0.3",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "@types/js-yaml": "^4.0.9",
+    "@types/msgpack-lite": "^0.1.12",
     "@types/node": "^24.1.0",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",

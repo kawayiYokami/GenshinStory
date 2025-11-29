@@ -405,24 +405,27 @@ class LocalToolsService {
        const queryBigrams = getBigrams(query);
        if (queryBigrams.length === 0) return [];
 
-       const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(currentDomain, bigram[0]));
-       const chunks = await Promise.all(chunkPromises);
+       // 使用新的单文件搜索索引
+       const searchIndex = await dataStore.loadSearchIndex(currentDomain);
 
        const idSets: Set<number>[] = [];
-       queryBigrams.forEach((bigram, index) => {
-           const chunk = chunks[index];
-           if (chunk && chunk[bigram] && chunk[bigram].length > 0) {
-               idSets.push(new Set(chunk[bigram]));
+       queryBigrams.forEach(bigram => {
+           if (searchIndex.has(bigram)) {
+               const ids = searchIndex.get(bigram)!;
+               if (ids.length > 0) {
+                   idSets.push(new Set(ids));
+               }
            }
        });
 
        if (idSets.length === 0) return [];
 
-       const intersection = idSets.reduce((acc, set) => new Set([...acc].filter(id => set.has(id))));
-       if (intersection.size === 0) return [];
+       const intersectionSet = idSets.reduce((acc, set) => new Set([...acc].filter(id => set.has(id))));
+       if (intersectionSet.size === 0) return [];
 
-       const catalogMap = new Map<string | number, IndexItem>(dataStore.indexData.map(item => [item.id, item]));
-       const initialResults = Array.from(intersection).map(id => catalogMap.get(id)).filter(Boolean) as IndexItem[];
+       // Use the cached catalogMap from dataStore instead of creating a new one
+       const catalogMap = dataStore.catalogMap;
+       const initialResults = Array.from(intersectionSet).map(id => catalogMap.get(id)).filter(Boolean) as IndexItem[];
 
        if (initialResults.length === 0) return [];
 

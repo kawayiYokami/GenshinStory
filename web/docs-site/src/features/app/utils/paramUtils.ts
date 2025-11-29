@@ -16,8 +16,11 @@ export function convertParamValue(value: string): any {
     if (value === 'false') return false;
 
     // 数字转换
-    const numValue = Number(value);
-    if (!isNaN(numValue)) return numValue;
+    // 数字转换（仅限标准数字格式）
+    const trimmedValue = value.trim();
+    if (/^-?\d+(\.\d+)?$/.test(trimmedValue)) {
+        return Number(trimmedValue);
+    }
 
     // JSON 尝试解析（用于数组和对象）
     try {
@@ -53,7 +56,13 @@ export function cleanCustomParams(params: CustomParam[] | undefined): CustomPara
     if (!params) return [];
 
     return params
-        .filter(param => param.key && param.value && isValidParamKey(param.key))
+        .filter(param =>
+            param.key &&
+            param.value !== undefined &&
+            param.value !== null &&
+            param.value.trim().length > 0 &&
+            isValidParamKey(param.key)
+        )
         .map(param => ({
             key: param.key.trim(),
             value: param.value.trim()

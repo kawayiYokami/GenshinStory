@@ -4,6 +4,7 @@ import sys
 import re
 import json
 import shutil
+import msgpack
 from typing import List, Dict, Any
 from pathlib import Path
 from collections import defaultdict
@@ -18,6 +19,18 @@ from hsrwiki_data_parser.formatters.character_formatter import CharacterFormatte
 from hsrwiki_data_parser.formatters.relic_formatter import RelicFormatter
 from hsrwiki_data_parser.formatters.book_formatter import BookFormatter
 from hsrwiki_data_parser.formatters.material_formatter import MaterialFormatter
+
+# --- 差值编码函数 ---
+def delta_encode(sorted_ids):
+    """差值编码：将排序ID转换为相邻差值"""
+    if not sorted_ids or len(sorted_ids) == 0:
+        return []
+
+    deltas = [sorted_ids[0]]  # 第一个ID保持原值
+    for i in range(1, len(sorted_ids)):
+        deltas.append(sorted_ids[i] - sorted_ids[i-1])
+    return deltas
+
 from hsrwiki_data_parser.formatters.quest_formatter import QuestFormatter
 from hsrwiki_data_parser.formatters.outfit_formatter import OutfitFormatter
 from hsrwiki_data_parser.formatters.rogue_event_formatter import RogueEventFormatter
@@ -381,41 +394,60 @@ def export_catalog_index(cache: CacheService, output_dir_str: str):
 
 
 def export_search_index_chunked(cache: CacheService, base_output_dir_str: str):
-    """导出HSR-Wiki分片后的搜索索引 (修复版，与 hsr 版本结构一致)。"""
-    logging.info("Exporting HSR-Wiki chunked search index...")
+    """导出优化的HSR-Wiki搜索索引（差值编码+MessagePack格式）。"""
+    logging.info("Exporting HSR-Wiki optimized search index (delta+msgpack)...")
     base_output_dir = Path(base_output_dir_str)
 
     if not cache._search_index:
         logging.error("Search index is empty. Cannot export.")
         return
 
-    # 使用 set 来自动处理重复的 ID
-    chunked_index = defaultdict(lambda: defaultdict(set))
+    # 处理搜索索引，按第一个字符分组并差值编码
+    chunked_index = {}
     full_index = cache._search_index
 
     for keyword, results in full_index.items():
-        if not keyword: continue
+        if not keyword:
+            continue
         first_char = keyword[0]
-        for item in results:
-            # 核心改动：只提取 item['id']
-            chunked_index[first_char][keyword].add(item['id'])
+        if first_char not in chunked_index:
+            chunked_index[first_char] = {}
 
-    output_chunk_dir = base_output_dir / "search"
-    if output_chunk_dir.exists():
-        shutil.rmtree(output_chunk_dir)
-    output_chunk_dir.mkdir(parents=True, exist_ok=True)
+        # 提取ID、排序并差值编码
+        sorted_ids = sorted(set(int(item['id']) for item in results))
+        chunked_index[first_char][keyword] = delta_encode(sorted_ids)
 
-    logging.info(f"Found {len(chunked_index)} chunks. Writing to files...")
-    for char, chunk_data in chunked_index.items():
-        # 核心改动：将 set 转换为 list
-        final_chunk_data = {k: list(v) for k, v in chunk_data.items()}
-        chunk_file_path = output_chunk_dir / f"{char}.json"
-        save_file(
-            chunk_file_path,
-            json.dumps(final_chunk_data, ensure_ascii=False, separators=(",", ":")),
-        )
+    # 生成MessagePack文件
+    output_dir = base_output_dir / "search"
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    logging.info(f"Chunked search index saved to: {output_chunk_dir.resolve()}")
+    # 完整索引文件
+    index_data = msgpack.packb(chunked_index, use_bin_type=True)
+    with open(output_dir / "index.msg", "wb") as f:
+        f.write(index_data)
+
+    # 元数据文件
+    metadata = {
+        "version": "2.0",
+        "format": "delta+msgpack",
+        "keywords": sum(len(chunk) for chunk in chunked_index.values()),
+        "total_ids": sum(len(ids) for chunk in chunked_index.values() for ids in chunk.values()),
+        "chunks": len(chunked_index)
+    }
+
+    metadata_data = msgpack.packb(metadata, use_bin_type=True)
+    with open(output_dir / "metadata.msg", "wb") as f:
+        f.write(metadata_data)
+
+    size_mb = len(index_data) / (1024 * 1024)
+    logging.info(f"优化索引已生成: {size_mb:.1f}MB")
+    logging.info(f"索引文件: {output_dir / 'index.msg'}")
+    logging.info(f"元数据文件: {output_dir / 'metadata.msg'}")
+    logging.info(f"分片数量: {len(chunked_index)}")
+    logging.info(f"关键词总数: {sum(len(chunk) for chunk in chunked_index.values())}")
+    logging.info(f"唯一ID总数: {sum(len(ids) for chunk in chunked_index.values() for ids in chunk.values())}")
 
 
 def main():

@@ -11,12 +11,24 @@ import os
 import json
 import re
 import shutil
+import msgpack
 
 from pathlib import Path
 # 将项目根目录添加到 sys.path，以便可以导入 zzz_data_parser
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from zzz_data_parser.api import ZZZDataAPI
+
+# --- 差值编码函数 ---
+def delta_encode(sorted_ids):
+    """差值编码：将排序ID转换为相邻差值"""
+    if not sorted_ids or len(sorted_ids) == 0:
+        return []
+
+    deltas = [sorted_ids[0]]  # 第一个ID保持原值
+    for i in range(1, len(sorted_ids)):
+        deltas.append(sorted_ids[i] - sorted_ids[i-1])
+    return deltas
 
 # 配置
 CACHE_FILE_PATH = "zzz_data_parser/cache/zzz_data.cache.gz"
@@ -398,10 +410,9 @@ def collect_session_metadata(api: ZZZDataAPI, catalog: list) -> None:
 
 def export_search_index_chunked(api: ZZZDataAPI) -> None:
     """
-    导出分片后的搜索索引。
-    每个分片以词条的第一个字符命名，如 '安.json'。
+    导出优化的ZZZ-Wiki搜索索引（差值编码+MessagePack格式）。
     """
-    print("Exporting chunked search index...")
+    print("Exporting ZZZ-Wiki optimized search index (delta+msgpack)...")
 
     if not api.loader or not hasattr(api.loader, '_search_index') or not api.loader._search_index:
         print("Error: Search index not found or is empty in API loader. Please ensure cache is generated correctly.")
@@ -410,7 +421,7 @@ def export_search_index_chunked(api: ZZZDataAPI) -> None:
     chunked_index = {}
     full_index = api.loader._search_index
 
-    # 1. 按第一个字符对所有词条进行分组
+    # 处理搜索索引，按第一个字符分组并差值编码
     for keyword, results in full_index.items():
         if not keyword:
             continue
@@ -418,41 +429,55 @@ def export_search_index_chunked(api: ZZZDataAPI) -> None:
         if first_char not in chunked_index:
             chunked_index[first_char] = {}
 
-        # 将结果（仅ID）添加到对应的分片中
-        # 使用 set 来自动去重
-        if keyword not in chunked_index[first_char]:
-            chunked_index[first_char][keyword] = set()
-
+        # 提取ID、排序并差值编码
+        sorted_ids = []
         for item in results:
-            # 假设 item 有一个 'id' 属性
+            item_id = None
             if hasattr(item, 'id'):
-                chunked_index[first_char][keyword].add(item.id)
+                item_id = item.id
+            elif isinstance(item, dict) and 'id' in item:
+                item_id = item['id']
 
-    # 2. 将每个分片写入单独的JSON文件
-    output_chunk_dir = Path(JSON_OUTPUT_DIR) / "search"
-    if output_chunk_dir.exists():
-        import shutil
-        shutil.rmtree(output_chunk_dir)
-        print(f"Cleaned old chunked index directory: {output_chunk_dir}")
-    output_chunk_dir.mkdir(parents=True, exist_ok=True)
-    total_chunks = len(chunked_index)
-    print(f"Found {total_chunks} chunks, writing to files...")
+            if item_id:
+                # 提取数字部分用于差值编码（处理 'BangBooAB-10161802' 格式）
+                numeric_id = re.sub(r'[^\d]', '', str(item_id))
+                if numeric_id:
+                    sorted_ids.append(int(numeric_id))
 
-    for i, (char, chunk_data) in enumerate(chunked_index.items()):
-        # 将 set 转换为 list 以便 JSON 序列化
-        final_chunk_data = {k: list(v) for k, v in chunk_data.items()}
-        # 文件名不能包含非法字符
-        safe_char = clean_filename(char)
-        if not safe_char:
-            safe_char = "_"
-        chunk_file_path = output_chunk_dir / f"{safe_char}.json"
+        sorted_ids = sorted(set(sorted_ids))
+        chunked_index[first_char][keyword] = delta_encode(sorted_ids)
 
-        # 为了生产环境的性能，分片文件不使用indent
-        save_file(chunk_file_path, json.dumps(final_chunk_data, ensure_ascii=False, separators=(',', ':')))
+    # 生成MessagePack文件
+    output_dir = Path(JSON_OUTPUT_DIR) / "search"
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+        print(f"Cleaned old index directory: {output_dir}")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-        if (i + 1) % 1000 == 0:
-            print(f"  ...written {i + 1}/{total_chunks} chunk files")
-    print(f"All chunked indexes have been saved to: {os.path.abspath(output_chunk_dir)}")
+    # 完整索引文件
+    index_data = msgpack.packb(chunked_index, use_bin_type=True)
+    with open(output_dir / "index.msg", "wb") as f:
+        f.write(index_data)
+
+    # 元数据文件
+    metadata = {
+        "version": "2.0",
+        "format": "delta+msgpack",
+        "keywords": len(chunked_index),
+        "total_ids": sum(len(chunk) for chunk in chunked_index.values()),
+        "chunks": len(chunked_index)
+    }
+
+    metadata_data = msgpack.packb(metadata, use_bin_type=True)
+    with open(output_dir / "metadata.msg", "wb") as f:
+        f.write(metadata_data)
+
+    size_mb = len(index_data) / (1024 * 1024)
+    print(f"优化索引已生成: {size_mb:.1f}MB")
+    print(f"索引文件: {output_dir / 'index.msg'}")
+    print(f"元数据文件: {output_dir / 'metadata.msg'}")
+    print(f"分片数量: {len(chunked_index)}")
+    print(f"词条总数: {sum(len(chunk) for chunk in chunked_index.values())}")
 
 def main():
     """主函数"""

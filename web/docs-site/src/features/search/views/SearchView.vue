@@ -131,23 +131,7 @@ const catalogMap = computed(() => {
 });
 
 // --- 搜索逻辑 ---
-
-/**
- * 将字符串切分为二字词组 (bigrams)
- */
-function getBigrams(text: string): string[] {
-  const cleanedText = text.replace(/\s+/g, '').toLowerCase();
-  if (cleanedText.length <= 1) {
-    return [cleanedText];
-  }
-  const bigrams = new Set<string>();
-  for (let i = 0; i < cleanedText.length - 1; i++) {
-    bigrams.add(cleanedText.substring(i, i + 2));
-  }
-  return Array.from(bigrams);
-}
-
-// fetchSearchChunks 逻辑已移至 dataStore
+// 搜索相关函数已移至 dataStore，这里直接使用 dataStore.searchCatalog
 
 async function performSearch() {
   hasSearched.value = true;
@@ -161,46 +145,14 @@ async function performSearch() {
   error.value = null;
 
   try {
-    const queryBigrams = getBigrams(searchQuery.value);
+    // 使用 dataStore 的集中搜索功能
+    const searchResults = await dataStore.searchCatalog(searchQuery.value);
+    results.value = searchResults;
 
-    // 1. 并行从 dataStore 获取所有需要的分片
-    const chunkPromises = queryBigrams.map(bigram => dataStore.fetchSearchChunk(appStore.currentDomain || '', bigram[0]));
-    const chunks = await Promise.all(chunkPromises);
-
-    // 2. 获取每个二元组对应的ID列表
-    const idSets: Set<number>[] = [];
-    queryBigrams.forEach((bigram, index) => {
-      const chunk = chunks[index];
-      if (chunk && chunk[bigram]) {
-        idSets.push(new Set(chunk[bigram]));
-      }
-    });
-
-    if (idSets.length === 0) {
-      results.value = [];
-      return;
-    }
-
-    // 3. 计算所有查询词组都匹配的ID交集 (AND logic)
-    if (idSets.length === 0) {
-      results.value = [];
-      isSearching.value = false;
-      return;
-    }
-    const intersection = idSets.reduce((acc, set) => new Set([...acc].filter(id => set.has(id))));
-
-    // 4. 从目录索引中查找详细信息并构建最终结果
-    const finalResults: CatalogItem[] = [];
-    intersection.forEach(id => {
-      const item = catalogMap.value.get(id);
-      if (item) {
-        finalResults.push(item);
-      }
-    });
-
-    results.value = finalResults;
+    console.log('SearchView: 搜索完成，查询:', searchQuery.value, '结果数量:', searchResults.length);
   } catch (e) {
     error.value = e instanceof Error ? e.message : '搜索时发生未知错误';
+    console.error('SearchView: 搜索失败:', e);
   } finally {
     isSearching.value = false;
   }

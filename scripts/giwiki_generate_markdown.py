@@ -4,6 +4,7 @@ import sys
 import re
 import json
 import gzip
+import msgpack
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -12,6 +13,17 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 from giwiki_data_parser.main import GiWikiDataParser
+
+# --- 差值编码函数 ---
+def delta_encode(sorted_ids):
+    """差值编码：将排序ID转换为相邻差值"""
+    if not sorted_ids or len(sorted_ids) == 0:
+        return []
+
+    deltas = [sorted_ids[0]]  # 第一个ID保持原值
+    for i in range(1, len(sorted_ids)):
+        deltas.append(sorted_ids[i] - sorted_ids[i-1])
+    return deltas
 
 # --- 配置 ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -242,18 +254,17 @@ def export_catalog_index(metadata_index: List[Dict[str, Any]], output_dir: str):
 
 def export_search_index_chunked(search_index: Dict[str, List[Dict[str, Any]]], base_output_dir: str):
     """
-    导出分片后的搜索索引。
-    每个分片以词条的第一个字符命名，如 '旅.json'。
+    导出优化的搜索索引（差值编码+MessagePack格式）。
+    生成两个文件：index.msg（完整索引）和metadata.msg（元数据）。
     """
-    logging.info("开始导出分片式搜索索引...")
+    logging.info("开始导出优化搜索索引（差值编码+MessagePack）...")
 
     if not search_index:
         logging.error("错误：搜索索引为空。")
         return
 
+    # 处理搜索索引，按第一个字符分组并差值编码
     chunked_index = {}
-
-    # 1. 按第一个字符对所有词条进行分组
     for keyword, results in search_index.items():
         if not keyword:
             continue
@@ -261,39 +272,42 @@ def export_search_index_chunked(search_index: Dict[str, List[Dict[str, Any]]], b
         if first_char not in chunked_index:
             chunked_index[first_char] = {}
 
-        # 将结果（仅ID）添加到对应的分片中
-        # 使用 set 来自动去重
-        if keyword not in chunked_index[first_char]:
-            chunked_index[first_char][keyword] = set()
+        # 提取ID、排序并差值编码
+        sorted_ids = sorted(set(int(item['id']) for item in results))
+        chunked_index[first_char][keyword] = delta_encode(sorted_ids)
 
-        for item in results:
-            chunked_index[first_char][keyword].add(item['id'])
-
-    # 2. 将每个分片写入单独的JSON文件
-    output_chunk_dir = Path(base_output_dir) / "search"
-    if output_chunk_dir.exists():
+    # 生成MessagePack文件
+    output_dir = Path(base_output_dir) / "search"
+    if output_dir.exists():
         import shutil
-        shutil.rmtree(output_chunk_dir)
-        logging.info(f"已清理旧的分片索引目录: {output_chunk_dir}")
-    output_chunk_dir.mkdir(parents=True, exist_ok=True)
+        shutil.rmtree(output_dir)
+        logging.info(f"已清理旧的索引目录: {output_dir}")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    total_chunks = len(chunked_index)
-    logging.info(f"共找到 {total_chunks} 个分片，准备写入文件...")
+    # 完整索引文件
+    index_data = msgpack.packb(chunked_index, use_bin_type=True)
+    with open(output_dir / "index.msg", "wb") as f:
+        f.write(index_data)
 
-    for i, (char, chunk_data) in enumerate(chunked_index.items()):
-        # 将 set 转换为 list 以便 JSON 序列化
-        final_chunk_data = {k: list(v) for k, v in chunk_data.items()}
+    # 元数据文件
+    metadata = {
+        "version": "2.0",
+        "format": "delta+msgpack",
+        "keywords": len(chunked_index),
+        "total_ids": sum(len(chunk) for chunk in chunked_index.values()),
+        "chunks": len(chunked_index)
+    }
 
-        # 文件名不能包含非法字符，但我们的key是单个字符，通常是安全的
-        chunk_file_path = output_chunk_dir / f"{char}.json"
+    metadata_data = msgpack.packb(metadata, use_bin_type=True)
+    with open(output_dir / "metadata.msg", "wb") as f:
+        f.write(metadata_data)
 
-        # 为了生产环境的性能，分片文件不使用indent
-        save_file(chunk_file_path, json.dumps(final_chunk_data, ensure_ascii=False, separators=(',', ':')))
-
-        if (i + 1) % 100 == 0:
-            logging.info(f"  ...已写入 {i + 1}/{total_chunks} 个分片文件")
-
-    logging.info(f"所有分片索引已保存到: {output_chunk_dir.resolve()}")
+    size_mb = len(index_data) / (1024 * 1024)
+    logging.info(f"优化索引已生成: {size_mb:.1f}MB")
+    logging.info(f"索引文件: {output_dir / 'index.msg'}")
+    logging.info(f"元数据文件: {output_dir / 'metadata.msg'}")
+    logging.info(f"分片数量: {len(chunked_index)}")
+    logging.info(f"词条总数: {sum(len(chunk) for chunk in chunked_index.values())}")
 
 def main():
     """主执行函数（修复版本，完全基于缓存）"""
