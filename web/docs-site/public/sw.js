@@ -1,9 +1,6 @@
 const CACHE_NAME = 'zhihuigong-v1';
 const urlsToCache = [
-const urlsToCache = [
   '/',                    // 根路径
-  '/nahida-icon.svg'     // 图标文件（如果存在）
-];
   '/nahida-icon.svg'     // 图标文件（如果存在）
 ];
 
