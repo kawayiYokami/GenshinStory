@@ -9,6 +9,7 @@ import logger from '../../app/services/loggerService';
 import { createPacedStream } from '../../../lib/streaming/streamingService';
 import type { Message } from '../types';
 import type { MessageManager } from '../stores/messageManager';
+import { paramsToRequestBody } from '../../app/utils/paramUtils';
 
 /**
  * 代理API服务类
@@ -142,12 +143,19 @@ export class AgentApiService {
     }
 
     const apiMessages = this.formatMessagesForApi(history);
-    const requestBody = {
+
+    // 构建基础请求体
+    const baseRequestBody = {
       model: this.activeConfig.value.modelName,
       messages: apiMessages,
       temperature: this.activeConfig.value.temperature,
       stream: this.activeConfig.value.stream,
+      max_tokens: this.activeConfig.value.maxTokens,
     };
+
+    // 添加自定义参数
+    const customParamsBody = paramsToRequestBody(this.activeConfig.value.customParams);
+    const requestBody = { ...baseRequestBody, ...customParamsBody };
 
     logger.log("[AgentApiService] 准备调用 API...", { messages: JSON.parse(JSON.stringify(apiMessages)) });
     logger.setLastRequest(requestBody);

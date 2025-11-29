@@ -180,6 +180,55 @@
           </label>
         </div>
 
+        <!-- 自定义参数 -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium">自定义参数</label>
+            <button
+              @click="addCustomParam"
+              class="btn btn-sm btn-ghost"
+              title="添加自定义参数"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"/><path d="M12 5v14"/>
+              </svg>
+              添加参数
+            </button>
+          </div>
+
+          <div v-for="(param, index) in activeConfig.customParams" :key="index" class="flex gap-2 items-center">
+            <input
+              type="text"
+              v-model="param.key"
+              placeholder="参数名 (如: top_k)"
+              class="input input-bordered input-sm flex-1"
+            />
+            <input
+              type="text"
+              v-model="param.value"
+              placeholder="参数值 (如: 50)"
+              class="input input-bordered input-sm flex-1"
+            />
+            <button
+              @click="removeCustomParam(index)"
+              class="btn btn-sm btn-ghost btn-square text-error"
+              title="删除参数"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="text-xs text-base-content/70 bg-base-200 p-3 rounded-md">
+            <div class="font-medium mb-1">常见的格式（如果不知道什么是标头请不要修改）：</div>
+            <div class="space-y-1">
+              <div>• <code class="bg-base-300 px-1 rounded">enable_thinking</code> - 启用思考模式 (true/false)</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Debug options can be added back when showRawContent is implemented in config store -->
       </div>
 
@@ -298,5 +347,28 @@ const switchDomain = (domain: string) => {
 
 const openNoKeyModal = () => {
   emit('openNoKeyModal');
+};
+
+// 自定义参数相关方法
+const addCustomParam = () => {
+  if (!activeConfig.value) return;
+
+  if (!activeConfig.value.customParams) {
+    activeConfig.value.customParams = [];
+  }
+
+  activeConfig.value.customParams.push({
+    key: '',
+    value: ''
+  });
+
+  logger.log('--- UI: Added new custom parameter ---');
+};
+
+const removeCustomParam = (index: number) => {
+  if (!activeConfig.value?.customParams) return;
+
+  const removed = activeConfig.value.customParams.splice(index, 1)[0];
+  logger.log(`--- UI: Removed custom parameter: ${removed.key} ---`);
 };
 </script>

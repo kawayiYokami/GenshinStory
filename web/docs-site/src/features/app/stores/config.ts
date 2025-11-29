@@ -5,6 +5,11 @@ import logger from '@/features/app/services/loggerService';
 import type { Ref } from 'vue';
 
 // --- 类型定义 ---
+export interface CustomParam {
+    key: string;
+    value: string;
+}
+
 export interface Config {
     id: string;
     name: string;
@@ -17,6 +22,7 @@ export interface Config {
     requestInterval: number;
     availableModels: string[];
     modelsLastFetched: number | null;
+    customParams?: CustomParam[];
 }
 
 const CONFIG_STORAGE_KEY = 'ai_configs_v2';
@@ -45,6 +51,7 @@ function migrateFromOldStorage(): Config[] | null {
     requestInterval: parseInt(localStorage.getItem('requestInterval') || '1000', 10),
     availableModels: [],
     modelsLastFetched: null,
+    customParams: [], // 迁移时也初始化空数组
   };
 
   localStorage.removeItem('apiUrl');
@@ -66,6 +73,7 @@ function loadConfigs(): Config[] {
       const loaded = JSON.parse(storedConfigs) as Config[];
       return loaded.map(c => ({
         ...c,
+        customParams: c.customParams || [], // 确保向后兼容性
         availableModels: c.availableModels || [],
         modelsLastFetched: c.modelsLastFetched || null,
       }));
@@ -153,6 +161,7 @@ export const useConfigStore = defineStore('config', () => {
       requestInterval: 1000,
       availableModels: [],
       modelsLastFetched: null,
+      customParams: [], // 新配置初始化空的自定义参数数组
       ...configData,
       name: newName,
     };
