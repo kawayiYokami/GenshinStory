@@ -56,7 +56,7 @@
   </div>
 
   <!-- 助理消息：简化为直接内容展示，靠左对齐，右侧留空 -->
-  <div v-else class="message-container animate-slide-in-left" :class="{ 'streaming-message': !message.streamCompleted && message.type === 'text', 'typing-indicator': !message.streamCompleted && message.type === 'text' }" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
+  <div v-else class="message-container animate-slide-in-left" :class="{ 'streaming-message': !message.streamCompleted && message.type === 'text' && message.status !== 'error', 'typing-indicator': !message.streamCompleted && message.type === 'text' && message.status !== 'error' }" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <!-- DEBUG: Raw Content View -->
     <pre v-if="showRawContent" class="raw-content-debug">{{ message }}</pre>
 

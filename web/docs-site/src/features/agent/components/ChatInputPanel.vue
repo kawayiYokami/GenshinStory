@@ -98,14 +98,13 @@
           <Camera class="w-5 h-5" />
         </button>
 
-        <!-- 调试按钮 (仅在开发模式下显示) -->
+        <!-- 原文切换按钮 -->
         <button
-          v-if="isDevMode"
           @click="toggleDebugPanel"
           class="debug-panel-btn"
-          title="调试面板"
+          title="原文切换"
         >
-          <Wrench class="w-5 h-5" />
+          <FileText class="w-5 h-5" />
         </button>
 
       </div>
@@ -136,7 +135,7 @@ import ChatAttachments from './ChatAttachments.vue';
 import ChatToolbar from './ChatToolbar.vue';
 import { useReferenceHandler } from './useReferenceHandler';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
-import { AlertTriangle, Archive, MessageCirclePlus, Camera, Wrench } from 'lucide-vue-next';
+import { AlertTriangle, Archive, MessageCirclePlus, Camera, FileText } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { simpleContextCompressor } from '../services/simpleContextCompressor';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
