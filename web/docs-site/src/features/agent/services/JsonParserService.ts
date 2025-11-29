@@ -104,6 +104,11 @@ export class JsonParserService {
       toolName = obj.name;
     }
 
+    // 修复：同时检查标准的 'tool' 字段
+    if (!toolName && obj.tool && typeof obj.tool === 'string' && this.isValidToolName(obj.tool)) {
+      toolName = obj.tool;
+    }
+
     if (!toolName) {
       return null;
     }
@@ -201,53 +206,69 @@ export class JsonParserService {
       return null;
     }
 
-    // 查找最后一个 {
-    const lines = responseText.split('\n');
-    let lastBraceIndex = -1;
-
-    // 修复：使用迭代方式计算每行的准确起始位置，避免重复文本的问题
-    let currentPos = responseText.length;
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-
-      // 计算当前行的起始位置
-      const lineLength = line.length;
-      const lineStart = currentPos - lineLength;
-
-      // 检查并调整前一个换行符
-      let adjustedLineStart = lineStart;
-      if (i > 0 && currentPos < responseText.length && responseText.charAt(currentPos - lineLength - 1) === '\n') {
-        adjustedLineStart = lineStart - 1;
+    // 策略优化：不再依赖脆弱的行遍历寻找最后一个 {，而是尝试解析所有可能的 JSON 块
+    // 优先尝试整个字符串（处理纯 JSON 响应）
+    try {
+      const fullParsed = JSON.parse(stripCodeFences(responseText));
+      if (typeof fullParsed === 'object' && fullParsed !== null && !Array.isArray(fullParsed)) {
+        return this.processParsedObject(fullParsed, responseText);
       }
-
-      // 查找包含{的行
-      const bracePos = line.indexOf('{');
-      if (bracePos !== -1) {
-        // 计算大括号在原始文本中的准确位置
-        lastBraceIndex = adjustedLineStart + bracePos;
-        break;
-      }
-
-      // 更新当前位置为当前行开始的位置减去换行符的长度
-      currentPos = adjustedLineStart - (i > 0 ? 1 : 0);
+    } catch (e) {
+      // 忽略错误，继续寻找子串
     }
 
-    if (lastBraceIndex === -1) {
+    // 查找所有 { 的位置
+    const braceIndices: number[] = [];
+    let idx = responseText.indexOf('{');
+    while (idx !== -1) {
+      braceIndices.push(idx);
+      idx = responseText.indexOf('{', idx + 1);
+    }
+
+    // 如果没有找到 {，直接返回 null
+    if (braceIndices.length === 0) {
       return null;
     }
 
-    // 从找到的位置开始截取
-    const jsonContent = responseText.substring(lastBraceIndex);
-    const cleanedJson = stripCodeFences(jsonContent);
+    // 从后往前尝试（通常工具调用在最后），或者从前往后？
+    // 如果是嵌套结构 {"a": {"b": 1}}，我们需要最外层的 {。
+    // 如果是多个独立块 A... {B} ... {C}，通常最后一个是有效的工具调用。
+    // 但是考虑到嵌套，如果从后往前找，会先找到 {"b": 1}，这可能不是我们要的（如果它只是参数的一部分）。
+    // 不过 parseLlmResponse 的目标通常是提取整个工具调用对象。
+    // 如果工具调用本身包含嵌套对象，JSON.parse 会成功解析最外层。
+    // 所以应该优先尝试“最外层且最后”的块。
+    // 简单的策略：尝试每一个 { 开始的子串，直到找到一个合法的对象。
+    // 为了性能和准确性，我们从第一个 { 开始尝试。如果有多个平行的 JSON，这会返回第一个。
+    // 如果需要最后一个，应该倒序遍历？
+    // 通常 LLM 输出为： "Analysis... \n { Tool Call }"
+    // 此时只有一个顶层 JSON。
+    // 如果输出为： "{Status} \n {Tool}", 我们可能想要 Tool。
+    // 这里我们保留原有逻辑的意图：寻找“最后”的有效 JSON。
+    // 所以我们倒序遍历 braceIndices。
 
-    try {
-      // 先尝试直接解析
-      const parsed = JSON.parse(cleanedJson);
+    for (let i = braceIndices.length - 1; i >= 0; i--) {
+      const start = braceIndices[i];
+      const candidate = responseText.substring(start);
+      const cleaned = stripCodeFences(candidate);
 
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        return null;
+      try {
+        const parsed = JSON.parse(cleaned);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          // 成功解析！
+          return this.processParsedObject(parsed, cleaned);
+        }
+      } catch (e) {
+        // 解析失败，尝试下一个候选
       }
+    }
 
+    return null;
+  }
+
+  /**
+   * 统一处理解析后的对象（处理 feedback_data、展开嵌套、匹配工具字段）
+   */
+  private processParsedObject(parsed: any, rawJsonString: string): Record<string, any> | null {
       // 处理feedback_data格式
       let finalObj = parsed;
       if ('feedback_data' in parsed) {
@@ -255,7 +276,7 @@ export class JsonParserService {
         if (typeof feedbackData === 'string') {
           // 尝试使用反转义方法
           try {
-            feedbackData = unescapeAndParseJson(cleanedJson, 'feedback_data');
+            feedbackData = unescapeAndParseJson(rawJsonString, 'feedback_data');
           } catch (e) {
             // 如果失败，尝试直接解析
             try {
@@ -279,55 +300,6 @@ export class JsonParserService {
       }
 
       return flattenedObj;
-    } catch (error) {
-      // 如果直接解析失败，尝试清理转义符后解析
-      console.warn('[JsonParserService] 直接解析失败，尝试清理转义符:', error);
-
-      try {
-        // 尝试使用简单的字符替换来处理转义符
-        const escapedCleanedJson = cleanedJson.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
-        const parsed = JSON.parse(escapedCleanedJson);
-
-        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-          return null;
-        }
-
-        // 处理feedback_data格式
-        let finalObj = parsed;
-        if ('feedback_data' in parsed) {
-          let feedbackData = parsed.feedback_data;
-          if (typeof feedbackData === 'string') {
-            // 尝试使用反转义方法
-            try {
-              feedbackData = unescapeAndParseJson(escapedCleanedJson, 'feedback_data');
-            } catch (e) {
-              // 如果失败，尝试直接解析
-              try {
-                feedbackData = JSON.parse(feedbackData);
-              } catch (e2) {
-                // 如果还是失败，尝试使用简单的字符替换
-                feedbackData = JSON.parse(feedbackData.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\'));
-              }
-            }
-          }
-          finalObj = feedbackData as Record<string, any>;
-        }
-
-        // 展开嵌套结构
-        const flattenedObj = this.flattenNestedObject(finalObj);
-
-        // 统一对所有格式进行字段匹配和重新构造
-        const toolCall = this.matchToolFields(flattenedObj);
-        if (toolCall) {
-          return toolCall;
-        }
-
-        return flattenedObj;
-      } catch (secondError) {
-        console.warn('[JsonParserService] 智能JSON解析失败:', secondError);
-        return null;
-      }
-    }
   }
 }
 
