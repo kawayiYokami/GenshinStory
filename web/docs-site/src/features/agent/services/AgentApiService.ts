@@ -168,19 +168,26 @@ export class AgentApiService {
   }
 
   /**
-   * 处理流式响应
-   * @description 处理AI API的流式响应，逐步构建助手消息
-   * @param {any} openaiStream OpenAI流式响应
+   * 处理 AI 响应 (流式或非流式)
+   * @description 处理 Vercel AI SDK 的响应结果，逐步构建或直接创建助手消息
+   * @param {any} result Vercel AI SDK 的返回结果 (StreamTextResult | GenerateTextResult)
    * @param {AbortSignal} abortSignal 中止信号
    * @return {Promise<Message | null>} 创建的助手消息
-   * @throws {Error} 当处理流式响应失败时抛出异常
+   * @throws {Error} 当处理响应失败时抛出异常
    */
-  public async handleStream(openaiStream: any, abortSignal: AbortSignal): Promise<Message | null> {
+  public async handleStream(result: any, abortSignal: AbortSignal): Promise<Message | null> {
     let assistantMessage: Message | null = null;
     let messageId: string | null = null;
-    const pacedStream = createPacedStream(openaiStream);
 
-    logger.log('[AgentApiService] 开始消费 paced stream...');
+    // 统一处理逻辑：如果是非流式响应，构造成一个单次流
+    // 这样可以复用同一套消费逻辑，确保 UI 的 SmartBuffer 能够正确触发工具解析
+    const rawStream = result.textStream
+      ? result.textStream
+      : (async function* () { yield result.text || ''; })();
+
+    // --- 统一流式处理 ---
+    const pacedStream = createPacedStream(rawStream);
+    logger.log(`[AgentApiService] 开始消费响应 (模式: ${result.textStream ? 'Streaming' : 'Non-Streaming -> Simulated Stream'})...`);
 
     try {
       for await (const chunk of pacedStream) {
@@ -190,6 +197,7 @@ export class AgentApiService {
         }
         if (chunk.done) break;
         if (!assistantMessage && chunk.value) {
+          // 初始状态为 streaming，这很重要，因为 UI 组件会根据此状态启动 SmartBuffer
           const newMsg = await this.messageManager.addMessage({
             role: 'assistant', content: '', type: 'text', status: 'streaming',
           });

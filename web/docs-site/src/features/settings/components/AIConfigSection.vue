@@ -71,13 +71,33 @@
       <!-- Configuration Form -->
       <div v-if="activeConfig" class="space-y-4">
         <div class="space-y-4">
+          <!-- Provider Selection -->
           <div>
-            <label class="label label-text" for="api-url">API URL</label>
+            <label class="label label-text" for="provider-select">提供商 (Provider)</label>
+            <DaisyDropdown
+              id="provider-select"
+              :model-value="activeConfig.provider || 'openai'"
+              :options="providerOptions"
+              @update:model-value="value => { if (activeConfig) updateConfig(activeConfig.id, { provider: value as 'openai' | 'google' }) }"
+              class="w-full"
+            />
+          </div>
+
+          <div>
+            <label class="label label-text" for="api-url">
+              API URL
+              <span class="text-xs text-base-content/60 ml-2" v-if="activeConfig.provider === 'google'">
+                (Gemini原生格式, 例如: http://localhost:8888/v1beta)
+              </span>
+              <span class="text-xs text-base-content/60 ml-2" v-else>
+                (OpenAI兼容格式, 例如: http://localhost:8888/v1)
+              </span>
+            </label>
             <input
               id="api-url"
               type="text"
               v-model="activeConfig.apiUrl"
-              placeholder="例如: https://api.openai.com/v1"
+              :placeholder="activeConfig.provider === 'google' ? '默认: https://generativelanguage.googleapis.com/v1beta' : '例如: https://api.openai.com/v1'"
               class="input input-bordered w-full"
             />
           </div>
@@ -96,17 +116,39 @@
 
         <div class="space-y-4">
           <div>
-            <label class="label label-text" for="model-select">Model</label>
+            <div class="flex justify-between items-center mb-1">
+              <label class="label label-text py-0" for="model-select">Model</label>
+              <label class="label cursor-pointer py-0 gap-2">
+                <span class="label-text text-xs">手动输入</span>
+                <input type="checkbox" v-model="isCustomModel" class="checkbox checkbox-xs" />
+              </label>
+            </div>
+
             <div class="flex gap-2">
+              <!-- 模式 1: 文本输入框 (Manual Input) -->
+              <!-- 绑定的是自定义模型(availableModels[0])，而不是当前选中的模型 -->
+              <input
+                v-if="isCustomModel"
+                type="text"
+                :value="customModelValue"
+                @input="handleCustomModelInput"
+                placeholder="请输入模型名称 (如: gemini-1.5-pro)"
+                class="input input-bordered w-full flex-1"
+              />
+
+              <!-- 模式 2: 下拉选择器 (Dropdown List) -->
               <DaisyDropdown
-                :model-value="activeConfig.modelName || undefined"
+                v-else
+                :model-value="activeConfig.modelName"
                 :options="modelOptions"
-                :placeholder="!activeConfig.availableModels || activeConfig.availableModels.length === 0 ? '请先设置有效的 API Key 并刷新' : undefined"
-                :disabled="isFetchingModels || (!activeConfig.availableModels || activeConfig.availableModels.length === 0)"
-                @update:model-value="value => { if (activeConfig) activeConfig.modelName = value as string }"
+                :placeholder="!activeConfig.availableModels || activeConfig.availableModels.length === 0 ? '请先刷新获取模型' : undefined"
+                :disabled="isFetchingModels"
+                @update:model-value="handleModelSelect"
                 class="flex-1"
               />
+
               <button
+                v-if="!isCustomModel"
                 @click="fetchModels"
                 class="btn btn-square"
                 :disabled="!activeConfig.apiKey || isFetchingModels"
@@ -125,9 +167,9 @@
           <div>
             <label class="label label-text" for="max-context-length">上下文上限 (Max Context)</label>
             <DaisyDropdown
-              :model-value="activeConfig.maxContextLength || undefined"
+              :model-value="activeConfig.maxContextLength"
               :options="maxContextLengthOptions"
-              @update:model-value="value => { if (activeConfig) activeConfig.maxContextLength = Number(value) }"
+              @update:model-value="handleMaxContextChange"
               class="w-full"
             />
           </div>
@@ -247,7 +289,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useConfigStore } from '@/features/app/stores/config';
 import logger from '@/features/app/services/loggerService';
@@ -256,7 +298,7 @@ import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
 // Stores
 const configStore = useConfigStore();
 const { configs, activeConfigId, activeConfig, isFetchingModels } = storeToRefs(configStore);
-const { fetchModels, addConfig, updateConfig, deleteConfig, setActiveConfig } = configStore;
+const { fetchModels, addConfig, updateConfig, deleteConfig, setActiveConfig, setCustomModel } = configStore;
 
 // Props
 const props = defineProps({
@@ -269,13 +311,43 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['switchDomain', 'openNoKeyModal']);
 
+// Local state
+const isCustomModel = ref(false);
+
+// Auto-enable custom model input if provider is google
+watch(() => activeConfig.value?.provider, (newProvider) => {
+  if (newProvider === 'google') {
+    isCustomModel.value = true;
+  }
+}, { immediate: true });
+
+// 当切换到手动模式时，自动选中自定义模型
+watch(isCustomModel, (newValue) => {
+  if (newValue && activeConfig.value) {
+    const customModel = activeConfig.value.availableModels?.[0] || activeConfig.value.modelName;
+    updateConfig(activeConfig.value.id, { modelName: customModel });
+  }
+});
+
 // Computed properties
+const customModelValue = computed(() => {
+  if (!activeConfig.value?.availableModels || activeConfig.value.availableModels.length === 0) {
+    return activeConfig.value?.modelName || '';
+  }
+  return activeConfig.value.availableModels[0];
+});
+
 const configOptions = computed(() => {
   return configs.value.map(config => ({
     value: config.id,
     label: config.name
   }));
 });
+
+const providerOptions = [
+  { value: 'openai', label: 'OpenAI Compatible (推荐)' },
+  { value: 'google', label: 'Google Gemini Native' },
+];
 
 const modelOptions = computed(() => {
   if (!activeConfig.value?.availableModels) return []
@@ -341,6 +413,28 @@ const handleSelectConfig = (value: string | number) => {
   }
 };
 
+const handleModelSelect = (value: string | number) => {
+  if (activeConfig.value && value) {
+    // 下拉选择只更新当前选中的模型，不影响自定义模型(availableModels[0])
+    updateConfig(activeConfig.value.id, { modelName: String(value) });
+  }
+};
+
+const handleCustomModelInput = (event: Event) => {
+  const value = (event.target as HTMLInputElement).value;
+  if (activeConfig.value) {
+    // 文本框输入时，更新自定义模型(availableModels[0])，并同步更新当前选中的模型
+    setCustomModel(activeConfig.value.id, value);
+  }
+};
+
+const handleMaxContextChange = (value: string | number) => {
+  if (activeConfig.value) {
+    // 使用 updateConfig 确保变更被追踪和保存
+    updateConfig(activeConfig.value.id, { maxContextLength: Number(value) });
+  }
+};
+
 const switchDomain = (domain: string) => {
   emit('switchDomain', domain);
 };
@@ -372,3 +466,35 @@ const removeCustomParam = (index: number) => {
   logger.log(`--- UI: Removed custom parameter: ${removed.key} ---`);
 };
 </script>
+
+<style scoped>
+/* Scrollbar hover effect - hide by default, show on hover */
+:deep(.overflow-y-auto::-webkit-scrollbar) {
+  width: 6px;
+}
+
+:deep(.overflow-y-auto::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:deep(.overflow-y-auto::-webkit-scrollbar-thumb) {
+  background-color: transparent;
+  border-radius: 3px;
+  transition: background-color 0.3s ease-in-out;
+}
+
+:deep(.overflow-y-auto:hover::-webkit-scrollbar-thumb) {
+  background-color: #c1c1c1;
+}
+
+/* Firefox scrollbar */
+:deep(.overflow-y-auto) {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease-in-out;
+}
+
+:deep(.overflow-y-auto:hover) {
+  scrollbar-color: #c1c1c1 transparent;
+}
+</style>

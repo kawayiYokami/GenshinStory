@@ -13,6 +13,7 @@ export interface CustomParam {
 export interface Config {
     id: string;
     name: string;
+    provider: 'openai' | 'google'; // 新增 provider 字段
     apiUrl: string;
     apiKey: string;
     modelName: string;
@@ -42,6 +43,7 @@ function migrateFromOldStorage(): Config[] | null {
   const defaultConfig: Config = {
     id: nanoid(),
     name: `默认配置 (${modelName})`,
+    provider: 'openai', // 默认为 openai
     apiUrl: oldApiUrl || '',
     apiKey: oldApiKey || '',
     modelName: modelName,
@@ -73,6 +75,7 @@ function loadConfigs(): Config[] {
       const loaded = JSON.parse(storedConfigs) as Config[];
       return loaded.map(c => ({
         ...c,
+        provider: c.provider || 'openai', // 向后兼容：旧数据默认为 openai
         customParams: c.customParams || [], // 确保向后兼容性
         availableModels: c.availableModels || [],
         modelsLastFetched: c.modelsLastFetched || null,
@@ -150,16 +153,18 @@ export const useConfigStore = defineStore('config', () => {
       newName = unnamedCount > 0 ? `未命名 ${unnamedCount + 1}` : '未命名';
     }
 
+    const initialModelName = configData.modelName || 'gpt-4-turbo';
     const newConfig: Config = {
       id: nanoid(),
+      provider: 'openai',
       apiUrl: '',
       apiKey: '',
-      modelName: 'gpt-4-turbo',
+      modelName: initialModelName,
       temperature: 0.7,
       stream: true,
       maxContextLength: 65536,
       requestInterval: 1000,
-      availableModels: [],
+      availableModels: [initialModelName], // 初始化时，第1项就是当前模型
       modelsLastFetched: null,
       customParams: [], // 新配置初始化空的自定义参数数组
       ...configData,
@@ -176,6 +181,7 @@ export const useConfigStore = defineStore('config', () => {
     const configIndex = configs.value.findIndex(c => c.id === id);
     if (configIndex !== -1) {
       const newValues = { ...updates };
+
       if (updates.availableModels) {
         newValues.modelsLastFetched = Date.now();
       }
@@ -183,6 +189,24 @@ export const useConfigStore = defineStore('config', () => {
       logger.log(`--- STORE ACTION: updateConfig 完成，ID: ${id} ---`);
     } else {
       logger.log(`--- STORE ACTION: updateConfig 失败。未找到 ID: ${id} ---`);
+    }
+  }
+
+  function setCustomModel(id: string, modelName: string): void {
+    const configIndex = configs.value.findIndex(c => c.id === id);
+    if (configIndex !== -1) {
+      const currentModels = [...(configs.value[configIndex].availableModels || [])];
+      if (currentModels.length === 0) {
+        currentModels.push(modelName);
+      } else {
+        currentModels[0] = modelName;
+      }
+      configs.value[configIndex].availableModels = currentModels;
+
+      // 同时将当前使用的模型更新为这个自定义模型
+      configs.value[configIndex].modelName = modelName;
+
+      logger.log(`--- STORE ACTION: setCustomModel 完成。AvailableModels[0] 更新为 "${modelName}" ---`);
     }
   }
 
@@ -264,18 +288,29 @@ export const useConfigStore = defineStore('config', () => {
 
       const data = await response.json();
       const models = Array.isArray(data) ? data : (data.data || []);
-      
-      const modelIds = models.map((model: any) => model.id).sort();
-      
-      updateConfig(currentConfig.id, { availableModels: modelIds });
-      
-      logger.log("成功获取并更新了模型列表。", { count: modelIds.length });
 
-      const updatedConfig = configs.value.find(c => c.id === currentConfig.id);
-      if (updatedConfig && modelIds.length > 0 && !modelIds.includes(updatedConfig.modelName)) {
-        updateConfig(currentConfig.id, { modelName: modelIds[0] });
-        logger.log("当前选中模型无效，已自动切换为:", modelIds[0]);
+      const fetchedModelIds = models.map((model: any) => model.id).sort();
+
+      // 逻辑核心：保留A表第1项，替换剩余部分为B表
+      const currentModels = currentConfig.availableModels || [];
+      const firstItem = currentModels.length > 0 ? currentModels[0] : currentConfig.modelName;
+
+      // 构造新列表：[第1项, ...API列表]
+      // 这里简单过滤掉重复项，以免列表中出现两个一模一样的 'gpt-4'
+      const uniqueFetched = fetchedModelIds.filter((id: string) => id !== firstItem);
+      const newAvailableModels = [firstItem, ...uniqueFetched];
+
+      // 更新 Store
+      const configIndex = configs.value.findIndex(c => c.id === currentConfig.id);
+      if (configIndex !== -1) {
+         configs.value[configIndex].availableModels = newAvailableModels;
+         configs.value[configIndex].modelsLastFetched = Date.now();
+
+         // 如果当前选中的模型不在新列表里（理论上不可能，因为第1项就是它），
+         // 这里不需要额外的自动切换逻辑，因为我们保留了第1项。
       }
+
+      logger.log("成功获取并更新了模型列表。", { count: newAvailableModels.length });
 
     } catch (error: any) {
        logger.error("获取模型列表失败:", error.name === 'AbortError' ? '请求超时' : error);
@@ -298,5 +333,6 @@ export const useConfigStore = defineStore('config', () => {
     deleteConfig,
     setActiveConfig,
     fetchModels,
+    setCustomModel,
   };
 });

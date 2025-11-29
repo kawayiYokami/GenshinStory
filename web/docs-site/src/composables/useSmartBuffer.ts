@@ -23,23 +23,10 @@ export function useSmartBuffer(
     renderableContent.value = contentRef.value;
   }
 
-  // 检查是否在代码块内
-  const isInCodeBlock = (content: string) => {
-    // 简单检查是否有未闭合的代码块标记
-    const codeBlockCount = (content.match(/```/g) || []).length;
-    return codeBlockCount % 2 !== 0 || content.includes('```');
-  };
-
   // 核心缓冲逻辑：监听 contentRef 的变化
   watch(contentRef, (newContent) => {
     if (typeof newContent !== 'string' || !newContent) {
       renderableContent.value = '';
-      return;
-    }
-
-    // 如果在代码块内，禁用缓冲，直接更新渲染内容
-    if (isInCodeBlock(newContent)) {
-      renderableContent.value = newContent;
       return;
     }
 

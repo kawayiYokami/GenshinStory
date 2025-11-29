@@ -12,6 +12,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.44",
+    "@ai-sdk/openai": "^2.0.74",
     "@headlessui/tailwindcss": "^0.2.2",
     "@headlessui/vue": "^1.7.23",
     "@heroicons/vue": "^2.2.0",
@@ -19,8 +21,10 @@
     "@types/dompurify": "^3.0.5",
     "@types/lodash.debounce": "^4.0.9",
     "@types/markdown-it": "^14.1.2",
+    "ai": "^5.0.104",
     "buffer": "^6.0.3",
     "dompurify": "^3.2.6",
+    "dotenv": "^17.2.3",
     "github-markdown-css": "^5.8.1",
     "html2canvas-pro": "^1.5.13",
     "js-yaml": "^4.1.0",
@@ -34,7 +38,8 @@
     "pinia": "^3.0.3",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
-    "vue-toastification": "^2.0.0-rc.5"
+    "vue-toastification": "^2.0.0-rc.5",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
