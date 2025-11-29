@@ -192,10 +192,26 @@ const handleDeleteSession = (sessionId: string) => {
 // App Initialization Logic
 async function initializeApplication(domain: string) {
   if (!domain) return;
+  console.log(`[MainLayout] 🔥 开始初始化应用: ${domain}`);
+  console.time(`[MainLayout] 初始化-${domain}`);
+
   appStore.isCoreDataReady = false;
+
+  console.log(`[MainLayout] 📊 开始加载索引数据...`);
+  console.time(`[MainLayout] 索引加载-${domain}`);
   await dataStore.fetchIndex(domain);
+  console.timeEnd(`[MainLayout] 索引加载-${domain}`);
+  console.log(`[MainLayout] 📊 索引加载完成`);
+
+  console.log(`[MainLayout] 🤖 开始切换域上下文...`);
+  console.time(`[MainLayout] 域上下文切换-${domain}`);
   await agentStore.switchDomainContext(domain);
+  console.timeEnd(`[MainLayout] 域上下文切换-${domain}`);
+  console.log(`[MainLayout] 🤖 域上下文切换完成`);
+
   appStore.isCoreDataReady = true;
+  console.timeEnd(`[MainLayout] 初始化-${domain}`);
+  console.log(`[MainLayout] ✅ 应用初始化完成: ${domain}`);
 }
 
 watch(() => appStore.currentDomain, (newDomain, oldDomain) => {
