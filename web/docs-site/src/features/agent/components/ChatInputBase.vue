@@ -24,7 +24,7 @@
       class="btn btn-circle btn-primary btn-sm w-8 h-8 min-h-8"
       :title="isCompressing ? '正在压缩上下文...' : (isContextOverLimit ? '上下文已达到上限，请压缩上下文' : (isLoading ? '停止生成' : '发送消息'))"
     >
-      <Square v-if="isLoading" class="w-5 h-5" />
+      <span v-if="isLoading" class="loading loading-spinner loading-sm"></span>
       <Send v-else class="w-5 h-5" />
     </button>
   </div>

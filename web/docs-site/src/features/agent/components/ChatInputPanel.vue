@@ -16,13 +16,6 @@
         <span>上下文已达到上限，请开启新对话或压缩上下文</span>
       </div>
 
-      <!-- 状态指示器（极简） -->
-      <div v-if="isLoading || isProcessing" class="flex gap-1 py-1">
-        <div class="thinking-dot"></div>
-        <div class="thinking-dot"></div>
-        <div class="thinking-dot"></div>
-      </div>
-
       <!-- 文本输入区 -->
       <ChatInputBase
         ref="chatInputBaseRef"
