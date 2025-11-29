@@ -249,7 +249,6 @@ watchEffect(async () => {
 // 新增的 watch，用于在消息变化时重置状态
 watch(() => props.message.id, () => {
   hasSignaledRenderComplete.value = false;
-  console.log(`Message ID changed, reset hasSignaledRenderComplete for ${props.message.id}`);
 }, { immediate: false });
 
 // 优化后的消息监听，只监听必要属性
@@ -266,9 +265,9 @@ watch([() => props.message.type, () => props.message.status], ([newType, newStat
   }
 
   // 添加调试日志
-  if (newType === 'tool_result') {
-    console.log(`ToolResultCard Status: ${props.message.id} - status: ${newStatus}, hasSignaled: ${hasSignaledRenderComplete.value}`);
-  }
+  // if (newType === 'tool_result') {
+  //   console.log(`ToolResultCard Status: ${props.message.id} - status: ${newStatus}, hasSignaled: ${hasSignaledRenderComplete.value}`);
+  // }
 }, { immediate: true });
 
 const handleSuggestionClick = (suggestionText: string): void => {

@@ -93,7 +93,7 @@ export const useDataStore = defineStore('data', () => {
                 }
             }
 
-            console.log(`搜索索引加载完成: ${domain}, 词条数量: ${searchIndexCache.value.size}`);
+            // console.log(`搜索索引加载完成: ${domain}, 词条数量: ${searchIndexCache.value.size}`);
             return searchIndexCache.value;
 
         } catch (e) {
@@ -107,7 +107,7 @@ export const useDataStore = defineStore('data', () => {
      */
     function searchInMemory(query: string, searchIndex: Map<string, number[]>): number[] {
         const bigrams = getBigrams(query);
-        console.log('Bigrams for query:', query, '=>', bigrams);
+        // console.log('Bigrams for query:', query, '=>', bigrams);
 
         if (bigrams.length === 0) return [];
 
@@ -116,13 +116,13 @@ export const useDataStore = defineStore('data', () => {
         // 获取每个bigram的ID集合
         for (const bigram of bigrams) {
             const ids = searchIndex.get(bigram);
-            console.log(`Bigram "${bigram}":`, ids ? `${ids.length} IDs` : 'Not found');
+            // console.log(`Bigram "${bigram}":`, ids ? `${ids.length} IDs` : 'Not found');
             if (ids && ids.length > 0) {
                 idSets.push(new Set(ids));
             }
         }
 
-        console.log('Total idSets found:', idSets.length);
+        // console.log('Total idSets found:', idSets.length);
 
         if (idSets.length === 0) return [];
 
@@ -131,7 +131,7 @@ export const useDataStore = defineStore('data', () => {
         );
 
         const intersection = Array.from(intersectionSet);
-        console.log('Intersection result:', intersection);
+        // console.log('Intersection result:', intersection);
         return intersection;
     }
     /**
@@ -144,7 +144,7 @@ export const useDataStore = defineStore('data', () => {
             return [];
         }
 
-        console.log('Starting search for query:', query);
+        // console.log('Starting search for query:', query);
 
         try {
             if (!appStore.currentDomain) {
@@ -152,13 +152,13 @@ export const useDataStore = defineStore('data', () => {
             }
 
             // 1. 确保搜索索引已加载
-            console.log('Loading search index for domain:', appStore.currentDomain);
+            // console.log('Loading search index for domain:', appStore.currentDomain);
             const searchIndex = await loadSearchIndex(appStore.currentDomain);
-            console.log('Search index loaded, size:', searchIndex.size);
+            // console.log('Search index loaded, size:', searchIndex.size);
 
             // 2. 在内存中执行搜索
             const intersectionIds = searchInMemory(query, searchIndex);
-            console.log('Search completed, found IDs:', intersectionIds.length);
+            // console.log('Search completed, found IDs:', intersectionIds.length);
 
             // 3. 映射ID到完整的catalog条目
             const finalResults: IndexItem[] = [];
@@ -167,11 +167,11 @@ export const useDataStore = defineStore('data', () => {
                 if (item) {
                     finalResults.push(item);
                 } else {
-                    console.log('ID', id, 'not found in catalog');
+                    // console.log('ID', id, 'not found in catalog');
                 }
             });
 
-            console.log('Final results count:', finalResults.length);
+            // console.log('Final results count:', finalResults.length);
             return finalResults;
 
         } catch (e) {
@@ -191,33 +191,33 @@ export const useDataStore = defineStore('data', () => {
     async function fetchIndex(domain: string) {
         // 1. Do nothing if data for the current domain is already loaded.
         if (lastFetchedDomain.value === domain && indexData.value.length > 0) {
-            console.log(`[DataStore] Index for domain '${domain}' is already loaded.`);
+            // console.log(`[DataStore] Index for domain '${domain}' is already loaded.`);
             return;
         }
         // 2. Do nothing if a fetch is already in progress.
         if (isLoadingIndex.value) {
-            console.log(`[DataStore] Index fetch for domain '${domain}' is already in progress.`);
+            // console.log(`[DataStore] Index fetch for domain '${domain}' is already in progress.`);
             return;
         }
         // 3. Start fetching
-        console.log(`[DataStore] 🔍 开始加载索引: ${domain}`);
-        console.time(`[DataStore] 完整索引加载-${domain}`);
+        // console.log(`[DataStore] 🔍 开始加载索引: ${domain}`);
+        // console.time(`[DataStore] 完整索引加载-${domain}`);
         isLoadingIndex.value = true;
         error.value = null;
         try {
             const url = `/domains/${domain}/metadata/index.json`;
-            console.log(`[DataStore] 📡 请求URL: ${url}`);
-            console.time(`[DataStore] 网络请求-${domain}`);
+            // console.log(`[DataStore] 📡 请求URL: ${url}`);
+            // console.time(`[DataStore] 网络请求-${domain}`);
 
             const response = await fetch(url);
-            console.timeEnd(`[DataStore] 网络请求-${domain}`);
+            // console.timeEnd(`[DataStore] 网络请求-${domain}`);
             if (!response.ok) {
                 throw new Error(`Failed to load index.json: ${response.status} ${response.statusText}`);
             }
 
-            console.time(`[DataStore] JSON解析-${domain}`);
+            // console.time(`[DataStore] JSON解析-${domain}`);
             const data = await response.json();
-            console.timeEnd(`[DataStore] JSON解析-${domain}`);
+            // console.timeEnd(`[DataStore] JSON解析-${domain}`);
 
             // Ensure all IDs are numbers for type consistency
             const normalizedData = data.map((item: any) => ({
@@ -225,19 +225,19 @@ export const useDataStore = defineStore('data', () => {
                 id: typeof item.id === 'string' ? parseInt(item.id, 10) : item.id
             }));
 
-            console.log(`[DataStore] 📦 加载了 ${normalizedData.length} 个条目`);
+            // console.log(`[DataStore] 📦 加载了 ${normalizedData.length} 个条目`);
 
-            console.time(`[DataStore] 状态更新-${domain}`);
+            // console.time(`[DataStore] 状态更新-${domain}`);
             indexData.value = normalizedData;
             lastFetchedDomain.value = domain;
-            console.timeEnd(`[DataStore] 状态更新-${domain}`);
+            // console.timeEnd(`[DataStore] 状态更新-${domain}`);
 
             // Clear caches when domain changes
             searchIndexCache.value = null;
             contentCache.value = {};
 
-            console.log(`[DataStore] ✅ 索引加载成功: ${domain}`);
-            console.timeEnd(`[DataStore] 完整索引加载-${domain}`);
+            // console.log(`[DataStore] ✅ 索引加载成功: ${domain}`);
+            // console.timeEnd(`[DataStore] 完整索引加载-${domain}`);
         }
         catch (e) {
             error.value = e instanceof Error ? e.message : 'Unknown error';
@@ -248,7 +248,7 @@ export const useDataStore = defineStore('data', () => {
         }
         finally {
             isLoadingIndex.value = false;
-            console.log(`[DataStore] Finished fetching index for domain '${domain}'.`);
+            // console.log(`[DataStore] Finished fetching index for domain '${domain}'.`);
         }
     }
 

@@ -6,7 +6,7 @@ import type { CustomParam } from '@/features/app/stores/config';
  * @param value 用户输入的字符串值
  * @returns 转换后的值（可能是 boolean, number, object, 或原始 string）
  */
-export function convertParamValue(value: string): any {
+function convertParamValue(value: string): any {
     if (!value || value.trim() === '') {
         return value;
     }
@@ -35,7 +35,7 @@ export function convertParamValue(value: string): any {
  * @param key 参数键名
  * @returns 是否为有效键名
  */
-export function isValidParamKey(key: string): boolean {
+function isValidParamKey(key: string): boolean {
     if (!key || key.trim() === '') return false;
 
     // 检查是否与保留字段冲突
@@ -52,7 +52,7 @@ export function isValidParamKey(key: string): boolean {
  * @param params 自定义参数数组
  * @returns 清理后的参数数组
  */
-export function cleanCustomParams(params: CustomParam[] | undefined): CustomParam[] {
+function cleanCustomParams(params: CustomParam[] | undefined): CustomParam[] {
     if (!params) return [];
 
     return params

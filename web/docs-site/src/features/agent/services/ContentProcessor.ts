@@ -179,5 +179,3 @@ export class ContentProcessor {
     return differences.join('; ');
   }
 }
-
-export default ContentProcessor;

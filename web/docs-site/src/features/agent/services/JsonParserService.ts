@@ -42,7 +42,7 @@ function stripCodeFences(text: string): string {
 /**
  * 简化的JSON解析服务 - 只保留核心功能
  */
-export class JsonParserService {
+class JsonParserService {
   private readonly VALID_TOOLS = ['search_docs', 'read_doc', 'ask_choice'];
 
   /**
