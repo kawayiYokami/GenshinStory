@@ -126,23 +126,38 @@ export const useDataStore = defineStore('data', () => {
             return;
         }
         // 3. Start fetching
-        console.log(`[DataStore] Starting to fetch index for domain '${domain}'...`);
+        console.log(`[DataStore] 🔍 开始加载索引: ${domain}`);
+        console.time(`[DataStore] 完整索引加载-${domain}`);
         isLoadingIndex.value = true;
         error.value = null;
         try {
             const url = `/domains/${domain}/metadata/index.json`;
-            console.log(`[DataStore] Fetching from URL: ${url}`);
+            console.log(`[DataStore] 📡 请求URL: ${url}`);
+            console.time(`[DataStore] 网络请求-${domain}`);
+
             const response = await fetch(url);
+            console.timeEnd(`[DataStore] 网络请求-${domain}`);
             if (!response.ok) {
                 throw new Error(`Failed to load index.json: ${response.status} ${response.statusText}`);
             }
+
+            console.time(`[DataStore] JSON解析-${domain}`);
             const data = await response.json();
+            console.timeEnd(`[DataStore] JSON解析-${domain}`);
+
+            console.log(`[DataStore] 📦 加载了 ${data.length} 个条目`);
+
+            console.time(`[DataStore] 状态更新-${domain}`);
             indexData.value = data;
             lastFetchedDomain.value = domain;
-            console.log(`[DataStore] Successfully loaded ${data.length} items for domain '${domain}'.`);
+            console.timeEnd(`[DataStore] 状态更新-${domain}`);
+
             // Clear caches when domain changes
             searchChunkCache.value = {};
             contentCache.value = {};
+
+            console.log(`[DataStore] ✅ 索引加载成功: ${domain}`);
+            console.timeEnd(`[DataStore] 完整索引加载-${domain}`);
         }
         catch (e) {
             error.value = e instanceof Error ? e.message : 'Unknown error';
