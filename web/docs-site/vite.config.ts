@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 import tailwindcss from '@tailwindcss/vite'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import path from 'path'
 import { fileURLToPath, URL } from 'url';
 
@@ -13,8 +14,12 @@ export default defineConfig({
     topLevelAwait(),
     wasm(),
     tailwindcss(),
+    nodePolyfills(),
   ],
   base: './',
+  define: {
+    global: 'globalThis',
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useAppStore } from './app'; // Import app store
 import type { Domain } from './app';
-import msgpack from 'msgpack-lite';
+import * as msgpack from 'msgpack-lite';
 
 // --- Type Definitions ---
 export interface IndexItem {
@@ -81,7 +81,8 @@ export const useDataStore = defineStore('data', () => {
             const arrayBuffer = await response.arrayBuffer();
 
             // 2. 直接MessagePack解码
-            const chunkedData = msgpack.decode(new Uint8Array(arrayBuffer)) as Record<string, Record<string, number[]>>;
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const chunkedData = msgpack.decode(uint8Array) as Record<string, Record<string, number[]>>;
 
             // 3. 差值解码并合并所有分片
             searchIndexCache.value = new Map();
