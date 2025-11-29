@@ -93,10 +93,6 @@ const router = createRouter({
  * @param {NavigationGuardNext} next 下一步回调函数
  */
 router.beforeEach(async (to, from, next) => {
-    console.log('--- Router Navigation ---');
-    console.log('From:', { path: from.path, name: from.name });
-    console.log('To:', { path: to.path, name: to.name, params: to.params, meta: to.meta });
-
     const appStore = useAppStore();
 
     // 在任何路由逻辑之前确保域名已加载

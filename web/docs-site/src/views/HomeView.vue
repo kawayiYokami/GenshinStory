@@ -1,14 +1,35 @@
 <template>
-  <div class="home-container">
-    <div class="domain-buttons">
-      <button
-        v-for="domain in domains"
-        :key="domain.id"
-        @click="navigateToAgent(domain.id)"
-        class="domain-button"
-      >
-        {{ domain.name }}
-      </button>
+  <div class="min-h-screen bg-base-200 flex items-center justify-center p-4">
+    <div class="container mx-auto max-w-4xl">
+      <h1 class="text-4xl font-bold text-center mb-8 text-base-content">选择你的游戏世界</h1>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-for="domain in domains" :key="domain.id" class="card w-full bg-base-100 shadow-sm hover:shadow-lg transition-shadow">
+          <div class="card-body">
+            <div class="flex justify-between items-center">
+              <h2 class="card-title text-2xl">{{ domain.name }}</h2>
+              <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <GamepadIcon class="w-6 h-6 text-primary" />
+              </div>
+            </div>
+
+            <p class="text-base-content/70 mt-4">与{{ domain.name }}中的角色进行智能对话，探索丰富的游戏世界</p>
+
+            <div class="card-actions justify-end mt-6">
+              <button @click="navigateToAgent(domain.id)" class="btn btn-primary btn-block">
+                进入世界
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 添加一个关于区域 -->
+      <div class="mt-12 text-center">
+        <p class="text-base-content/60">
+          由 AI 驱动的角色对话平台，支持原神、崩坏：星穹铁道等多个游戏世界
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -18,6 +39,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/features/app/stores/app'
 import { useTheme } from '@/composables/useTheme'
+import { GamepadIcon } from 'lucide-vue-next'
 import type { Domain } from '@/features/app/stores/app'
 
 const router = useRouter()
@@ -48,45 +70,3 @@ const navigateToAgent = (domainId: string) => {
 }
 </script>
 
-<style scoped>
-.home-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: var(--color-background);
-  color: var(--color-base-content);
-}
-
-.domain-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  align-items: center;
-}
-
-.domain-button {
-  padding: 1.5rem 3rem;
-  font-size: 1.25rem;
-  border: none;
-  border-radius: 12px;
-  background-color: var(--color-primary);
-  color: var(--color-primary-content);
-  cursor: pointer;
-  transition: all 0.3s ease-out;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  min-width: 280px;
-}
-
-.domain-button:hover {
-  background-color: var(--color-primary-container);
-  color: var(--color-on-primary-container);
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
-.domain-button:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-</style>

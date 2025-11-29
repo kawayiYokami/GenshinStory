@@ -13,16 +13,20 @@ import { checkVersion } from '@/features/app/services/versionService';
 
 /**
  * 初始化Vue应用程序
- * @description 在应用启动前检查版本，创建Vue实例并挂载
+ * @description 优先挂载Vue应用，版本检查在后台异步执行
  */
 async function initializeApp() {
-  // 在执行任何 Vue 相关操作之前，首先检查版本
-  await checkVersion();
-
   const app = createApp(App);
 
   app.use(createPinia())
   app.use(router)
+
+  app.mount('#app')
+
+  // 在应用挂载后异步检查版本，不阻塞UI
+  checkVersion().catch(error => {
+    console.warn('版本检查失败:', error);
+  });
 
   // 注册 Service Worker 用于移动端离线支持
   if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
@@ -36,8 +40,6 @@ async function initializeApp() {
         });
     });
   }
-
-  app.mount('#app')
 }
 
 initializeApp();
