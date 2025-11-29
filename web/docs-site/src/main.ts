@@ -33,11 +33,37 @@ async function initializeApp() {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log('SW registered: ', registration);
+          // 监听 SW 更新事件
+          registration.onupdatefound = () => {
+            const installingWorker = registration.installing;
+            if (installingWorker == null) {
+              return;
+            }
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  console.log('New content is available; please refresh.');
+                } else {
+                  console.log('Content is cached for offline use.');
+                }
+              }
+            };
+          };
         })
         .catch(registrationError => {
           console.log('SW registration failed: ', registrationError);
         });
+
+      // 监听 controllerchange 事件，当新 SW 接管时刷新页面
+      // 配合 sw.js 中的 self.skipWaiting() 和 self.clients.claim()
+      // 这能确保用户总是看到最新版本
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          window.location.reload();
+          refreshing = true;
+        }
+      });
     });
   }
 }
