@@ -3,7 +3,7 @@
     <div
       tabindex="0"
       role="button"
-      class="btn btn-sm btn-outline flex items-center gap-1 min-w-[120px] justify-between bg-base-100 border-base-content/20"
+      class="btn btn-sm btn-outline flex items-center gap-1 min-w-[60px] justify-between bg-base-100 border-base-content/20"
       :class="{ 'btn-disabled': disabled }"
     >
       <span class="truncate">{{ displayValue }}</span>

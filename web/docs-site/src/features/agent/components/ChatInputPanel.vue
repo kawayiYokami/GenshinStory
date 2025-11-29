@@ -1,5 +1,13 @@
 <template>
-  <div class="flex flex-col gap-2 card bg-base-100 rounded-3xl shadow-lg border border-base-300">
+  <div class="flex flex-col gap-2 card bg-base-100 rounded-3xl shadow-lg border border-base-300 relative">
+    <!-- 遮罩层：防止操作并显示加载状态 -->
+    <div v-if="isGeneratingPaper || isCompressing" class="absolute inset-0 bg-base-100/70 z-50 flex flex-col items-center justify-center rounded-3xl backdrop-blur-sm cursor-not-allowed">
+      <Loader2 class="w-8 h-8 animate-spin text-primary mb-2" />
+      <span class="text-sm font-medium text-base-content/70">
+        {{ isGeneratingPaper ? '正在生成知识报告...' : '正在压缩上下文...' }}
+      </span>
+    </div>
+
     <!-- 主要输入区域 -->
     <div class="flex flex-col gap-2 px-2 pt-2">
       <!-- 上下文超限警告 -->
@@ -74,19 +82,26 @@
           <MessageCirclePlus class="w-5 h-5" />
         </button>
 
+        <!-- 生成知识报告按钮 -->
+        <button
+          @click="handleGeneratePaper"
+          :disabled="!canGeneratePaper || isGeneratingPaper || isCompressing"
+          class="debug-panel-btn"
+          title="生成报告"
+        >
+          <GraduationCap class="w-5 h-5" v-if="!isGeneratingPaper" />
+          <Loader2 v-else class="w-5 h-5 animate-spin" />
+        </button>
+
         <!-- 压缩上下文按钮 -->
         <button
           @click="handleCompressContext"
-          :disabled="!canCompress || isCompressing"
+          :disabled="!canCompress || isCompressing || isGeneratingPaper"
           class="debug-panel-btn"
           title="压缩上下文"
         >
-          <Archive class="w-5 h-5" v-if="!isCompressing" />
-          <div v-if="isCompressing" class="thinking-dots">
-            <div class="thinking-dot"></div>
-            <div class="thinking-dot"></div>
-            <div class="thinking-dot"></div>
-          </div>
+          <Minimize2 class="w-5 h-5" v-if="!isCompressing" />
+          <Loader2 v-else class="w-5 h-5 animate-spin" />
         </button>
 
         <!-- 截图按钮 -->
@@ -135,11 +150,12 @@ import ChatAttachments from './ChatAttachments.vue';
 import ChatToolbar from './ChatToolbar.vue';
 import { useReferenceHandler } from './useReferenceHandler';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
-import { AlertTriangle, Archive, MessageCirclePlus, Camera, FileText } from 'lucide-vue-next';
+import { AlertTriangle, Minimize2, MessageCirclePlus, Camera, FileText, GraduationCap, Loader2 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { simpleContextCompressor } from '../services/simpleContextCompressor';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import html2canvas from 'html2canvas-pro';
+import { academicPaperGeneratorService } from '../services/academicPaperGeneratorService';
 
 interface ReferenceItem {
   path: string;
@@ -165,6 +181,9 @@ const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
 const { availableAgents, currentRoleId, orderedMessages, isCompressing } = storeToRefs(agentStore);
 const { switchAgent, resetAgent, compressAndStartNewChat, sendMessage, startNewSession, startNewSessionWithCurrentAgent } = agentStore;
+
+// 生成论文状态
+const isGeneratingPaper = ref(false);
 
 // Composables
 const {
@@ -237,6 +256,10 @@ const isContextOverLimit = computed(() => {
 
 const canCompress = computed(() => {
   return orderedMessages.value.length > 3; // 只要有足够的消息就可以压缩
+});
+
+const canGeneratePaper = computed(() => {
+  return academicPaperGeneratorService.canGeneratePaper(orderedMessages.value);
 });
 
 // 下拉框选项
@@ -322,9 +345,83 @@ const handleReferenceSelect = (item: ReferenceItem) => {
   });
 };
 
+// 生成论文处理方法
+const handleGeneratePaper = async () => {
+  if (!canGeneratePaper.value || isGeneratingPaper.value || isCompressing.value) return;
+
+  try {
+    isGeneratingPaper.value = true;
+
+    // 生成论文
+    const result = await academicPaperGeneratorService.generateAcademicPaper(orderedMessages.value);
+
+    if (result.success && result.paperContent) {
+      // 提供格式选择
+      const format = await askUserForFormat();
+
+      // 下载报告
+      academicPaperGeneratorService.downloadPaper(result.paperContent, format);
+      toast.success(`知识分析报告已生成并下载为${format.toUpperCase()}格式`);
+    } else {
+      toast.error(result.error || '生成知识报告失败，请稍后重试');
+    }
+  } catch (error) {
+    console.error('生成知识报告失败:', error);
+    const errorMessage = error instanceof Error ? error.message : '生成知识报告失败，请稍后重试';
+    toast.error(errorMessage);
+  } finally {
+    isGeneratingPaper.value = false;
+  }
+};
+
+// 询问用户下载格式
+const askUserForFormat = async (): Promise<'md' | 'pdf'> => {
+  return new Promise((resolve) => {
+    // 创建选择对话框
+    const modal = document.createElement('div');
+    modal.className = 'modal modal-open';
+    modal.innerHTML = `
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">选择下载格式</h3>
+        <div class="flex gap-4 justify-center">
+          <button class="btn btn-primary" id="md-btn">Markdown</button>
+          <button class="btn btn-secondary" id="pdf-btn">PDF</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const mdBtn = modal.querySelector('#md-btn') as HTMLButtonElement;
+    const pdfBtn = modal.querySelector('#pdf-btn') as HTMLButtonElement;
+
+    const closeModal = () => {
+      document.body.removeChild(modal);
+    };
+
+    mdBtn.onclick = () => {
+      closeModal();
+      resolve('md');
+    };
+
+    pdfBtn.onclick = () => {
+      closeModal();
+      resolve('pdf');
+    };
+
+    // 点击背景关闭
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        closeModal();
+        resolve('md'); // 默认格式
+      }
+    };
+  });
+};
+
 // 压缩处理方法
 const handleCompressContext = async () => {
-  if (!canCompress.value || isCompressing.value) return;
+  if (!canCompress.value || isCompressing.value || isGeneratingPaper.value) return;
 
   try {
     await compressAndStartNewChat();
