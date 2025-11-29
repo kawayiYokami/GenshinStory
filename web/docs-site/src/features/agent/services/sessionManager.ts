@@ -264,9 +264,24 @@ export class SessionManagerImpl implements SessionManager {
       logger.log(`[AgentStore] 当前会话为空。正在为新 agent 转换它。`);
       isLoading.value = true;
       stop();
+
+      // 检查并修复流式完成状态，但永远不清空消息历史
+      if (session.messageIds.length > 0) {
+        for (const messageId of session.messageIds) {
+          const message = session.messagesById[messageId];
+          if (message && message.role === 'assistant') {
+            const needsFix = (message.status === 'streaming' && message.streamCompleted !== true) ||
+                            (message.status === 'error' && message.streamCompleted !== true);
+            if (needsFix) {
+              logger.log(`[SessionManager] 为助理消息 ${messageId} 设置 streamCompleted: true (原状态: ${message.status})`);
+              message.streamCompleted = true;
+            }
+          }
+        }
+      }
+
       const { systemPrompt, agentName } = await promptService.loadSystemPrompt(domain, roleId);
-      session.messagesById = {};
-      session.messageIds = [];
+      // 永远不清空消息历史，只更新agent信息
       session.roleId = roleId;
       activeRoleId.value[domain] = roleId;
       activeAgentName.value = agentName;

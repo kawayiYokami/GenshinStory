@@ -39,18 +39,24 @@ export class PersistenceManagerImpl implements PersistenceManager {
       logger.log('[AgentStore] 正在从缓存初始化 store...');
       const cachedState = await sessionsStore.getItem<any>('state');
 
-      if (!cachedState || cachedState.version !== AGENT_CACHE_VERSION) {
-        logger.error(`[AgentStore] 检测到过时或损坏的缓存。正在清除缓存并重新开始。`, {
-            foundVersion: cachedState?.version,
-            expectedVersion: AGENT_CACHE_VERSION,
-        });
-        await forceClearAgentCache();
-
+      // 移除版本检查，保护用户历史数据不被清空
+      if (!cachedState) {
+        logger.log('[AgentStore] 没有找到缓存数据，使用空状态开始。');
         sessions.value = {};
         activeSessionIds.value = { gi: null, hsr: null };
-
       } else {
-        const { sessions: cachedSessions, activeSessionIds: cachedActiveIds } = cachedState.data;
+        // 兼容新旧格式的数据
+        let cachedSessions, cachedActiveIds;
+
+        if (cachedState.version && cachedState.data) {
+          // 新格式：有版本号和data包装
+          ({ sessions: cachedSessions, activeSessionIds: cachedActiveIds } = cachedState.data);
+        } else {
+          // 旧格式：直接数据
+          cachedSessions = cachedState.sessions || cachedState;
+          cachedActiveIds = cachedState.activeSessionIds || {};
+        }
+
         sessions.value = (typeof cachedSessions === 'object' && cachedSessions !== null) ? cachedSessions : {};
 
         // 修复过去记录中的 tool_result 消息状态
@@ -83,10 +89,26 @@ export class PersistenceManagerImpl implements PersistenceManager {
       }
 
     } catch (e) {
-      logger.error('[AgentStore] 缓存初始化期间发生严重错误。正在清除缓存并重新开始。', e);
-      await forceClearAgentCache();
-      sessions.value = {};
-      activeSessionIds.value = { gi: null, hsr: null };
+      logger.error('[AgentStore] 缓存初始化期间发生严重错误，但不清除数据。请检查缓存格式。', e);
+      // 尝试读取任何可用的数据，不再清除缓存
+      try {
+        const fallbackState = await sessionsStore.getItem<any>('state');
+        if (fallbackState) {
+          // 简单地尝试解析数据，不做版本检查
+          const fallbackSessions = fallbackState.sessions || fallbackState.data?.sessions || {};
+          const fallbackActiveIds = fallbackState.activeSessionIds || fallbackState.data?.activeSessionIds || { gi: null, hsr: null };
+          sessions.value = fallbackSessions;
+          activeSessionIds.value = fallbackActiveIds;
+          logger.log('[AgentStore] 成功从损坏的缓存中恢复了部分数据。');
+        } else {
+          sessions.value = {};
+          activeSessionIds.value = { gi: null, hsr: null };
+        }
+      } catch (fallbackError) {
+        logger.error('[AgentStore] 备用恢复也失败了，使用空状态。', fallbackError);
+        sessions.value = {};
+        activeSessionIds.value = { gi: null, hsr: null };
+      }
     }
   }
 
