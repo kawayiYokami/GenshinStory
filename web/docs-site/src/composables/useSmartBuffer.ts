@@ -18,6 +18,11 @@ export function useSmartBuffer(
   const expectedClosingTag = ref<string | null>(null);
   const renderedHtml = ref('');
 
+  // 初始化时就设置 renderableContent
+  if (contentRef.value) {
+    renderableContent.value = contentRef.value;
+  }
+
   // 检查是否在代码块内
   const isInCodeBlock = (content: string) => {
     // 简单检查是否有未闭合的代码块标记
@@ -125,7 +130,7 @@ export function useSmartBuffer(
     const rendered = renderMarkdownSync(newRenderableContent);
     const finalHtml = await replaceLinkPlaceholders(rendered);
     renderedHtml.value = finalHtml;
-  });
+  }, { immediate: true }); // 添加 immediate: true 确保初始化时就执行
 
   return {
     renderableContent,
