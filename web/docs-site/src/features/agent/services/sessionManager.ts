@@ -270,11 +270,21 @@ export class SessionManagerImpl implements SessionManager {
         for (const messageId of session.messageIds) {
           const message = session.messagesById[messageId];
           if (message && message.role === 'assistant') {
-            const needsFix = (message.status === 'streaming' && message.streamCompleted !== true) ||
-                            (message.status === 'error' && message.streamCompleted !== true);
-            if (needsFix) {
-              logger.log(`[SessionManager] 为助理消息 ${messageId} 设置 streamCompleted: true (原状态: ${message.status})`);
-              message.streamCompleted = true;
+            // 修复 text 类型消息的 streamCompleted
+            if (message.type === 'text') {
+              const needsFix = (message.status === 'streaming' && message.streamCompleted !== true) ||
+                              (message.status === 'error' && message.streamCompleted !== true);
+              if (needsFix) {
+                logger.log(`[SessionManager] 为助理消息 ${messageId} 设置 streamCompleted: true (原状态: ${message.status})`);
+                message.streamCompleted = true;
+              }
+            }
+
+            // 修复所有助理消息（包括 tool_status）的 status
+            const needsStatusFix = message.status === 'streaming' || message.status === 'error' || message.status === 'rendering';
+            if (needsStatusFix) {
+              logger.log(`[SessionManager] 为助理消息 ${messageId} 更新 status: done (原状态: ${message.status})`);
+              message.status = 'done';
             }
           }
         }
