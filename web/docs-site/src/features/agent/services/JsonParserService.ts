@@ -201,7 +201,7 @@ class JsonParserService {
   /**
    * 解析LLM响应 - 统一重新构造平铺格式
    */
-  parseLlmResponse(responseText: string): Record<string, any> | null {
+  parseLlmResponse(responseText: string): { toolCall: Record<string, any>; startIndex: number } | null {
     if (typeof responseText !== 'string' || !responseText.trim()) {
       return null;
     }
@@ -211,7 +211,10 @@ class JsonParserService {
     try {
       const fullParsed = JSON.parse(stripCodeFences(responseText));
       if (typeof fullParsed === 'object' && fullParsed !== null && !Array.isArray(fullParsed)) {
-        return this.processParsedObject(fullParsed, responseText);
+        const toolCall = this.processParsedObject(fullParsed, responseText);
+        if (toolCall) {
+          return { toolCall, startIndex: 0 };
+        }
       }
     } catch (e) {
       // 忽略错误，继续寻找子串
@@ -230,22 +233,7 @@ class JsonParserService {
       return null;
     }
 
-    // 从后往前尝试（通常工具调用在最后），或者从前往后？
-    // 如果是嵌套结构 {"a": {"b": 1}}，我们需要最外层的 {。
-    // 如果是多个独立块 A... {B} ... {C}，通常最后一个是有效的工具调用。
-    // 但是考虑到嵌套，如果从后往前找，会先找到 {"b": 1}，这可能不是我们要的（如果它只是参数的一部分）。
-    // 不过 parseLlmResponse 的目标通常是提取整个工具调用对象。
-    // 如果工具调用本身包含嵌套对象，JSON.parse 会成功解析最外层。
-    // 所以应该优先尝试“最外层且最后”的块。
-    // 简单的策略：尝试每一个 { 开始的子串，直到找到一个合法的对象。
-    // 为了性能和准确性，我们从第一个 { 开始尝试。如果有多个平行的 JSON，这会返回第一个。
-    // 如果需要最后一个，应该倒序遍历？
-    // 通常 LLM 输出为： "Analysis... \n { Tool Call }"
-    // 此时只有一个顶层 JSON。
-    // 如果输出为： "{Status} \n {Tool}", 我们可能想要 Tool。
-    // 这里我们保留原有逻辑的意图：寻找“最后”的有效 JSON。
-    // 所以我们倒序遍历 braceIndices。
-
+    // 从后往前尝试，寻找最后一个有效的顶层 JSON 对象
     for (let i = braceIndices.length - 1; i >= 0; i--) {
       const start = braceIndices[i];
       const candidate = responseText.substring(start);
@@ -255,7 +243,10 @@ class JsonParserService {
         const parsed = JSON.parse(cleaned);
         if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
           // 成功解析！
-          return this.processParsedObject(parsed, cleaned);
+          const toolCall = this.processParsedObject(parsed, cleaned);
+          if (toolCall) {
+            return { toolCall, startIndex: start };
+          }
         }
       } catch (e) {
         // 解析失败，尝试下一个候选

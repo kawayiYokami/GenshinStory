@@ -110,7 +110,8 @@ function parseToolCall(input: string | Record<string, any>): ParsedToolCall | nu
 
     if (typeof input === 'string') {
         // 使用 JsonParserService 直接解析
-        parsedResult = jsonParserService.parseLlmResponse(input);
+        const result = jsonParserService.parseLlmResponse(input);
+        parsedResult = result ? result.toolCall : null;
     } else if (typeof input === 'object' && input !== null) {
         // 直接处理对象格式
         parsedResult = input;
@@ -231,7 +232,9 @@ function parseAskCall(jsonString: string): ParsedQuestion | null {
     if (typeof jsonString !== 'string') return null;
 
     // 直接使用 JsonParserService 解析
-    const parsedResult = jsonParserService.parseLlmResponse(jsonString);
+    const result = jsonParserService.parseLlmResponse(jsonString);
+    const parsedResult = result ? result.toolCall : null;
+
     if (!parsedResult || parsedResult.tool !== 'ask_choice') {
         return null;
     }

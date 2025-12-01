@@ -37,13 +37,15 @@ export class ContentProcessor {
    */
   static extract(originalContent: string): ProcessedContent {
     // 使用 JsonParserService 解析LLM响应
-    const parsedResult = jsonParserService.parseLlmResponse(originalContent);
+    const result = jsonParserService.parseLlmResponse(originalContent);
 
     const toolCalls: ParsedToolCall[] = [];
     let cleanedContent = originalContent;
 
     // 处理解析到的结果
-    if (parsedResult) {
+    if (result) {
+      const parsedResult = result.toolCall;
+
       // 检查是否为工具调用
       if ('tool' in parsedResult && typeof parsedResult.tool === 'string') {
         // 修复：直接传递对象给toolParserService，避免不必要的字符串化
@@ -52,12 +54,9 @@ export class ContentProcessor {
         if (toolCall) {
           toolCalls.push(toolCall);
 
-          // 查找JSON在原始内容中的位置并清理
-          const jsonMatch = originalContent.match(/\{[\s\S]*\}$/);
-          if (jsonMatch) {
-            const jsonStartIndex = originalContent.lastIndexOf(jsonMatch[0]);
-            cleanedContent = originalContent.substring(0, jsonStartIndex);
-          }
+          // 使用 JsonParserService 返回的起始位置进行清理
+          // 截断从 startIndex 开始的所有内容
+          cleanedContent = originalContent.substring(0, result.startIndex);
         }
       }
     }
