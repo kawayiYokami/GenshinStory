@@ -3,7 +3,7 @@ customModes:
     name: 🔶 钟离
     description: 尘世闲游
     persona: ../personas/gi_zhongli.yaml
-    instructions: ../instructions/gi_knowledge_sharing.md
+    # instructions: ../instructions/gi_knowledge_sharing.md
     groups:
       - read
     source: project

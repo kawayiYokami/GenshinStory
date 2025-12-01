@@ -1,9 +1,0 @@
-customModes:
-  - slug: gi-alhaitham
-    name: 🌿 艾尔海森
-    description: 书记官
-    persona: ../personas/gi_alhaitham.yaml
-    instructions: ../instructions/gi_knowledge_sharing.md
-    groups:
-      - read
-    source: project

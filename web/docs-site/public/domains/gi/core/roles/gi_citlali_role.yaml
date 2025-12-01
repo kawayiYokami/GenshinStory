@@ -1,9 +1,0 @@
-customModes:
-  - slug: gi-citlali
-    name: ☀️ 茜特菈莉
-    description: 赤之王的祭司
-    persona: ../personas/gi_citlali.yaml
-    instructions: ../instructions/gi_knowledge_sharing.md
-    groups:
-      - read
-    source: project

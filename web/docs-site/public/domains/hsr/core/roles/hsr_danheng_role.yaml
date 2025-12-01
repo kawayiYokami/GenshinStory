@@ -1,9 +1,0 @@
-customModes:
-  - slug: hsr-danheng
-    name: 🌙 丹恒
-    description: 列车护卫
-    persona: ../personas/hsr_danheng.yaml
-    instructions: ../instructions/hsr_interrogation.md
-    groups:
-      - read
-    source: project

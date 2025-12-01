@@ -3,7 +3,7 @@ customModes:
     name: 🧚‍♀️ 仙灵
     description: AI助手
     persona: ../personas/zzz_fairy.yaml
-    instructions: ../instructions/zzz_hollow_guidance.md
+    # instructions: ../instructions/zzz_hollow_guidance.md
     groups:
       - read
     source: project

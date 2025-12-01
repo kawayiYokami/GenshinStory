@@ -50,6 +50,7 @@ export const useAgentStore = defineStore('agent', () => {
   const activeSessionIds = ref<{ [key: string]: string | null }>({ gi: null, hsr: null });
   const availableAgents = ref<{ [key: string]: AgentInfo[] }>({ gi: [], hsr: [] });
   const activeRoleId = ref<{ [key: string]: string | null }>({ gi: null, hsr: null });
+  const activeInstructionId = ref('chat'); // 默认闲聊模式
   const isLoading = ref(false);
   const isCompressing = ref(false);
   const error = ref<Error | string | null>(null);
@@ -63,6 +64,7 @@ export const useAgentStore = defineStore('agent', () => {
   const configStore = useConfigStore();
   const { activeConfig } = storeToRefs(configStore);
   const currentDomain = computed(() => appStore.currentDomain);
+  const currentInstructionId = computed(() => activeInstructionId.value);
   const activeSessionId = computed(() => currentDomain.value ? activeSessionIds.value[currentDomain.value] : null);
   const currentRoleId = computed(() => currentDomain.value ? activeRoleId.value[currentDomain.value] : null);
   const currentSession = computed(() => activeSessionId.value ? sessions.value[activeSessionId.value] : null);
@@ -196,7 +198,7 @@ export const useAgentStore = defineStore('agent', () => {
     if (newSessionId) {
       const newSession = sessions.value[newSessionId];
       if (newSession) {
-        const { systemPrompt } = await promptService.loadSystemPrompt(domain, newSession.roleId);
+        const { systemPrompt } = await promptService.loadSystemPrompt(domain, newSession.roleId, activeInstructionId.value);
         await messageManager.addMessage({
           role: 'system',
           content: systemPrompt,
@@ -261,7 +263,7 @@ export const useAgentStore = defineStore('agent', () => {
 
     // 如果没有系统提示词，创建新会话并返回默认系统提示词
     await startNewSession(currentDomain.value!, roleId);
-    const { systemPrompt: defaultPrompt } = await promptService.loadSystemPrompt(currentDomain.value!, roleId);
+    const { systemPrompt: defaultPrompt } = await promptService.loadSystemPrompt(currentDomain.value!, roleId, activeInstructionId.value);
     return defaultPrompt;
   }
 
@@ -294,7 +296,7 @@ export const useAgentStore = defineStore('agent', () => {
       const roleId = session.roleId;
       if (roleId) {
         try {
-          const { systemPrompt } = await promptService.loadSystemPrompt(domain, roleId);
+          const { systemPrompt } = await promptService.loadSystemPrompt(domain, roleId, activeInstructionId.value);
           // 更新会话中的第一条系统消息
           const firstMessageId = session.messageIds[0];
           if (firstMessageId) {
@@ -503,6 +505,33 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  async function setInstruction(instructionId: string) {
+    activeInstructionId.value = instructionId;
+    await updateCurrentSessionSystemPrompt();
+  }
+
+  async function updateCurrentSessionSystemPrompt(): Promise<void> {
+    const domain = currentDomain.value;
+    const session = currentSession.value;
+    if (!domain || !session || !session.roleId) return;
+
+    try {
+      const { systemPrompt } = await promptService.loadSystemPrompt(domain, session.roleId, activeInstructionId.value);
+
+      // Find the first system message
+      const firstMessageId = session.messageIds[0];
+      if (firstMessageId) {
+        const firstMessage = session.messagesById[firstMessageId];
+        if (firstMessage && firstMessage.role === 'system') {
+          await messageManager.updateMessage({ messageId: firstMessageId, updates: { content: systemPrompt } });
+          logger.log(`[AgentStore] 已更新会话 ${session.id} 的系统提示词 (指令: ${activeInstructionId.value})`);
+        }
+      }
+    } catch (e) {
+      logger.error(`[AgentStore] 更新系统提示词失败:`, e);
+    }
+  }
+
   /**
    * 压缩上下文并开启新对话
    * @description 压缩当前对话内容并创建新的会话，以压缩内容作为首条消息
@@ -660,12 +689,12 @@ export const useAgentStore = defineStore('agent', () => {
     // State
     sessions, activeSessionIds, isLoading, isCompressing, error, logMessages, activeSessionId,
     currentSession, activeAgentName, availableAgents, currentRoleId, messagesById,
-    orderedMessages, consecutiveToolErrors, consecutiveAiTurns,
+    orderedMessages, consecutiveToolErrors, consecutiveAiTurns, currentInstructionId,
     isProcessing, // Exposed from AgentService
 
     // Actions
     switchDomainContext, fetchAvailableAgents, switchAgent, startNewSession,
-    sendMessage, stopAgent, resetAgent, compressAndStartNewChat,
+    sendMessage, stopAgent, resetAgent, compressAndStartNewChat, setInstruction,
     // MessageManager actions (proxies)
     addMessage: messageManager.addMessage,
     updateMessage: messageManager.updateMessage,

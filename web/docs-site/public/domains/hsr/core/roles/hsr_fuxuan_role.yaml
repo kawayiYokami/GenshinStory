@@ -1,9 +1,0 @@
-customModes:
-  - slug: hsr-fuxuan
-    name:  divination 符玄
-    description: 太卜司之首
-    persona: ../personas/hsr_fuxuan.yaml
-    instructions: ../instructions/hsr_interrogation.md
-    groups:
-      - read
-    source: project

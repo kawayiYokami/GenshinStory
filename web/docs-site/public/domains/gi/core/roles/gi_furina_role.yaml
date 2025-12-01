@@ -3,7 +3,7 @@ customModes:
     name: 💧 芙宁娜
     description: 枫丹的“大明星”
     persona: ../personas/gi_furina.yaml
-    instructions: ../instructions/gi_knowledge_sharing.md
+    # instructions: ../instructions/gi_knowledge_sharing.md
     groups:
       - read
     source: project

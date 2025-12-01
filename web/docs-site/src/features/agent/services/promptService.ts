@@ -21,7 +21,7 @@ interface SystemPromptResult {
 interface RoleConfig {
     customModes?: Array<{
         persona?: string;
-        instructions?: string;
+        // instructions?: string; // Removed
     }>;
 }
 
@@ -30,8 +30,15 @@ interface PersonaConfig {
     definition?: string;
 }
 
+interface InstructionInfo {
+    id: string;
+    name: string;
+    path: string;
+}
+
 const _agentNameCache = new Map<string, string | Promise<string>>();
 const _systemPromptCache = new Map<string, { result: SystemPromptResult; timestamp: number } | Promise<SystemPromptResult>>();
+const _instructionsCache = new Map<string, InstructionInfo[] | Promise<InstructionInfo[]>>();
 
 const CACHE_TTL = 60 * 60 * 1000; // 1小时缓存过期时间（毫秒）
 
@@ -58,6 +65,32 @@ function resolvePath(basePath: string, relativePath: string): string {
         }
     }
     return baseParts.join('/');
+}
+
+async function listAvailableInstructions(): Promise<InstructionInfo[]> {
+    const cacheKey = 'instructions';
+    const cached = _instructionsCache.get(cacheKey);
+
+    if (cached && !(cached instanceof Promise)) return cached;
+    if (cached instanceof Promise) return cached;
+
+    const loadPromise = (async () => {
+        try {
+            const v = Date.now();
+            const response = await fetch(`/prompts/agent/instructions.json?v=${v}`);
+            if (!response.ok) throw new Error('无法加载指令列表');
+            const instructions = await response.json();
+            _instructionsCache.set(cacheKey, instructions);
+            return instructions;
+        } catch (error) {
+            logger.error('[PromptService] 加载指令列表失败:', error);
+            _instructionsCache.delete(cacheKey);
+            return [];
+        }
+    })();
+
+    _instructionsCache.set(cacheKey, loadPromise);
+    return loadPromise;
 }
 
 async function _fetchAgentName(domain: string, roleId: string): Promise<string> {
@@ -146,7 +179,7 @@ async function listAvailableAgents(domain: string): Promise<AgentInfo[]> {
     }
 }
 
-async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemPromptResult> {
+async function loadSystemPrompt(domain: string, roleId: string, instructionId: string = 'chat'): Promise<SystemPromptResult> {
     // 验证输入参数，防止缓存键冲突
     if (!domain || !roleId) {
         logger.error("[PromptService] loadSystemPrompt: 缺少必要参数", { domain, roleId });
@@ -156,7 +189,7 @@ async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemP
         };
     }
 
-    const cacheKey = `${domain}|${roleId}`; // 使用更安全的分隔符
+    const cacheKey = `${domain}|${roleId}|${instructionId}`; // 增加指令ID到缓存键
     const cached = _systemPromptCache.get(cacheKey);
 
     // 检查缓存是否过期
@@ -199,17 +232,21 @@ async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemP
                 throw new Error("在角色配置中找不到有效的 'customModes'。");
             }
 
-            const { persona: personaPath, instructions: instructionsPath } = activeMode;
-            if (!personaPath || !instructionsPath) {
-                throw new Error("角色配置中缺少 'persona' 或 'instructions' 的路径。");
+            const { persona: personaPath } = activeMode;
+            if (!personaPath) {
+                throw new Error("角色配置中缺少 'persona' 的路径。");
             }
 
             const finalPersonaPath = resolvePath(roleConfigPath, personaPath);
-            const finalInstructionsPath = resolvePath(roleConfigPath, instructionsPath);
+
+            // 获取指令路径
+            const instructionsList = await listAvailableInstructions();
+            const instruction = instructionsList.find(i => i.id === instructionId) || instructionsList.find(i => i.id === 'chat');
+            const instructionPath = instruction ? `/prompts/agent/${instruction.path}` : `/prompts/agent/chat.md`;
 
             const [personaResponse, instructionsResponse] = await Promise.all([
                 fetch(`${finalPersonaPath}?v=${v}`),
-                fetch(`${finalInstructionsPath}?v=${v}`)
+                fetch(`${instructionPath}?v=${v}`)
             ]);
 
             if (!personaResponse.ok) throw new Error(`无法加载 Persona 模块: ${personaResponse.statusText}`);
@@ -260,4 +297,5 @@ async function loadSystemPrompt(domain: string, roleId: string): Promise<SystemP
 export default {
     listAvailableAgents,
     loadSystemPrompt,
+    listAvailableInstructions,
 };

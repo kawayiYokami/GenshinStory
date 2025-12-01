@@ -45,6 +45,15 @@
     <div class="flex justify-between items-center px-2 pb-2">
       <!-- 左侧工具组 -->
       <div class="flex gap-1">
+        <!-- 指令模式选择 -->
+        <DaisyDropdown
+          class="transparent-dropdown"
+          :model-value="currentInstructionId || undefined"
+          :options="instructionOptions"
+          placeholder="选择模式"
+          @update:modelValue="(value: string | number | boolean | null) => handleInstructionChange(value as string)"
+        />
+
         <!-- AI 供应商选择 -->
         <DaisyDropdown
           class="transparent-dropdown"
@@ -52,15 +61,6 @@
           :options="configOptions"
           placeholder="选择配置"
           @update:modelValue="(value: string | number | boolean | null) => handleConfigChange(value as string)"
-        />
-
-        <!-- 模型选择 -->
-        <DaisyDropdown
-          class="transparent-dropdown"
-          :model-value="currentModel || undefined"
-          :options="modelOptions"
-          placeholder="选择模型"
-          @update:modelValue="(value: string | number | boolean | null) => handleModelChange(value as string)"
         />
       </div>
 
@@ -149,6 +149,7 @@ import { simpleContextCompressor } from '../services/simpleContextCompressor';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import html2canvas from 'html2canvas-pro';
 import { academicPaperGeneratorService } from '../services/academicPaperGeneratorService';
+import promptService from '@/features/agent/services/promptService';
 
 interface ReferenceItem {
   path: string;
@@ -172,8 +173,11 @@ const toast = useToast();
 
 const { configs, activeConfigId, activeConfig } = storeToRefs(configStore);
 const { fetchModels, setActiveConfig } = configStore;
-const { availableAgents, currentRoleId, orderedMessages, isCompressing } = storeToRefs(agentStore);
-const { switchAgent, resetAgent, compressAndStartNewChat, sendMessage, startNewSession, startNewSessionWithCurrentAgent } = agentStore;
+const { availableAgents, currentRoleId, orderedMessages, isCompressing, currentInstructionId } = storeToRefs(agentStore);
+const { switchAgent, resetAgent, compressAndStartNewChat, sendMessage, startNewSession, startNewSessionWithCurrentAgent, setInstruction } = agentStore;
+
+// 指令列表
+const instructionOptions = ref<{ value: string; label: string }[]>([]);
 
 // 生成论文状态
 const isGeneratingPaper = ref(false);
@@ -263,14 +267,6 @@ const configOptions = computed(() => {
   }));
 });
 
-const modelOptions = computed(() => {
-  if (!activeConfig.value?.availableModels) return []
-  return activeConfig.value.availableModels.map(model => ({
-    value: model,
-    label: model
-  }))
-});
-
 // 当前智能体
 const currentAgent = computed(() => {
   if (!currentRoleId.value || !appStore.currentDomain || !availableAgents.value[appStore.currentDomain]) return null;
@@ -306,13 +302,11 @@ const handleConfigChange = (configId: string) => {
   }
 };
 
-const handleModelChange = (model: string) => {
-  // 更新当前模型
-  currentModel.value = model;
-  // 保存到配置中
-  if (activeConfig.value && activeConfigId.value) {
-    configStore.updateConfig(activeConfigId.value, { modelName: model });
-  }
+const handleInstructionChange = (instructionId: string) => {
+  setInstruction(instructionId);
+  // Optional: Trigger new session or update system prompt immediately?
+  // For now, we just update the store state, which will be used for the next message/session.
+  // Ideally, changing instruction should probably restart session or at least warn user.
 };
 
 const handleSend = (payload: { text: string; images: string[]; references: AttachmentItem[] }) => {
@@ -562,8 +556,17 @@ watch(() => props.modelValue, (newValue) => {
 });
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   // Initialization handled by child components
+  try {
+    const instructions = await promptService.listAvailableInstructions();
+    instructionOptions.value = instructions.map(i => ({
+      value: i.id,
+      label: i.name
+    }));
+  } catch (e) {
+    console.error('Failed to load instructions:', e);
+  }
 });
 
 defineExpose({
