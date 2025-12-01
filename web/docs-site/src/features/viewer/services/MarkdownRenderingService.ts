@@ -69,7 +69,7 @@ export async function processSingleLinkText(linkText: string): Promise<string> {
       const result = await linkProcessorService.resolveLink(linkToProcess);
       const isValid = result.isValid;
       const validityClass = isValid ? '' : 'invalid-link';
-      
+
       // 返回 HTML 字符串。
       const returnHtml = `<a href="#" class="internal-doc-link ${validityClass}" data-is-valid="${isValid}" data-raw-link="${rawLink}" data-path="${pathForValidation}" data-anchor="${anchor}">${finalDisplayText}</a>`;
       return returnHtml;
@@ -104,26 +104,26 @@ function internalLinkPlugin(md: MarkdownIt) {
   // 解析 [[...]] 链接的主要规则函数
   function internal_link(state: any, silent: boolean): boolean {
     const start = state.pos;
-    
+
     // 检查当前字符是否为 '['
     if (state.src.charCodeAt(start) !== 0x5B /* [ */) { return false; }
-    
+
     // 使用正则表达式测试从 'start' 开始的子字符串
     const match = state.src.slice(start).match(linkRegex);
-    
+
     if (!match) { return false; }
-    
+
     const fullMatch = match[0];
     const linkText = fullMatch;
     const matchEnd = start + fullMatch.length;
-    
+
     // 如果是静默模式，则只报告成功
     if (silent) { return true; }
-    
+
     // 为内部链接创建一个新令牌
     const token = state.push('internal_link', '', 0);
     token.content = linkText; // 存储完整的链接文本以供后续处理
-    
+
     // 更新位置
     state.pos = matchEnd;
     return true;
@@ -131,15 +131,15 @@ function internalLinkPlugin(md: MarkdownIt) {
 
   // 将定位器函数分配给规则函数本身
   (internal_link as any).locator = locator;
-  
+
   // 在内联解析器中添加规则，优先级较高，在内置的 'link' 规则之前
   md.inline.ruler.before('link', 'internal_link', internal_link);
-  
+
   // 为 'internal_link' 令牌类型添加渲染器
   md.renderer.rules.internal_link = function (tokens: any[], idx: number) {
     const token = tokens[idx];
     const linkText = token.content; // 这是完整的 [[...]] 文本
-    
+
     // 返回一个占位符。我们稍后会替换它。
     return createLinkPlaceholder(linkText);
   };
@@ -166,18 +166,22 @@ export function renderMarkdownSync(markdownText: string): string {
       typographer: true,
       breaks: true,
     });
-    
+
+    // Disable fuzzy link detection to prevent filenames (e.g., "file.md")
+    // from being interpreted as domains. Only URLs with protocols will be linked.
+    md.linkify.set({ fuzzyLink: false });
+
     md.use(internalLinkPlugin);
 
     // 将 Markdown 渲染为 HTML
     const rawHtml = md.render(markdownText);
-    
+
     // 注意：占位符已由渲染器插入。
     // 调用者负责在需要时替换占位符。
     // 对于同步渲染，我们返回带有占位符的 HTML。
     // DOMPurify 无法在此处的 Worker 环境中用于最终清理
     // 因为它需要 DOM。清理必须由调用者在主线程中完成。
-    
+
     return rawHtml;
   } catch (error) {
     logger.error('同步渲染 Markdown 时出错:', error);
@@ -204,10 +208,10 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
       // 或将 HTML 传递回主线程进行处理。
       // 现在，我们将记录警告并按原样返回 HTML。
       // 对于 Worker，更健壮的解决方案是使用字符串替换。
-      
+
       // 对于没有 DOMParser 的环境（例如 Web Workers），回退到字符串替换
       logger.warn('DOMParser 不可用，使用字符串替换处理链接占位符。');
-      
+
       // 用于查找占位符的正则表达式
       const placeholderRegex = /\{\{INTERNAL_LINK_PLACEHOLDER:([^\}]+)\}\}/g;
       let match;
@@ -225,7 +229,7 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
           .replace(/>/g, ">")
           .replace(/"/g, '"')
           .replace(/'/g, "'");
-        
+
         if (!replacements[placeholder]) {
           // 处理链接文本并存储结果
           const replacement = await processSingleLinkText(linkText);
@@ -240,7 +244,7 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
         const regex = new RegExp(escapedPlaceholder, 'g');
         newHtml = newHtml.replace(regex, replacement);
         }
-        
+
         return newHtml;
     }
 
@@ -256,7 +260,7 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
     // 当前渲染器创建 `{{INTERNAL_LINK_PLACEHOLDER:...}}` 文本节点。
     // 在 DOM 中查找和替换这些节点很棘手。
     // 字符串替换更可靠。
-    
+
     // 重用回退中的字符串替换逻辑
     const placeholderRegex = /\{\{INTERNAL_LINK_PLACEHOLDER:([^\}]+)\}\}/g;
     let match;
@@ -272,7 +276,7 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
         .replace(/>/g, ">")
         .replace(/"/g, '"')
         .replace(/'/g, "'");
-      
+
       if (!replacements[placeholder]) {
         const replacement = await processSingleLinkText(linkText);
         replacements[placeholder] = replacement;
@@ -285,7 +289,7 @@ export async function replaceLinkPlaceholders(htmlWithPlaceholders: string): Pro
       const regex = new RegExp(escapedPlaceholder, 'g');
       newHtml = newHtml.replace(regex, replacement);
       }
-      
+
       return newHtml;
 
   } catch (error) {

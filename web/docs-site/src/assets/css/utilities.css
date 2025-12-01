@@ -124,3 +124,7 @@
 .attachment-btn {
   @apply btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:text-error;
 }
+/* 无效内部链接 */
+.invalid-link {
+  @apply text-error/70 line-through decoration-wavy decoration-error/50 cursor-not-allowed hover:text-error;
+}
