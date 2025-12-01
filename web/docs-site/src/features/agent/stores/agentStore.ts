@@ -142,8 +142,8 @@ export const useAgentStore = defineStore('agent', () => {
    * @return {Promise<string | null>} 当前激活的角色ID
    * @throws {Error} 当获取代理列表失败时抛出异常
    */
-  async function fetchAvailableAgents(domain: string): Promise<string | null> {
-    if (_isFetchingAgents.value[domain] || availableAgents.value[domain]?.length > 0) {
+  async function fetchAvailableAgents(domain: string, force = false): Promise<string | null> {
+    if (!force && (_isFetchingAgents.value[domain] || availableAgents.value[domain]?.length > 0)) {
       return activeRoleId.value[domain];
     }
     _isFetchingAgents.value[domain] = true;
@@ -170,6 +170,16 @@ export const useAgentStore = defineStore('agent', () => {
     } finally {
       _isFetchingAgents.value[domain] = false;
       return activeRoleId.value[domain];
+    }
+  }
+
+  /**
+   * 刷新当前域的可用代理列表
+   */
+  async function refreshAvailableAgents(): Promise<void> {
+    const domain = currentDomain.value;
+    if (domain) {
+      await fetchAvailableAgents(domain, true);
     }
   }
 
@@ -693,7 +703,7 @@ export const useAgentStore = defineStore('agent', () => {
     isProcessing, // Exposed from AgentService
 
     // Actions
-    switchDomainContext, fetchAvailableAgents, switchAgent, startNewSession,
+    switchDomainContext, fetchAvailableAgents, refreshAvailableAgents, switchAgent, startNewSession,
     sendMessage, stopAgent, resetAgent, compressAndStartNewChat, setInstruction,
     // MessageManager actions (proxies)
     addMessage: messageManager.addMessage,

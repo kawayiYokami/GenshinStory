@@ -30,6 +30,7 @@
       @open-no-key-modal="openNoKeyModal"
     />
 
+    <CustomInstructionsSection />
     <ThemeSection />
   </div>
 
@@ -45,6 +46,7 @@
       </div>
     </div>
   </dialog>
+
 </template>
 
 <script setup lang="ts">
@@ -57,9 +59,11 @@ import { useAppStore } from '@/features/app/stores/app';
 import { useThemeStore } from '@/features/app/stores/themeStore';
 import type { ThemeName } from '@/features/app/stores/themeStore';
 import { useResponsive } from '@/composables/useResponsive';
+import promptService, { type InstructionInfo } from '@/features/agent/services/promptService';
 import SettingsHeader from '../components/SettingsHeader.vue';
 import AIConfigSection from '../components/AIConfigSection.vue';
 import ThemeSection from '../components/ThemeSection.vue';
+import CustomInstructionsSection from '../components/CustomInstructionsSection.vue';
 
 // Stores
 const configStore = useConfigStore();
@@ -84,6 +88,7 @@ const domains = [
 
 // Modal content
 const modalContent = ref('');
+
 
 // Load modal content
 const loadModalContent = async () => {
@@ -208,6 +213,7 @@ const openNoKeyModal = () => {
     modal.showModal();
   }
 };
+
 </script>
 
 <style scoped>
