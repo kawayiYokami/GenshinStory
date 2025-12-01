@@ -93,7 +93,11 @@ class LocalToolsService {
     const currentDomain = appStore.currentDomain;
     if (!currentDomain) return '';
     const cleanLogicalPath = logicalPath.startsWith('/') ? logicalPath.substring(1) : logicalPath;
-    return `/domains/${currentDomain}/docs/${cleanLogicalPath}`;
+
+    // 对路径的每一部分进行编码，以处理中文和特殊字符
+    const encodedPath = cleanLogicalPath.split('/').map(part => encodeURIComponent(part)).join('/');
+
+    return `/domains/${currentDomain}/docs/${encodedPath}`;
   }
 
   private _getLogicalPathFromFrontendPath(frontendPath: string): string {
@@ -270,9 +274,15 @@ class LocalToolsService {
 
                 const resolvedPath = await pathService.resolveLogicalPath(justTheFileName);
 
-                if (resolvedPath && resolvedPath !== path) {
-                    logger.log(`路径解析成功: '${path}' -> '${resolvedPath}'。正在重试...`);
-                    path = resolvedPath;
+                // 如果解析到了路径，即使它和原始路径看起来一样（可能是编码差异或就是同一个文件但之前读取失败），
+                // 我们也应该尝试用新的 _getPhysicalPathFromLogicalPath (它现在会进行正确的编码) 再试一次。
+                if (resolvedPath) {
+                    if (resolvedPath !== path) {
+                        logger.log(`路径解析成功 (重定向): '${path}' -> '${resolvedPath}'。正在重试...`);
+                        path = resolvedPath;
+                    } else {
+                        logger.log(`路径确认存在 (原路径): '${path}'。正在重试读取...`);
+                    }
 
                     physicalPath = this._getPhysicalPathFromLogicalPath(path);
                     fullContent = await dataStore.fetchMarkdownContent(physicalPath);
