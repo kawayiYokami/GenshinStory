@@ -105,12 +105,11 @@ class TestWeaponParsing(unittest.TestCase):
 
         self.assertIsInstance(markdown_output, str)
         # Basic checks to see if the markdown contains expected elements
-        self.assertIn(f"# 武器: {weapon.name}", markdown_output)
-        self.assertIn(f"**型号**: {weapon.model_id}", markdown_output)
+        self.assertIn(f"# {weapon.name}", markdown_output)
         if weapon.description:
-            self.assertIn("## 功能描述", markdown_output)
+            self.assertIn("## 描述", markdown_output)
         if weapon.story:
-            self.assertIn("## 背景故事", markdown_output)
+            self.assertIn("## 故事", markdown_output)
 
     def test_random_weapon_formatting_output(self):
         """

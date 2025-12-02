@@ -19,6 +19,7 @@ class SearchResult(NamedTuple):
 # Import the new text transformer
 from .utils.text_transformer import transform_text
 from .interpreters.session_interpreter import SessionInterpreter, Session
+from .key_mapper import KeyMapper
 
 class ZZZDataLoader:
     """
@@ -142,28 +143,41 @@ class ZZZDataLoader:
         if 'partner_config' not in self._cache:
             logging.info("Loading Partner Config...")
             raw_config = self.get_json("FileCfg/PartnerConfigTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse PartnerConfigTemplateTb.json")
+                return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_partner_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for Partner Config")
                 return None
 
             # 预处理：构建以ID为键的配置字典
             processed_config = {}
-            for partner_data in raw_config['PDHBFPILAJD']:
-                partner_id = str(partner_data['DDFGCLKJPJC'])
+            for partner_data in data_list:
+                # 使用 key_map 动态获取值
+                p_id_val = partner_data.get(key_map['id'])
+                if p_id_val is None: continue
+
+                partner_id = str(p_id_val)
                 processed_config[partner_id] = {
                     'id': partner_id,
-                    'name_key': partner_data['CNFOJMDENMK'],
-                    'outlook_desc_key': partner_data['GNJCDLGHDDF'],
-                    'profile_desc_key': partner_data['HEIAFGBBAAE'],
-                    'impression_f_key': partner_data['MBFJNKPEACB'],
-                    'impression_m_key': partner_data['DIDBDGDIJFP'],
-                    'birthday_key': partner_data['FELBLONCIDJ'],
-                    'true_name': partner_data['NMDLENGDAKD'],
-                    'camp_ids': partner_data['CLKJKCGPCAN'],
-                    'camp_key': partner_data.get('NPMBJEBPMIK', ''),
-                    'gender': partner_data.get('EEMFLLFIIKL', 0),
-                    'icon_path': partner_data.get('PCOENAKPIMP', ''),
-                    'gacha_splash_path': partner_data.get('MNHJEPLGCKC', '')
+                    'name_key': partner_data.get(key_map.get('name_key'), ''),
+                    'outlook_desc_key': partner_data.get(key_map.get('outlook_desc_key'), ''),
+                    'profile_desc_key': partner_data.get(key_map.get('profile_desc_key'), ''),
+                    'impression_f_key': partner_data.get(key_map.get('impression_f_key'), ''),
+                    'impression_m_key': partner_data.get(key_map.get('impression_m_key'), ''),
+                    'birthday_key': partner_data.get(key_map.get('birthday_key'), ''),
+                    'true_name': partner_data.get('NMDLENGDAKD', ''), # Legacy/Unknown key
+                    'camp_ids': partner_data.get(key_map.get('camp_ids'), []),
+                    'camp_key': partner_data.get(key_map.get('camp_key'), ''),
+                    'gender': partner_data.get('EEMFLLFIIKL', 0), # Legacy/Unknown key
+                    'icon_path': partner_data.get(key_map.get('icon_path'), ''),
+                    'gacha_splash_path': partner_data.get('MNHJEPLGCKC', '') # Legacy/Unknown key
                 }
             self._cache['partner_config'] = processed_config
             logging.info(f"Partner Config loaded for {len(processed_config)} partners.")
@@ -177,29 +191,42 @@ class ZZZDataLoader:
         if 'item_config' not in self._cache:
             logging.info("Loading Item Config...")
             raw_config = self.get_json("FileCfg/ItemTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse ItemTemplateTb.json")
                 return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_item_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for Item Config")
+                return None
+
             # 预处理：构建以ID为键的配置字典
             processed_config = {}
-            for item_data in raw_config['PDHBFPILAJD']:
-                item_id = int(item_data['CJHNGFMGKGE'])
+            for item_data in data_list:
+                item_id_val = item_data.get(key_map['id'])
+                if item_id_val is None: continue
+                item_id = int(item_id_val)
 
-                # 基本配置：ID和名称键是必须的
+                # 基本配置
                 config_entry = {
                     'id': item_id,
-                    'name_key': item_data['LNCODBGHFKM']
+                    'name_key': item_data.get(key_map.get('name_key'), '')
                 }
 
-                # 可选配置：描述和故事键
-                # 只有当键存在且非空时才添加
-                description_key = item_data.get('HKLJIIIPINE', '')
-                if description_key:
-                    config_entry['description_key'] = description_key
+                # 可选配置
+                if key_map.get('description_key'):
+                    desc_key = item_data.get(key_map['description_key'], '')
+                    if desc_key:
+                        config_entry['description_key'] = desc_key
 
-                story_key = item_data.get('NCDPCNGNNDB', '')
-                if story_key:
-                    config_entry['story_key'] = story_key
+                if key_map.get('story_key'):
+                    s_key = item_data.get(key_map['story_key'], '')
+                    if s_key:
+                        config_entry['story_key'] = s_key
 
                 processed_config[item_id] = config_entry
 
@@ -216,20 +243,30 @@ class ZZZDataLoader:
         if 'hollow_item_config' not in self._cache:
             logging.info("Loading Hollow Item Config...")
             raw_config = self.get_json("FileCfg/HollowItemTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse HollowItemTemplateTb.json")
+                return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_hollow_item_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for Hollow Item Config")
                 return None
 
             # 预处理：构建以ID为键的配置字典
             processed_config = {}
-            for item_data in raw_config['PDHBFPILAJD']:
-                item_id = int(item_data['CJHNGFMGKGE'])
+            for item_data in data_list:
+                item_id_val = item_data.get(key_map['id'])
+                if item_id_val is None: continue
+                item_id = int(item_id_val)
 
-                # 基本配置：ID、名称键和描述键是必须的
                 config_entry = {
                     'id': item_id,
-                    'name_key': item_data['LNCODBGHFKM'],
-                    'description_key': item_data['PPILGGFGMDP']
+                    'name_key': item_data.get(key_map.get('name_key'), ''),
+                    'description_key': item_data.get(key_map.get('description_key'), '')
                 }
 
                 processed_config[item_id] = config_entry
@@ -246,30 +283,40 @@ class ZZZDataLoader:
         if 'weapon_config' not in self._cache:
             logging.info("Loading Weapon Config...")
             raw_config = self.get_json("FileCfg/WeaponTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse WeaponTemplateTb.json")
+                return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_weapon_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for Weapon Config")
                 return None
 
             # 预处理：构建以ID为键的配置字典
             processed_config = {}
-            for weapon_data in raw_config['PDHBFPILAJD']:
-                weapon_id = int(weapon_data['EGDBEJFIMCP'])
+            for weapon_data in data_list:
+                w_id_val = weapon_data.get(key_map['id'])
+                if w_id_val is None: continue
+                weapon_id = int(w_id_val)
 
-                # 基本配置：ID和模型ID是必须的
+                # 基本配置
                 config_entry = {
                     'id': weapon_id,
-                    'model_id': weapon_data['MCGNCAPBMDN'] # e.g., "Weapon_B_Common_01"
+                    'model_id': weapon_data.get(key_map.get('model_id'), '')
                 }
 
-                # 可选配置：描述和故事键
-                # 只有当键存在且非空时才添加
-                description_key = weapon_data.get('LJDMINMOCKG', '')
-                if description_key:
-                    config_entry['description_key'] = description_key
+                # 可选配置
+                if key_map.get('description_key'):
+                    desc_key = weapon_data.get(key_map['description_key'], '')
+                    if desc_key:
+                        config_entry['description_key'] = desc_key
 
-                story_key = weapon_data.get('JDBHFACHBOF', '') or weapon_data.get('PHINCIBGEFF', '')
-                if story_key:
-                    config_entry['story_key'] = story_key
+                # Story key logic omitted or needs separate mapping if crucial
+                # For now we only mapped description in KeyMapper
 
                 # 推导名称键 (Name Key)
                 # 例如: model_id = "Weapon_B_Common_01" -> name_key = "Item_Weapon_B_Common_01_Name"
@@ -290,29 +337,39 @@ class ZZZDataLoader:
         if 'vhs_collection_config' not in self._cache:
             logging.info("Loading VHS Collection Config...")
             raw_config = self.get_json("FileCfg/VHSCollectionConfigTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse VHSCollectionConfigTemplateTb.json")
+                return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_vhs_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for VHS Config")
                 return None
 
             # 预处理：构建以ID为键的配置字典
             processed_config = {}
-            for vhs_data in raw_config['PDHBFPILAJD']:
-                vhs_id = int(vhs_data['DDLCOLOFOOJ'])
+            for vhs_data in data_list:
+                v_id_val = vhs_data.get(key_map['id'])
+                if v_id_val is None: continue
+                vhs_id = int(v_id_val)
 
-                # 基本配置：ID是必须的
                 config_entry = {
                     'id': vhs_id
                 }
 
-                # 可选配置：名称和描述键
-                # 只有当键存在且非空时才添加
-                name_key = vhs_data.get('DIEPHCMFCIL', '')
-                if name_key:
-                    config_entry['name_key'] = name_key
+                if key_map.get('name_key'):
+                    name_key = vhs_data.get(key_map['name_key'], '')
+                    if name_key:
+                        config_entry['name_key'] = name_key
 
-                description_key = vhs_data.get('DMPNAMLKGBP', '')
-                if description_key:
-                    config_entry['description_key'] = description_key
+                if key_map.get('description_key'):
+                    desc_key = vhs_data.get(key_map['description_key'], '')
+                    if desc_key:
+                        config_entry['description_key'] = desc_key
 
                 processed_config[vhs_id] = config_entry
 
@@ -328,63 +385,62 @@ class ZZZDataLoader:
         if 'message_config' not in self._cache:
             logging.info("Loading Message Config...")
             raw_config = self.get_json("FileCfg/MessageConfigTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse MessageConfigTemplateTb.json")
+                return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_message_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for Message Config")
                 return None
 
             # 预处理：构建以消息ID为键的配置字典
             processed_config = {}
-            for message_data in raw_config['PDHBFPILAJD']:
-                message_id = int(message_data['CJHNGFMGKGE'])
+            for message_data in data_list:
+                m_id_val = message_data.get(key_map['id'])
+                if m_id_val is None: continue
+                message_id = int(m_id_val)
 
                 # 基本配置
                 config_entry = {
                     'id': message_id,
-                    'group_id': int(message_data.get('IIBGABOLBDI', 0)),
-                    'text_key': message_data.get('DECDHOMFHKM', ''),
-                    'sequence': int(message_data.get('BKOAPELPEGL', 0)),
-                    'session_npc_id': int(message_data.get('POAKMNJMIAJ', 0)), # 使用 POAKMNJMIAJ 作为会话NPC ID
-                    'POAKMNJMIAJ': int(message_data.get('POAKMNJMIAJ', 0)), # 保留原始字段，用于判断是否是玩家消息
-                    'LMBEMIPCECK': int(message_data.get('LMBEMIPCECK', 0))  # 保留原始字段
+                    'group_id': int(message_data.get(key_map.get('group_id'), 0)),
+                    'text_key': message_data.get(key_map.get('text_key'), ''),
+                    'sequence': int(message_data.get(key_map.get('sequence'), 0)),
+                    'session_npc_id': int(message_data.get(key_map.get('session_npc_id'), 0))
                 }
 
                 # 解析对话选项
                 options = []
                 # Option 1
-                if message_data.get('PJILMILDDBN') or message_data.get('ODCPPAKEEPM') or message_data.get('AAJNLGHFKID'):
-                    option1 = {
-                        'text_key': message_data.get('PJILMILDDBN'),
-                        'long_text_key': message_data.get('ODCPPAKEEPM'),
-                        'next_message_id': int(message_data.get('AAJNLGHFKID', 0)) if message_data.get('AAJNLGHFKID') else None
-                    }
-                    options.append(option1)
+                if key_map.get('option1_text_key'):
+                    opt1_text_key = message_data.get(key_map['option1_text_key'])
+                    opt1_next = int(message_data.get(key_map.get('option1_next_id_key'), 0)) if key_map.get('option1_next_id_key') else None
+
+                    if opt1_text_key:
+                        option1 = {
+                            'text_key': opt1_text_key,
+                            'long_text_key': None,
+                            'next_message_id': opt1_next
+                        }
+                        options.append(option1)
 
                 # Option 2
-                if message_data.get('LEACGIIJHHO') or message_data.get('NGADKHLFKDI') or message_data.get('AFNINBBDCOF'):
-                    option2 = {
-                        'text_key': message_data.get('LEACGIIJHHO'),
-                        'long_text_key': message_data.get('NGADKHLFKDI'),
-                        'next_message_id': int(message_data.get('AFNINBBDCOF', 0)) if message_data.get('AFNINBBDCOF') else None
-                    }
-                    options.append(option2)
+                if key_map.get('option2_text_key'):
+                    opt2_text_key = message_data.get(key_map['option2_text_key'])
+                    opt2_next = int(message_data.get(key_map.get('option2_next_id_key'), 0)) if key_map.get('option2_next_id_key') else None
 
-                # Option 3
-                if message_data.get('PFEFHIBHJDL') or message_data.get('KBIFFIEJJMO'):
-                    option3 = {
-                        'text_key': None, # 假设没有单独的文本键
-                        'long_text_key': None,
-                        'next_message_id': int(message_data.get('PFEFHIBHJDL', 0)) if message_data.get('PFEFHIBHJDL') else None
-                    }
-                    options.append(option3)
-
-                # Option 4
-                if message_data.get('KBIFFIEJJMO'):
-                    option4 = {
-                        'text_key': None, # 假设没有单独的文本键
-                        'long_text_key': None,
-                        'next_message_id': int(message_data.get('KBIFFIEJJMO', 0)) if message_data.get('KBIFFIEJJMO') else None
-                    }
-                    options.append(option4)
+                    if opt2_text_key:
+                        option2 = {
+                            'text_key': opt2_text_key,
+                            'long_text_key': None,
+                            'next_message_id': opt2_next
+                        }
+                        options.append(option2)
 
                 config_entry['options'] = options
                 processed_config[message_id] = config_entry
@@ -401,20 +457,31 @@ class ZZZDataLoader:
         if 'message_npc_config' not in self._cache:
             logging.info("Loading Message NPC Config...")
             raw_config = self.get_json("FileCfg/MessageNPCTemplateTb.json")
-            if not raw_config or 'PDHBFPILAJD' not in raw_config:
+            list_key = KeyMapper.get_list_key(raw_config) if raw_config else None
+
+            if not raw_config or not list_key:
                 logging.error("Failed to load or parse MessageNPCTemplateTb.json")
+                return None
+
+            data_list = raw_config[list_key]
+            key_map = KeyMapper.map_message_npc_keys(data_list)
+
+            if not key_map.get('id'):
+                logging.error("Failed to map keys for Message NPC Config")
                 return None
 
             # 预处理：构建以NPC ID为键的配置字典
             processed_config = {}
-            for npc_data in raw_config['PDHBFPILAJD']:
-                npc_id = int(npc_data['CJHNGFMGKGE'])
+            for npc_data in data_list:
+                n_id_val = npc_data.get(key_map['id'])
+                if n_id_val is None: continue
+                npc_id = int(n_id_val)
 
                 # 基本配置
                 config_entry = {
                     'id': npc_id,
-                    'LNCODBGHFKM': npc_data.get('LNCODBGHFKM', ''),
-                    'avatar_id': npc_data.get('MDHDICACNJE', '') # 存储头像ID/路径
+                    'LNCODBGHFKM': npc_data.get(key_map.get('name_key'), ''),
+                    'avatar_id': npc_data.get(key_map.get('avatar_id'), '')
                 }
 
                 processed_config[npc_id] = config_entry
@@ -455,22 +522,25 @@ class ZZZDataLoader:
         if cache_key not in self._cache:
             logging.info("Loading and parsing Message Sessions...")
 
-            # 1. 获取原始数据
-            raw_messages = self.get_json("FileCfg/MessageConfigTemplateTb.json")
-            if not raw_messages or 'PDHBFPILAJD' not in raw_messages:
-                logging.error("Failed to load or parse MessageConfigTemplateTb.json for sessions")
+            # 1. 获取标准化后的配置数据 (Use get_message_config which returns processed dicts)
+            processed_messages = self.get_message_config()
+            if not processed_messages:
+                logging.error("Failed to load MessageConfig for sessions")
                 return None
+
+            # Convert dict of dicts to list of dicts for the interpreter
+            message_list = list(processed_messages.values())
 
             # 2. 获取文本映射
             text_map = self.get_text_map()
 
-            # 3. 获取NPC配置 (用于更准确的NPC名称解析)
-            npc_config = self.get_json("FileCfg/MessageNPCTemplateTb.json")
+            # 3. 获取NPC配置 (Get the PROCESSED NPC config)
+            npc_config = self.get_message_npc_config()
 
             # 4. 初始化解释器并解释
             interpreter = SessionInterpreter(text_map, npc_config, player_name=self.player_name)
             try:
-                sessions = interpreter.interpret(raw_messages['PDHBFPILAJD'])
+                sessions = interpreter.interpret(message_list)
                 self._cache[cache_key] = sessions
                 logging.info(f"Message Sessions parsed successfully. Total sessions: {len(sessions)}")
             except Exception as e:
@@ -539,7 +609,8 @@ class ZZZDataLoader:
         item_type = context.get('type')
         item_name = context.get('name')
 
-        if not all([item_id, item_type, item_name]):
+        # Allow item_id to be 0 (some items might have ID 0)
+        if item_id is None or not item_type or not item_name:
             logging.warning(f"Indexing skipped: missing id, type, or name in context. context={context}")
             return
 

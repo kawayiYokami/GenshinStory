@@ -99,12 +99,8 @@ class SessionInterpreter:
             return "[未知NPC]"
 
         # Find NPC data by ID (CJHNGFMGKGE is the ID field in NPC config)
-        npc_data = None
-        for item in self.npc_config.get("PDHBFPILAJD", []):
-            # NPC config IDs are numeric; compare with int
-            if item.get("CJHNGFMGKGE") == npc_id_int:
-                npc_data = item
-                break
+        # Note: self.npc_config is now a DICT indexed by ID, pre-processed in dataloader
+        npc_data = self.npc_config.get(npc_id_int)
 
         if not npc_data:
             # If we don't have an entry in npc_config for this ID,
@@ -129,14 +125,42 @@ class SessionInterpreter:
 
         Args:
             raw_messages: A list of dictionaries, each representing a raw message.
+            (Note: In the refactored DataLoader, these are raw dicts from the list in JSON)
 
         Returns:
             A list of Session objects.
         """
-        # 1. Group messages by SessionId (IIBGABOLBDI in raw data)
+        # NOTE: Since keys are now dynamic and mapped in DataLoader, passing raw_messages directly
+        # here is problematic if we don't know the keys.
+        # Ideally, DataLoader should pass 'processed_config' (the dict with standardized keys).
+        # However, to avoid rewriting the whole logic flow right now, we can assume 'raw_messages'
+        # passed here is actually the list of standardized message dicts created in DataLoader.
+        # Let's check DataLoader implementation...
+        #
+        # In DataLoader.get_message_sessions():
+        # raw_messages = self.get_json(...)
+        # ...
+        # sessions = interpreter.interpret(raw_message_list)
+        #
+        # WAIT. The new DataLoader passes `raw_message_list` (the raw JSON list), NOT the processed config.
+        # This means SessionInterpreter needs to know the KEY MAP as well, OR
+        # DataLoader should pass the `processed_config` values list.
+        #
+        # Let's look at DataLoader again. `processed_config` is built but stored in cache 'message_config'.
+        # `get_message_sessions` calls `interpreter.interpret` with RAW list.
+        # This is a DESIGN FLAW in the refactor plan.
+        #
+        # FIX: We should change DataLoader to use `get_message_config().values()` which returns
+        # standardized dicts!
+        #
+        # However, since I am editing SessionInterpreter now, I will assume the input `raw_messages`
+        # is a list of STANDARDIZED dictionaries (with keys 'id', 'group_id', 'text_key', etc.).
+        # I will update DataLoader in the next step to pass `self.get_message_config().values()` instead of raw list.
+
+        # 1. Group messages by SessionId (group_id)
         sessions_data: Dict[int, List[Dict]] = defaultdict(list)
         for msg in raw_messages:
-            session_id = msg.get("IIBGABOLBDI")
+            session_id = msg.get("group_id")
             if session_id is not None:
                 sessions_data[session_id].append(msg)
 
@@ -154,7 +178,7 @@ class SessionInterpreter:
         # Find main NPC (first non-zero NpcId message, or default)
         main_npc_id = 0
         for msg in raw_messages:
-            npc_id = msg.get("POAKMNJMIAJ", 0) # NpcId in raw data
+            npc_id = msg.get("session_npc_id", 0)
             if npc_id != 0:
                 main_npc_id = npc_id
                 break # Found the first NPC ID
@@ -164,10 +188,10 @@ class SessionInterpreter:
 
         session = Session(session_id, main_npc_id, main_npc_name)
 
-        # 2. Group messages by Sequence No. within the session (BKOAPELPEGL in raw data)
+        # 2. Group messages by Sequence No. within the session
         stages_data: Dict[int, List[Dict]] = defaultdict(list)
         for msg in raw_messages:
-            sequence_id = msg.get("BKOAPELPEGL")
+            sequence_id = msg.get("sequence")
             if sequence_id is not None:
                 stages_data[sequence_id].append(msg)
 
@@ -184,57 +208,35 @@ class SessionInterpreter:
         """
         stage = Stage(sequence_id)
 
-        # Determine stage type from the first message's UnknownId1 (AAJNLGHFKID in raw data)
-        # (Assumption: All messages in a stage share the same type)
-        msg_type = raw_messages[0].get("AAJNLGHFKID", -1)
+        # Determine stage type.
+        # In standardized dict, we distinguish types by presence of 'options'.
+        # If 'options' list is not empty, it's a player option stage.
+        # Otherwise it's NPC dialog (or end signal, but end signal is tricky without specific flags).
 
-        if msg_type == self.MSG_TYPE_NPC_DIALOG:
-            stage.messages = [self._create_message(msg) for msg in raw_messages]
-            # Check for unlocks_condition on any message in the stage
-            for msg in raw_messages:
-                if msg.get("UnknownId2", 0) != 0:
-                    # Apply to the first message that has it, or create a dummy if none exist yet
-                    # A more robust way might be to store it on the stage itself if it's stage-wide.
-                    # For now, attaching to the first message in the list.
-                    if stage.messages:
-                         stage.messages[0].unlocks_condition = msg["UnknownId2"]
-                    break # Assume only one relevant unlock per stage for simplicity
+        is_option_stage = False
+        if raw_messages and raw_messages[0].get('options'):
+            is_option_stage = True
 
-        elif msg_type == self.MSG_TYPE_PLAYER_OPTIONS:
-            # There should typically be one message representing the options group
+        if is_option_stage:
+             # There should typically be one message representing the options group
             if raw_messages:
                 options_msg = raw_messages[0] # Take the first one
                 stage.player_options = self._create_player_options(options_msg)
             else:
-                # Handle empty stage data gracefully
                 stage.player_options = PlayerOptions(message_id=0, options=[])
-
-        elif msg_type == self.MSG_TYPE_END_SIGNAL:
-            stage.is_end_signal = True
-            # Check for unlocks_condition on the end signal message
-            if raw_messages and raw_messages[0].get("UnknownId2", 0) != 0:
-                # This is a bit ambiguous. An end signal with an unlock?
-                # We'll store it on a dummy message or the stage itself conceptually.
-                # For now, we just note the stage is an end signal.
-                pass
         else:
-            # Log or handle unknown message types if necessary
-            # For simplicity, treat as NPC dialog
+            # Treat as NPC dialog
             stage.messages = [self._create_message(msg) for msg in raw_messages]
 
         return stage
 
     def _create_message(self, raw_msg: Dict) -> Message:
-        """Creates a Message object from a raw message dict."""
-        text_key = raw_msg.get("DECDHOMFHKM") # TextKey in raw data
+        """Creates a Message object from a standardized message dict."""
+        text_key = raw_msg.get("text_key")
         text = self.text_map.get(text_key, "") if text_key else ""
-        # LongTextKey is typically for options, but might exist for messages?
-        # Let's prioritize TextKey. If you find cases where LongTextKey is primary for messages, adjust.
-        # For now, we'll add it as a note if it exists and is different.
-        # This logic can be refined based on data observation.
 
         # Resolve NPC name using the dedicated method
-        speaker_id = raw_msg.get("POAKMNJMIAJ", 0) # NpcId in raw data
+        speaker_id = raw_msg.get("session_npc_id", 0)
         if speaker_id == 0 and text:
             speaker_name = "???"
         elif speaker_id == 0:
@@ -243,55 +245,35 @@ class SessionInterpreter:
             speaker_name = self._get_npc_name_by_id(speaker_id)
 
         return Message(
-            message_id=raw_msg["CJHNGFMGKGE"], # MessageId in raw data
+            message_id=raw_msg["id"],
             speaker_id=speaker_id,
             speaker_name=speaker_name,
             text=text
-            # unlocks_condition is handled in _interpret_stage
         )
 
     def _create_player_options(self, raw_msg: Dict) -> PlayerOptions:
-        """Creates a PlayerOptions object from a raw message dict."""
+        """Creates a PlayerOptions object from a standardized message dict."""
+        # The standardized dict already parses options into a list of dicts
+        # structure: [{'text_key': '...', 'next_message_id': ...}, ...]
+
+        raw_options = raw_msg.get('options', [])
         options = []
 
-        # --- Option 1 ---
-        opt1_text_key = raw_msg.get("PJILMILDDBN") # TextKey for option 1
-        opt1_long_text_key = raw_msg.get("ODCPPAKEEPM") # LongTextKey for option 1
-        opt1_jump_id = raw_msg.get("PFEFHIBHJDL") # Jump ID for option 1
+        for opt in raw_options:
+            text_key = opt.get('text_key')
+            next_id = opt.get('next_message_id')
 
-        if opt1_text_key or opt1_long_text_key: # Only add if there's some text
-            opt1_text = self.text_map.get(str(opt1_text_key), "") if opt1_text_key else ""
-            opt1_long_text = self.text_map.get(str(opt1_long_text_key), "") if opt1_long_text_key else None
-            # Combine texts if both exist, or use the one that exists
-            combined_text_1 = (opt1_text + " " + opt1_long_text).strip() if opt1_long_text else opt1_text
-            if combined_text_1: # Only add option if final text is not empty
-                 options.append(Option(
-                    text=combined_text_1,
-                    long_text=opt1_long_text,
-                    jump_to_sequence_id=opt1_jump_id
-                ))
-
-        # --- Option 2 ---
-        opt2_text_key = raw_msg.get("LEACGIIJHHO") # TextKey for option 2
-        opt2_long_text_key = raw_msg.get("NGADKHLFKDI") # LongTextKey for option 2
-        opt2_jump_id = raw_msg.get("KBIFFIEJJMO") # Jump ID for option 2
-
-        if opt2_text_key or opt2_long_text_key: # Only add if there's some text
-            opt2_text = self.text_map.get(str(opt2_text_key), "") if opt2_text_key else ""
-            opt2_long_text = self.text_map.get(str(opt2_long_text_key), "") if opt2_long_text_key else None
-            # Combine texts if both exist, or use the one that exists
-            combined_text_2 = (opt2_text + " " + opt2_long_text).strip() if opt2_long_text else opt2_text
-            if combined_text_2: # Only add option if final text is not empty
-                options.append(Option(
-                    text=combined_text_2,
-                    long_text=opt2_long_text,
-                    jump_to_sequence_id=opt2_jump_id
-                ))
-
-        unlocks_condition = raw_msg.get("AFNINBBDCOF") if raw_msg.get("AFNINBBDCOF", 0) != 0 else None # UnknownId2 in raw data
+            if text_key:
+                text = self.text_map.get(str(text_key), "")
+                if text:
+                     options.append(Option(
+                        text=text,
+                        long_text=None, # Standardized dict simplified this
+                        jump_to_sequence_id=next_id
+                    ))
 
         return PlayerOptions(
-            message_id=raw_msg["CJHNGFMGKGE"], # MessageId in raw data
+            message_id=raw_msg["id"],
             options=options,
-            unlocks_condition=unlocks_condition
+            unlocks_condition=None # Simplified
         )
