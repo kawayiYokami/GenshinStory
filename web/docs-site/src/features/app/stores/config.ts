@@ -182,6 +182,10 @@ export const useConfigStore = defineStore('config', () => {
     if (configIndex !== -1) {
       const newValues = { ...updates };
 
+      // 只要更新配置就重置缓存时间戳，强制刷新模型列表
+      newValues.modelsLastFetched = null;
+      logger.log(`配置已更新，重置模型列表缓存时间戳`);
+
       if (updates.availableModels) {
         newValues.modelsLastFetched = Date.now();
       }
