@@ -18,6 +18,12 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
   const isUserScrolling = ref(false);
   let userScrollTimeout: number | null = null;
 
+  // 滚动到底部按钮相关状态
+  const showScrollToBottomButton = ref(false);
+  let lastScrollTop = 0;
+  let scrollDirection: 'up' | 'down' = 'down';
+  let buttonShowTimeout: number | null = null;
+
   /**
    * 滚动到指定消息的特定位置
    */
@@ -96,9 +102,11 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
   };
 
   /**
-   * 处理用户滚动 - 设置用户滚动状态
+   * 处理用户滚动 - 设置用户滚动状态和按钮显示逻辑
    */
   const handleUserScroll = () => {
+    if (!scrollElement.value) return;
+
     isUserScrolling.value = true;
 
     if (userScrollTimeout) {
@@ -108,6 +116,25 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
     userScrollTimeout = window.setTimeout(() => {
       isUserScrolling.value = false;
     }, 3000);
+
+    // 检测滚动方向
+    const currentScrollTop = scrollElement.value.scrollTop;
+    scrollDirection = currentScrollTop > lastScrollTop ? 'down' : 'up';
+    lastScrollTop = currentScrollTop;
+
+    // 清除之前的超时
+    if (buttonShowTimeout) {
+      clearTimeout(buttonShowTimeout);
+    }
+
+    // 判断是否显示滚动到底部按钮
+    // 当用户向下滚动（离开底部）时显示按钮，向上滚动时隐藏
+    const shouldShowButton = !isNearBottom() && currentScrollTop > 200 && scrollDirection === 'down';
+
+    // 使用防抖来避免频繁显示/隐藏
+    buttonShowTimeout = window.setTimeout(() => {
+      showScrollToBottomButton.value = shouldShowButton;
+    }, 10);
   };
 
   /**
@@ -126,6 +153,11 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
     if (userScrollTimeout) {
       clearTimeout(userScrollTimeout);
       userScrollTimeout = null;
+    }
+
+    if (buttonShowTimeout) {
+      clearTimeout(buttonShowTimeout);
+      buttonShowTimeout = null;
     }
 
     if (scrollElement.value) {
@@ -157,6 +189,7 @@ export default function useScrollManager({ scrollElement, autoScroll }: { scroll
     scrollToMessage,
     autoScrollIfNeeded,
     isNearBottom,
-    setupAutoScroll
+    setupAutoScroll,
+    showScrollToBottomButton
   };
 }

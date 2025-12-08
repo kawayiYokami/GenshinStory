@@ -21,7 +21,7 @@
     />
 
     <!-- 输入面板容器 -->
-    <div class="flex-shrink-0 pt-0 pb-4">
+    <div class="shrink-0 pt-0 pb-4 relative">
       <div class="max-w-4xl mx-auto">
         <ChatInputPanel
           ref="inputPanelRef"
@@ -35,6 +35,12 @@
           @update:show-raw-content="showRawContent = $event"
           @send="handleSend"
           @stop="stopAgent"
+        />
+
+        <!-- 滚动到底部按钮 -->
+        <ScrollToBottomButton
+          :visible="scrollManager.showScrollToBottomButton.value"
+          @click="scrollManager.scrollToBottom"
         />
       </div>
     </div>
@@ -81,6 +87,7 @@ import ChatInputPanel from '@/features/agent/components/ChatInputPanel.vue';
 import AgentNavbarContent from '@/features/agent/components/AgentNavbarContent.vue';
 import ChatHistoryPanel from '@/features/agent/components/ChatHistoryPanel.vue';
 import AgentChatModals from '@/features/agent/components/AgentChatModals.vue';
+import ScrollToBottomButton from '@/features/agent/components/ScrollToBottomButton.vue';
 
 // Import icons
 import { Plus } from 'lucide-vue-next';
