@@ -19,45 +19,105 @@
             <div v-if="parsedResults.length > 0" class="search-results-list">
               <div class="flex items-center justify-between mb-2 px-1">
                 <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">
-                  找到 {{ parsedResults.length }} 个相关结果
+                  找到 {{ isGrouped ? totalFiles : parsedResults.length }} 个相关结果
                 </span>
               </div>
               <div class="space-y-2">
-                <button
-                  v-for="(item, index) in parsedResults"
-                  :key="index"
-                  class="search-result-item internal-doc-link w-full text-left group relative flex flex-col gap-2 p-3 rounded-xl bg-base-300 border border-base-200 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
-                  :data-path="item.path || ''"
-                  :data-raw-link="`[[${item.title || extractFileName(item.path || '')}|path:${item.path || ''}]]`"
-                  @click="handleLinkClick"
-                >
-                  <!-- 标题行 -->
-                  <div class="flex items-start justify-between gap-3 w-full">
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span
-                        class="font-semibold text-sm text-base-content group-hover:text-accent-content transition-colors truncate"
-                      >
-                        {{ item.title || extractFileName(item.path || '') }}
-                      </span>
-                    </div>
-                    <div v-if="item.line" class="badge badge-sm badge-ghost shrink-0 font-mono text-[10px] opacity-70">
-                      Ln {{ item.line }}
-                    </div>
-                  </div>
+                <!-- 分组模式显示 -->
+                <template v-if="isGrouped">
+                  <div
+                    v-for="(group, index) in parsedResults"
+                    :key="index"
+                    class="search-result-group border border-base-200 rounded-xl bg-base-100"
+                  >
+                    <!-- 文件标题 -->
+                    <button
+                      class="search-result-item internal-doc-link w-full text-left group relative p-3 rounded-t-xl hover:bg-base-200 transition-colors"
+                      :data-path="group.path || ''"
+                      :data-raw-link="`[[${group.title || extractFileName(group.path || '')}|path:${group.path || ''}]]`"
+                      @click="handleLinkClick"
+                    >
+                      <div class="flex items-start justify-between gap-3 w-full">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="font-semibold text-sm text-base-content group-hover:text-accent-content transition-colors truncate">
+                            {{ group.title || extractFileName(group.path || '') }}
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                          <span class="badge badge-sm badge-primary font-mono text-[10px]">
+                            {{ (isGroupedResult(group) ? group.hitCount : 0) }} 处命中
+                          </span>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-1.5 px-1 mt-0.5 w-full">
+                        <span class="text-[10px] text-base-content/40 truncate font-mono">{{ group.path }}</span>
+                      </div>
+                    </button>
 
-                  <!-- 摘要 -->
-                  <div v-if="item.snippet" class="relative pl-3 w-full">
-                    <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-base-300 group-hover:bg-accent-content transition-colors rounded-full"></div>
-                    <div class="text-xs text-base-content/70 line-clamp-2 leading-relaxed font-mono">
-                      {{ item.snippet }}
+                    <!-- 命中详情 -->
+                    <div class="border-t border-base-200 px-3 pb-3 pt-2">
+                      <div class="space-y-2">
+                        <div
+                          v-for="(hit, hitIndex) in isGroupedResult(group) ? group.hits : []"
+                          :key="hitIndex"
+                          class="search-result-item internal-doc-link relative pl-3 text-left group"
+                          :data-path="group.path || ''"
+                          :data-raw-link="`[[${group.title || extractFileName(group.path || '')}|path:${group.path || ''}:${hit.line}]]`"
+                          @click="handleLinkClick"
+                        >
+                          <div class="absolute left-0 top-2 bottom-2 w-0.5 bg-base-300 group-hover:bg-accent-content transition-colors rounded-full"></div>
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="badge badge-sm badge-ghost shrink-0 font-mono text-[10px] opacity-70">
+                              Ln {{ hit.line }}
+                            </span>
+                          </div>
+                          <div class="text-xs text-base-content/70 leading-relaxed font-mono">
+                            {{ hit.snippet }}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                </template>
 
-                  <!-- 路径 -->
-                  <div class="flex items-center gap-1.5 px-1 mt-0.5 w-full">
-                    <span class="text-[10px] text-base-content/40 truncate font-mono">{{ item.path }}</span>
-                  </div>
-                </button>
+                <!-- 原始非分组模式 -->
+                <template v-else>
+                  <button
+                    v-for="(item, index) in parsedResults"
+                    :key="index"
+                    class="search-result-item internal-doc-link w-full text-left group relative flex flex-col gap-2 p-3 rounded-xl bg-base-300 border border-base-200 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
+                    :data-path="item.path || ''"
+                    :data-raw-link="`[[${item.title || extractFileName(item.path || '')}|path:${item.path || ''}${(item as SearchResult).line ? ':' + (item as SearchResult).line : ''}]]`"
+                    @click="handleLinkClick"
+                  >
+                    <!-- 标题行 -->
+                    <div class="flex items-start justify-between gap-3 w-full">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <span
+                          class="font-semibold text-sm text-base-content group-hover:text-accent-content transition-colors truncate"
+                        >
+                          {{ item.title || extractFileName(item.path || '') }}
+                        </span>
+                      </div>
+                      <div v-if="(item as SearchResult).line" class="badge badge-sm badge-ghost shrink-0 font-mono text-[10px] opacity-70">
+                        Ln {{ (item as SearchResult).line }}
+                      </div>
+                    </div>
+
+                    <!-- 摘要 -->
+                    <div v-if="(item as SearchResult).snippet" class="relative pl-3 w-full">
+                      <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-base-300 group-hover:bg-accent-content transition-colors rounded-full"></div>
+                      <div class="text-xs text-base-content/70 line-clamp-2 leading-relaxed font-mono">
+                        {{ (item as SearchResult).snippet }}
+                      </div>
+                    </div>
+
+                    <!-- 路径 -->
+                    <div class="flex items-center gap-1.5 px-1 mt-0.5 w-full">
+                      <span class="text-[10px] text-base-content/40 truncate font-mono">{{ item.path }}</span>
+                    </div>
+                  </button>
+                </template>
               </div>
             </div>
 
@@ -91,6 +151,18 @@ interface SearchResult {
   title?: string;
 }
 
+interface GroupedSearchResult {
+  path?: string;
+  title?: string;
+  totalLines?: number;
+  totalTokens?: number;
+  hits?: Array<{
+    line: number;
+    snippet: string;
+  }>;
+  hitCount?: number;
+}
+
 interface Props {
   content?: string;
 }
@@ -115,7 +187,7 @@ const handleLinkClick = async (event: Event) => {
 
         if (result.isValid && result.resolvedPath) {
           const docViewerStore = useDocumentViewerStore();
-          docViewerStore.open(result.resolvedPath);
+          docViewerStore.open(result.resolvedPath, result.lineNumber);
         } else {
           alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
         }
@@ -125,6 +197,11 @@ const handleLinkClick = async (event: Event) => {
       }
     }
   }
+};
+
+// 判断是否为分组结果的辅助函数
+const isGroupedResult = (item: any): item is GroupedSearchResult => {
+  return item && typeof item === 'object' && 'hits' in item && Array.isArray(item.hits);
 };
 
 // 组件挂载时添加事件监听
@@ -141,9 +218,9 @@ onUnmounted(() => {
   }
 });
 
-// 解析搜索结果 - 支持新的平铺格式和旧格式
+// 解析搜索结果 - 支持分组格式、新的平铺格式和旧格式
 const parsedData = computed(() => {
-  if (!props.content) return { query: '', results: [] };
+  if (!props.content) return { query: '', results: [], grouped: false };
 
   try {
     // 尝试从内容中提取JSON部分
@@ -157,25 +234,28 @@ const parsedData = computed(() => {
 
     const parsed = JSON.parse(jsonStr);
 
-    // 新的平铺格式：{"tool": "search_docs", "query": "玛拉妮", "results": [...]}
+    // 新的平铺格式：{"tool": "search_docs", "query": "玛拉妮", "results": [...], "grouped": true}
     if (parsed.tool === 'search_docs') {
       return {
         query: parsed.query || '',
-        results: parsed.results || []
+        results: parsed.results || [],
+        grouped: parsed.grouped === true
       };
     }
 
-    // 兼容旧格式：{"query": "...", "results": [...]}
+    // 兼容旧格式：{"query": "...", "results": [...], "grouped": true}
     if (parsed.query && Array.isArray(parsed.results)) {
       return {
         query: parsed.query,
-        results: parsed.results
+        results: parsed.results,
+        grouped: parsed.grouped === true
       };
     } else if (parsed.docs && Array.isArray(parsed.docs)) {
       // 兼容旧文档列表格式：{"docs": [...]}
       return {
         query: '展开查看文档',
-        results: parsed.docs
+        results: parsed.docs,
+        grouped: false
       };
     }
   } catch (error) {
@@ -183,11 +263,13 @@ const parsedData = computed(() => {
     console.log('Content that failed to parse:', props.content);
   }
 
-  return { query: '', results: [] };
+  return { query: '', results: [], grouped: false };
 });
 
 const searchQuery = computed(() => parsedData.value.query);
-const parsedResults = computed(() => parsedData.value.results as SearchResult[]);
+const parsedResults = computed(() => parsedData.value.results as (SearchResult | GroupedSearchResult)[]);
+const isGrouped = computed(() => parsedData.value.grouped);
+const totalFiles = computed(() => parsedResults.value.length);
 const hasValidResults = computed(() => parsedResults.value.length > 0);
 
 // 格式化原始内容为后备显示

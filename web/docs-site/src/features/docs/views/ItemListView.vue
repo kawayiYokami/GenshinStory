@@ -126,7 +126,6 @@ watchEffect(async () => {
   try {
     // 构造搜索路径：当前分类（不包含子分类）
     const searchPath = `${category.value}`;
-    console.log('开始搜索:', { filterKeyword: filterKeyword.value, searchPath });
 
     // 使用 localToolsService 在当前分类下搜索
     const searchResultJson = await localToolsService.searchDocs(
@@ -135,7 +134,6 @@ watchEffect(async () => {
     );
 
     const searchResult = JSON.parse(searchResultJson);
-    console.log('搜索结果数量:', searchResult.results?.length || 0);
 
     // 提取匹配的文档路径
     const matchedPaths = new Set<string>();
@@ -149,38 +147,20 @@ watchEffect(async () => {
         matchedPaths.add(logicalPath);
       });
     }
-    console.log('匹配路径样例:', Array.from(matchedPaths).slice(0, 3));
 
     // 为每个子分类过滤结果
     const newResults: Record<string, any[]> = {};
     for (const subCategory of subCategories.value) {
       const items = subCategoryIndex.value.get(subCategory) || [];
-
-      // 只记录第一个item的路径结构用于调试
-      if (items.length > 0) {
-        const firstItem = items[0];
-        const itemLogicalPath = firstItem.path.replace(/^\/v2\/[^\/]+\/category\//, '');
-        console.log(`子分类 "${subCategory}" item路径样例:`, {
-          original: firstItem.path,
-          logical: itemLogicalPath
-        });
-      }
-
       const filteredItems = items.filter(item => {
         // item.path 是类似 /v2/gi/category/任务/世界任务 的格式
         // 我们需要提取出逻辑路径来匹配
         const itemLogicalPath = item.path.replace(/^\/v2\/[^\/]+\/category\//, '');
         return matchedPaths.has(itemLogicalPath);
       });
-
-      // 只记录有过滤结果的子分类
-      if (filteredItems.length > 0 || items.length === 0) {
-        console.log(`子分类 "${subCategory}": ${items.length} -> ${filteredItems.length}`);
-      }
       newResults[subCategory] = filteredItems;
     }
     searchResultsCache.value = newResults;
-    console.log('最终缓存结果:', Object.entries(newResults).map(([k, v]) => [k, v.length]));
   } catch (error) {
     console.error('搜索时出错:', error);
     searchResultsCache.value = {};
@@ -342,7 +322,3 @@ onMounted(() => {
 
 
 </script>
-
-<style>
-/* 移除了自定义样式，让 DaisyUI 完全控制 tabs 样式 */
-</style>

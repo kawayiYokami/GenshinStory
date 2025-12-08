@@ -10,16 +10,19 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
   const documentPath: Ref<string> = ref('');
   const documentContent: Ref<string> = ref('');
   const errorMessage: Ref<string> = ref('');
+  const targetLine: Ref<number | null> = ref(null);
 
   /**
    * 打开查看器并加载文档。
    * @param path 要打开的文档的逻辑路径。
+   * @param lineNumber 可选，要跳转的行号。
    */
-  async function open(path: string): Promise<void> {
-    logger.log(`[DocViewer] 正在打开文档: ${path}`);
+  async function open(path: string, lineNumber?: number): Promise<void> {
+    logger.log(`[DocViewer] 正在打开文档: ${path}${lineNumber ? ` (跳转到行 ${lineNumber})` : ''}`);
     isVisible.value = true;
     isLoading.value = true;
     documentPath.value = path;
+    targetLine.value = lineNumber || null;
     errorMessage.value = '';
     documentContent.value = ''; // 清除先前的内容
 
@@ -65,6 +68,7 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
     documentPath.value = '';
     documentContent.value = '';
     errorMessage.value = '';
+    targetLine.value = null;
   }
 
   return {
@@ -73,6 +77,7 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
     documentPath,
     documentContent,
     errorMessage,
+    targetLine,
     open,
     close,
   };

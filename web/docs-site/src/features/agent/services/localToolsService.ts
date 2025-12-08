@@ -238,7 +238,6 @@ class LocalToolsService {
       docRequests = rawRequests as DocRequest[];
     }
 
-    logger.log(`执行文档读取...`, { requests: docRequests });
     const dataStore = useDataStore();
 
     if (!docRequests || docRequests.length === 0) {
@@ -266,7 +265,6 @@ class LocalToolsService {
             fullContent = await dataStore.fetchMarkdownContent(physicalPath);
 
         } catch (initialError) {
-            logger.log(`读取文档 '${path}' 首次尝试失败，将尝试路径解析...`);
 
             try {
                 const justTheFileName = path.split('/').pop()?.split('\\').pop();
@@ -278,10 +276,8 @@ class LocalToolsService {
                 // 我们也应该尝试用新的 _getPhysicalPathFromLogicalPath (它现在会进行正确的编码) 再试一次。
                 if (resolvedPath) {
                     if (resolvedPath !== path) {
-                        logger.log(`路径解析成功 (重定向): '${path}' -> '${resolvedPath}'。正在重试...`);
                         path = resolvedPath;
                     } else {
-                        logger.log(`路径确认存在 (原路径): '${path}'。正在重试读取...`);
                     }
 
                     physicalPath = this._getPhysicalPathFromLogicalPath(path);
@@ -297,7 +293,6 @@ class LocalToolsService {
         }
 
         const content = this._applyLineRanges(fullContent, lineRanges);
-        logger.log(`文档读取成功: ${path}`, { lineRanges, originalPath });
 
         // 获取文档元数据
         const lines = fullContent.split('\n');
@@ -551,26 +546,27 @@ class LocalToolsService {
            pathScore = Math.min(matchScore, 40);
          }
 
+         // 计算该文档的总匹配行数
+         const totalHits = allResults.filter(r => r.path === path).length;
+
          return {
            ...result,
-           pathScore
+           pathScore,
+           totalHits
          };
        });
 
        // 过滤结果：只保留路径匹配分数大于 0 的结果
        const filteredResults = scoredResults.filter(r => r.pathScore > 0);
 
-       // 按命中次数排序，命中次数相同的按路径匹配分数排序
+       // 按路径匹配分数排序，然后按总匹配行数排序
        filteredResults.sort((a, b) => {
-         const aHits = docHitCount.get(a.path) || 0;
-         const bHits = docHitCount.get(b.path) || 0;
-
-         if (aHits !== bHits) {
-           return bHits - aHits; // 命中次数多的在前
+         // 先按路径匹配分数排序
+         if (a.pathScore !== b.pathScore) {
+           return b.pathScore - a.pathScore;
          }
-
-         // 相同命中次数按路径匹配分数排序
-         return b.pathScore - a.pathScore;
+         // 路径匹配分数相同时，按匹配行数排序
+         return (b as any).totalHits - (a as any).totalHits;
        });
 
        // 限制结果数量
@@ -598,14 +594,14 @@ class LocalToolsService {
          results: finalResults
        });
 
-     } catch (error) {
-       logger.error("指定路径搜索时发生异常:", error);
-       return JSON.stringify({
-         tool: 'search_docs',
-         query,
-         docPath,
-         error: `错误：在指定路径搜索时发生异常: ${error.message}`
-       });
+     } catch (error: any) {
+      logger.error("指定路径搜索时发生异常:", error);
+      return JSON.stringify({
+        tool: 'search_docs',
+        query,
+        docPath,
+        error: `错误：在指定路径搜索时发生异常: ${error?.message || '未知错误'}`
+      });
      }
    }
 
@@ -689,14 +685,45 @@ class LocalToolsService {
         }
         let finalResults = Array.from(uniqueResults.values());
 
-        // 限制结果数量
-        if (finalResults.length > 20) {
-          finalResults = finalResults.slice(0, 20);
+        // 按文件分组结果
+        const groupedResults = new Map<string, any>();
+        for (const result of finalResults) {
+            const hitCount = docHitCount.get(result.path) || 0;
+
+            if (!groupedResults.has(result.path)) {
+                groupedResults.set(result.path, {
+                    path: result.path,
+                    totalLines: result.totalLines,
+                    totalTokens: result.totalTokens,
+                    hits: []
+                });
+            }
+
+            groupedResults.get(result.path).hits.push({
+                line: result.line,
+                snippet: result.snippet
+            });
         }
 
-        logger.log("高级搜索成功。", { count: finalResults.length });
+        // 转换为数组并添加命中次数
+        const groupedArray = Array.from(groupedResults.values()).map(group => ({
+            ...group,
+            hitCount: group.hits.length
+        }));
 
-        if (finalResults.length === 0) {
+        // 按命中次数降序排序，然后按路径排序
+        groupedArray.sort((a, b) => {
+            if (b.hitCount !== a.hitCount) {
+                return b.hitCount - a.hitCount;
+            }
+            return a.path.localeCompare(b.path);
+        });
+
+        // 限制返回10个文件
+        const limitedResults = groupedArray.slice(0, 10);
+
+
+        if (limitedResults.length === 0) {
           return JSON.stringify({
             tool: 'search_docs',
             query,
@@ -704,34 +731,22 @@ class LocalToolsService {
           });
         }
 
-        // 按命中次数降序排序，相同命中数按路径排序
-        finalResults.sort((a, b) => {
-          const aHits = docHitCount.get(a.path) || 0;
-          const bHits = docHitCount.get(b.path) || 0;
-          if (aHits !== bHits) {
-            return bHits - aHits; // 命中次数多的在前
-          }
-          // 相同命中次数按路径和行号排序
-          if (a.path < b.path) return -1;
-          if (a.path > b.path) return 1;
-          return a.line - b.line;
+        // 由于 SearchResult 已经包含了元数据，直接使用即可，无需重新获取
+        // 确保所有结果都有元数据，如果没有则设置默认值
+        const resultsWithMetadata = limitedResults.map(r => ({
+            path: r.path,
+            totalLines: r.totalLines || 0,
+            totalTokens: r.totalTokens || 0,
+            hits: r.hits,
+            hitCount: r.hitCount
+        }));
+
+        return JSON.stringify({
+          tool: 'search_docs',
+          query,
+          results: resultsWithMetadata,
+          grouped: true
         });
-
-       // 由于 SearchResult 已经包含了元数据，直接使用即可，无需重新获取
-       // 确保所有结果都有元数据，如果没有则设置默认值
-       const resultsWithMetadata = finalResults.map(r => ({
-         path: r.path,
-         line: r.line,
-         snippet: r.snippet,
-         totalLines: r.totalLines || 0,
-         totalTokens: r.totalTokens || 0
-       }));
-
-       return JSON.stringify({
-         tool: 'search_docs',
-         query,
-         results: resultsWithMetadata
-       });
 
      } catch (e: any) {
        logger.error("高级搜索时发生异常:", e);
@@ -744,7 +759,6 @@ class LocalToolsService {
     }
 
    public async getDocMetadata(logicalPath: string): Promise<DocMetadata | null> {
-     logger.log(`获取文档元数据...`, { path: logicalPath });
      const dataStore = useDataStore();
      const tokenizer = tokenizerService;
 
@@ -755,7 +769,6 @@ class LocalToolsService {
        const totalLines = lines.length;
        const totalTokens = tokenizer.countTokens(content);
 
-       logger.log(`元数据获取成功: ${logicalPath}`, { totalTokens, totalLines });
        return { totalTokens, totalLines };
      } catch (error) {
        logger.error(`获取元数据失败: ${logicalPath}`, error);

@@ -179,14 +179,14 @@ function buildDirectoryTree(items: any[]): DirectoryNode {
     });
 
     for (const item of sortedItems) {
-        const parts = item.path.split('/').filter(p => p);
+        const parts = item.path.split('/').filter((p: string) => p);
         let current = root;
 
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
             const isLast = i === parts.length - 1;
 
-            let child = current.children?.find(c => c.name === part);
+            let child = current.children?.find((c: any) => c.name === part);
             if (!child) {
                 child = {
                     name: part,

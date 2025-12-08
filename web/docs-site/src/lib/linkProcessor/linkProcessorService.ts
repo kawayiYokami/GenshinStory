@@ -8,6 +8,7 @@ export interface LinkResolutionResult {
   originalPath: string;
   resolvedPath: string | null;
   rawLink: string;
+  lineNumber?: number;
 }
 
 class LinkProcessorService {
@@ -30,7 +31,7 @@ class LinkProcessorService {
       return baseResult;
     }
 
-    // 增强的正则表达式以处理官方和原始格式
+    // 增强的正则表达式以处理官方和原始格式，支持行号
     const genericLinkRegex = /\[\[([^|\]]+)(?:\|path:([^\]]+))?(?:\|([^\]]+))?\]\]/;
     const match = rawLinkText.match(genericLinkRegex);
 
@@ -44,10 +45,22 @@ class LinkProcessorService {
 
     const displayText = group1.trim();
     // 路径可能在 group2 (官方格式), group3 (原始格式), 或 group1 (仅路径格式)
-    const originalPath = (group2 || group3 || group1).trim();
+    let originalPath = (group2 || group3 || group1).trim();
+
+    // 提取行号（如果存在）
+    let lineNumber: number | undefined;
+    if (originalPath.includes(':')) {
+        const parts = originalPath.split(':');
+        originalPath = parts[0];
+        const lineStr = parts[1];
+        if (lineStr && /^\d+$/.test(lineStr)) {
+            lineNumber = parseInt(lineStr, 10);
+        }
+    }
 
     baseResult.displayText = displayText;
     baseResult.originalPath = originalPath;
+    baseResult.lineNumber = lineNumber;
 
     try {
       const resolvedPath = await pathService.resolveLogicalPath(originalPath);
