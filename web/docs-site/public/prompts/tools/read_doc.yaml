@@ -16,14 +16,16 @@ examples:
   - |-
     {
       "tool": "read_doc",
-      "path": "path/to/document.md"
+      "path": "src/app.ts",
+      "line_range": "10-20"
     }
   - |-
     {
       "tool": "read_doc",
-      "path": "src/app.ts",
-      "line_range": "10-20"
+      "path": "path/to/document.md",
+      "line_range": "1-30"
     }
 error_guidance: |
   文档路径无效或文件不存在时返回错误，行号范围超出时提示有效范围。
   注意：每次只能读取一个文档，如果需要读取多个文档，请分多次调用。
+  建议：除非有充分理由需要完整读取文件，建议每次最多读取30行以提高效率。
