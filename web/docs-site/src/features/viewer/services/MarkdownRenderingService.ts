@@ -145,6 +145,83 @@ function internalLinkPlugin(md: MarkdownIt) {
   };
 }
 
+// 用于添加行号属性的插件
+function lineNumbersPlugin(md: MarkdownIt) {
+  // 保存原始的渲染器规则
+  const defaultRender = md.renderer.render;
+
+  // 重写渲染器以添加行号
+  md.renderer.render = function(tokens: any[], options: any, env: any) {
+    let lineNum = 1;
+
+    // 为每个块级令牌添加行号
+    const addLineNumbers = (tokens: any[], isRootLevel: boolean = true) => {
+      tokens.forEach((token, index) => {
+        // 处理子令牌（先处理子令牌，再处理父令牌）
+        if (token.children && token.children.length > 0) {
+          addLineNumbers(token.children, false);
+        }
+
+        // 检查是否是块级元素开始
+        if (token.type === 'paragraph_open' || token.type === 'heading_open' ||
+            token.type === 'list_item_open' || token.type === 'blockquote_open' ||
+            token.type === 'code_block' || token.type === 'fence' ||
+            token.type === 'table_open' || token.type === 'hr') {
+          // 为块级元素的开始添加行号
+          if (!token.attrs) token.attrs = [];
+          token.attrs.push(['data-line', lineNum.toString()]);
+        }
+
+        // 根据令牌类型计算行号增量
+        if (token.type === 'paragraph_open' || token.type === 'heading_open' ||
+            token.type === 'list_item_open' || token.type === 'blockquote_open') {
+          // 对于列表项，需要特殊处理
+          if (token.type === 'list_item_open') {
+            // 优先使用 token.map 属性获取源代码行范围
+            if (token.map && Array.isArray(token.map) && token.map.length >= 2) {
+              // token.map 包含 [startLine, endLine]（从0开始计数）
+              const lines = token.map[1] - token.map[0] + 1;
+              lineNum += lines;
+            } else if (isRootLevel) {
+              // 如果没有 token.map 且是根级别，则遍历兄弟令牌直到找到匹配的 list_item_close
+              let lines = 1; // 至少有一行（当前行）
+              for (let i = index + 1; i < tokens.length; i++) {
+                if (tokens[i].type === 'list_item_close') {
+                  break;
+                }
+                if (tokens[i].content) {
+                  lines += Math.max(0, tokens[i].content.split('\n').length - 1);
+                }
+              }
+              lineNum += lines;
+            } else {
+              // 如果是嵌套的列表项且没有 token.map，使用默认值
+              lineNum += 1;
+            }
+          } else {
+            // 其他块级元素至少增加1行
+            lineNum += 1;
+          }
+        } else if (token.type === 'code_block' || token.type === 'fence') {
+          // 代码块按实际行数计算
+          const lines = token.content ? token.content.split('\n').length : 1;
+          lineNum += lines;
+          console.log(`[lineNumbersPlugin] 代码块增加 ${lines} 行，当前行号: ${lineNum}`);
+        } else if (token.content) {
+          // 其他有内容的令牌
+          const lines = token.content.split('\n').length - 1;
+          lineNum += Math.max(0, lines);
+        }
+      });
+    };
+
+    addLineNumbers(tokens, true);
+
+    const result = defaultRender.call(md.renderer, tokens, options, env);
+    return result;
+  };
+}
+
 // --- 公共 API ---
 
 /**
@@ -172,6 +249,7 @@ export function renderMarkdownSync(markdownText: string): string {
     md.linkify.set({ fuzzyLink: false });
 
     md.use(internalLinkPlugin);
+    md.use(lineNumbersPlugin); // 添加行号插件
 
     // 将 Markdown 渲染为 HTML
     const rawHtml = md.render(markdownText);

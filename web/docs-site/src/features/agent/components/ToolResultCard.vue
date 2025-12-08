@@ -63,6 +63,7 @@
                           class="search-result-item internal-doc-link relative pl-3 text-left group"
                           :data-path="group.path || ''"
                           :data-raw-link="`[[${group.title || extractFileName(group.path || '')}|path:${group.path || ''}:${hit.line}]]`"
+                          :data-snippet="hit.snippet.replace(/^>\\s*/, '').replace(/\\.\\.\\.$/, '')"
                           @click="handleLinkClick"
                         >
                           <div class="absolute left-0 top-2 bottom-2 w-0.5 bg-base-300 group-hover:bg-accent-content transition-colors rounded-full"></div>
@@ -181,13 +182,21 @@ const handleLinkClick = async (event: Event) => {
     event.stopPropagation();
 
     const rawLink = target.dataset.rawLink;
+    let snippet = target.dataset.snippet;
+
+    // 清理摘要格式
+    if (snippet) {
+      snippet = snippet.replace(/^>\s*/, '').replace(/\.\.\.$/, '');
+    }
+
     if (rawLink) {
       try {
         const result: LinkResolutionResult = await linkProcessorService.resolveLink(rawLink);
 
         if (result.isValid && result.resolvedPath) {
           const docViewerStore = useDocumentViewerStore();
-          docViewerStore.open(result.resolvedPath, result.lineNumber);
+          // 不传递行号，只传递摘要作为关键词
+          docViewerStore.open(result.resolvedPath, undefined, snippet ? [snippet] : undefined);
         } else {
           alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
         }
