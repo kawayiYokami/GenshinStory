@@ -13,7 +13,7 @@
 
     <!-- 标题条 -->
     <div class="sticky top-0 z-10 h-0 overflow-hidden">
-      <div class="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-base-100/80 to-transparent backdrop-blur-sm">
+      <div class="absolute inset-x-0 top-0 h-12 bg-linear-to-b from-base-100/80 to-transparent backdrop-blur-sm">
         <span class="absolute left-4 top-3 font-semibold text-base whitespace-nowrap overflow-hidden text-ellipsis max-w-md" :title="docViewerStore.documentPath">
           {{ formattedTitle }}
         </span>
@@ -53,14 +53,17 @@ const contentContainer = ref<HTMLElement | null>(null);
 // ========================================================
 watch(() => [docViewerStore.highlightKeywords, docViewerStore.documentContent, docViewerStore.isLoading],
   async ([keywords, content, isLoading]) => {
+    // 确保 keywords 是数组类型
+    const keywordsArray = Array.isArray(keywords) ? keywords : [];
+
     // 确保内容已加载且有关键词
-    if (!isLoading && content && keywords && keywords.length > 0) {
+    if (!isLoading && content && keywordsArray.length > 0) {
       await nextTick(); // 等待 Vue 渲染完成
 
       // 给一点时间让浏览器布局完成 (保险起见)
       setTimeout(() => {
         // 取第一个关键词进行跳转
-        findAndScrollToText(keywords[0]);
+        findAndScrollToText(keywordsArray[0]);
       }, 100);
     }
   },
