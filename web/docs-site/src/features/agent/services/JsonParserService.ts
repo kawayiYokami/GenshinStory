@@ -62,6 +62,10 @@ class JsonParserService {
           switch (key) {
             case 'search_docs':
               result.query = value;
+              // 如果对象中有 path 字段，也要保留
+              if (obj.path !== undefined) {
+                result.path = obj.path;
+              }
               break;
             case 'ask_choice':
               result.question = value;

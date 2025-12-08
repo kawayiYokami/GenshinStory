@@ -4,6 +4,7 @@ import logger from '../../app/services/loggerService';
 
 interface SearchDocsParams {
   query?: string;
+  path?: string;
   regex?: string;
   args?: string;
 }
@@ -25,7 +26,7 @@ const searchDocsTool: Tool<SearchDocsParams> = {
         };
       }
 
-      const result = await localTools.searchDocs(query);
+      const result = await localTools.searchDocs(query, params.path);
       return { result };
 
     } catch (error: any) {

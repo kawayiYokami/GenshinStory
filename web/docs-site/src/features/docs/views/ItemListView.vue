@@ -21,7 +21,7 @@
           <input type="checkbox" />
           <div class="collapse-title font-semibold text-base-content">
             {{ subCategory }}
-            <span class="text-xs text-base-content/70 ml-2">({{ getSubCategoryItems(subCategory).length }})</span>
+            <span class="text-xs text-base-content/70 ml-2">({{ getSubCategoryItemsSync(subCategory).length }})</span>
           </div>
           <div class="collapse-content">
             <!-- 页码导航 -->
@@ -49,7 +49,7 @@
               <!-- 页面信息 -->
               <div class="text-sm text-base-content/70">
                 第 {{ getCurrentPage(subCategory) }} 页，共 {{ getTotalPages(subCategory) }} 页
-                ({{ getSubCategoryItems(subCategory).length }} 项)
+                ({{ getSubCategoryItemsSync(subCategory).length }} 项)
               </div>
             </div>
 
@@ -75,12 +75,13 @@
 </template>
 
 <script setup lang="ts">
-import { watch, computed, ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { watch, computed, ref, onMounted, onUnmounted, nextTick, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAppStore } from '@/features/app/stores/app';
 import { useDataStore } from '@/features/app/stores/data';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { storeToRefs } from 'pinia';
+import localToolsService from '@/features/agent/services/localToolsService';
 
 interface IndexItem {
   name: string;
@@ -102,6 +103,99 @@ const expandedCategories = ref<Record<string, number>>({}); // 记录每个分�
 const currentPage = ref<Record<string, number>>({}); // 记录每个分类的当前页码
 const isMounted = ref(false); // 用于标记组件是否挂载
 const filterKeyword = ref(''); // 过滤关键字
+
+// 搜索结果缓存
+const searchResultsCache = ref<Record<string, any[]>>({});
+
+// 监听过滤关键字变化，触发搜索
+const isSearching = ref(false);
+const lastSearchKeyword = ref('');
+watchEffect(async () => {
+  // 防止重复搜索
+  if (!filterKeyword.value || filterKeyword.value === lastSearchKeyword.value || isSearching.value) {
+    if (!filterKeyword.value) {
+      searchResultsCache.value = {};
+      lastSearchKeyword.value = '';
+    }
+    return;
+  }
+
+  isSearching.value = true;
+  lastSearchKeyword.value = filterKeyword.value;
+
+  try {
+    // 构造搜索路径：当前分类（不包含子分类）
+    const searchPath = `${category.value}`;
+    console.log('开始搜索:', { filterKeyword: filterKeyword.value, searchPath });
+
+    // 使用 localToolsService 在当前分类下搜索
+    const searchResultJson = await localToolsService.searchDocs(
+      filterKeyword.value,
+      searchPath
+    );
+
+    const searchResult = JSON.parse(searchResultJson);
+    console.log('搜索结果数量:', searchResult.results?.length || 0);
+
+    // 提取匹配的文档路径
+    const matchedPaths = new Set<string>();
+    if (searchResult.results) {
+      searchResult.results.forEach((result: any) => {
+        // 将前端路径转换为逻辑路径进行比较
+        // 例如：/v2/gi/category/任务/世界任务 -> 任务/世界任务
+        let logicalPath = result.path.replace(/^\/v2\/[^\/]+\/category\//, '');
+        // 移除 .md 扩展名，因为原始item路径没有扩展名
+        logicalPath = logicalPath.replace(/\.md$/, '');
+        matchedPaths.add(logicalPath);
+      });
+    }
+    console.log('匹配路径样例:', Array.from(matchedPaths).slice(0, 3));
+
+    // 为每个子分类过滤结果
+    const newResults: Record<string, any[]> = {};
+    for (const subCategory of subCategories.value) {
+      const items = subCategoryIndex.value.get(subCategory) || [];
+
+      // 只记录第一个item的路径结构用于调试
+      if (items.length > 0) {
+        const firstItem = items[0];
+        const itemLogicalPath = firstItem.path.replace(/^\/v2\/[^\/]+\/category\//, '');
+        console.log(`子分类 "${subCategory}" item路径样例:`, {
+          original: firstItem.path,
+          logical: itemLogicalPath
+        });
+      }
+
+      const filteredItems = items.filter(item => {
+        // item.path 是类似 /v2/gi/category/任务/世界任务 的格式
+        // 我们需要提取出逻辑路径来匹配
+        const itemLogicalPath = item.path.replace(/^\/v2\/[^\/]+\/category\//, '');
+        return matchedPaths.has(itemLogicalPath);
+      });
+
+      // 只记录有过滤结果的子分类
+      if (filteredItems.length > 0 || items.length === 0) {
+        console.log(`子分类 "${subCategory}": ${items.length} -> ${filteredItems.length}`);
+      }
+      newResults[subCategory] = filteredItems;
+    }
+    searchResultsCache.value = newResults;
+    console.log('最终缓存结果:', Object.entries(newResults).map(([k, v]) => [k, v.length]));
+  } catch (error) {
+    console.error('搜索时出错:', error);
+    searchResultsCache.value = {};
+  } finally {
+    isSearching.value = false;
+  }
+});
+
+// 同步版本，供模板使用
+const getSubCategoryItemsSync = (subCategory: string): any[] => {
+  if (!filterKeyword.value) {
+    return subCategoryIndex.value.get(subCategory) || [];
+  }
+  return searchResultsCache.value[subCategory] || [];
+};
 
 // 获取特定子分类的当前页码
 const getCurrentPage = (subCategory: string) => {
@@ -162,27 +256,10 @@ const subCategories = computed(() => {
   return Array.from(subCategoryIndex.value.keys()).sort();
 });
 
-// 获取特定子分类的项目
-const getSubCategoryItems = (subCategory: string) => {
-  // 直接从索引中获取，O(1) 复杂度
-  const items = subCategoryIndex.value.get(subCategory) || [];
-
-  // 如果没有过滤关键字，直接返回所有项目
-  if (!filterKeyword.value) {
-    return items;
-  }
-
-  // 根据过滤关键字筛选项目
-  const keyword = filterKeyword.value.toLowerCase();
-  return items.filter(item =>
-    item.name.toLowerCase().includes(keyword) ||
-    (item.type && item.type.toLowerCase().includes(keyword))
-  );
-};
 
 // 获取分页后的项目
 const getPaginatedItems = (subCategory: string) => {
-  const items = getSubCategoryItems(subCategory);
+  const items = getSubCategoryItemsSync(subCategory);
   const page = currentPage.value[subCategory] || 1;
   const start = (page - 1) * pageSize.value;
   const end = start + pageSize.value;
@@ -191,7 +268,7 @@ const getPaginatedItems = (subCategory: string) => {
 
 // 获取总页数
 const getTotalPages = (subCategory: string) => {
-  const items = getSubCategoryItems(subCategory);
+  const items = getSubCategoryItemsSync(subCategory);
   return Math.ceil(items.length / pageSize.value);
 };
 

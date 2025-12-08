@@ -496,46 +496,98 @@ class LocalToolsService {
        return results;
    }
 
-   private async _searchInSpecificDocument(query: string, docPath: string, currentDomain: string, dataStore: any): Promise<string> {
+   private async _searchInSpecificPath(query: string, docPath: string, currentDomain: string, dataStore: any): Promise<string> {
      try {
-       // 获取文档内容
-       const physicalPath = this._getPhysicalPathFromLogicalPath(docPath);
-       const content = await dataStore.fetchMarkdownContent(physicalPath);
-       const lines = content.split('\n');
+       // 执行搜索获取所有匹配结果
+       const terms = query.split(/\s+/).map(t => t.trim()).filter(t => t);
+       const termResults = await Promise.all(terms.map(term => this._performSingleSearch(term)));
 
-       // 计算文档元数据
-       const totalLines = lines.length;
-       const totalTokens = tokenizerService.countTokens(content);
+       // 统计每个文档的命中次数
+       const docHitCount = new Map<string, number>();
+       const allResults: SearchResult[] = [];
 
-       const results: any[] = [];
-       let matchCount = 0;
+       // 收集所有搜索结果并统计命中次数
+       termResults.forEach(results => {
+         results.forEach(result => {
+           const key = result.path;
+           docHitCount.set(key, (docHitCount.get(key) || 0) + 1);
+           allResults.push(result);
+         });
+       });
 
-       // 搜索匹配的行
-       for (let i = 0; i < lines.length; i++) {
-         if (lines[i].toLowerCase().includes(query.toLowerCase())) {
-           if (matchCount >= 10) break; // 限制最多返回10个匹配
+       // 按路径匹配度排序
+       const scoredResults = allResults.map(result => {
+         const path = result.path;
 
-           const lineNum = i + 1;
-           const snippet = formatSearchSnippet(lines[i], query);
+         // 计算路径匹配分数
+         let pathScore = 0;
 
-           results.push({
-             path: docPath,
-             line: lineNum,
-             snippet: snippet,
-             totalLines,
-             totalTokens
-           });
-
-           matchCount++;
+         // 1. 精确匹配（完整路径）
+         if (path === docPath) {
+           pathScore = 100;
          }
-       }
+         // 2. 路径前缀匹配（docPath 是目录）
+         else if (path.startsWith(docPath)) {
+           // 计算匹配深度，越深分数越高
+           const remainingPath = path.substring(docPath.length);
+           const depth = remainingPath.split('/').filter(p => p).length;
+           pathScore = Math.max(50 - depth * 5, 10);
+         }
+         // 3. 路径包含关键字匹配
+         else if (path.toLowerCase().includes(docPath.toLowerCase())) {
+           // 根据关键字在路径中的位置给分
+           const parts = path.toLowerCase().split('/');
+           const queryParts = docPath.toLowerCase().split('/');
+           let matchScore = 0;
 
-       if (results.length === 0) {
+           queryParts.forEach(queryPart => {
+             parts.forEach((part, index) => {
+               if (part.includes(queryPart)) {
+                 // 越靠前的路径部分匹配，分数越高
+                 matchScore += Math.max(10 - index * 2, 1);
+               }
+             });
+           });
+           pathScore = Math.min(matchScore, 40);
+         }
+
+         return {
+           ...result,
+           pathScore
+         };
+       });
+
+       // 过滤结果：只保留路径匹配分数大于 0 的结果
+       const filteredResults = scoredResults.filter(r => r.pathScore > 0);
+
+       // 按命中次数排序，命中次数相同的按路径匹配分数排序
+       filteredResults.sort((a, b) => {
+         const aHits = docHitCount.get(a.path) || 0;
+         const bHits = docHitCount.get(b.path) || 0;
+
+         if (aHits !== bHits) {
+           return bHits - aHits; // 命中次数多的在前
+         }
+
+         // 相同命中次数按路径匹配分数排序
+         return b.pathScore - a.pathScore;
+       });
+
+       // 限制结果数量
+       const finalResults = filteredResults.slice(0, 20).map(r => ({
+         path: r.path,
+         line: r.line,
+         snippet: r.snippet,
+         totalLines: r.totalLines || 0,
+         totalTokens: r.totalTokens || 0
+       }));
+
+       if (finalResults.length === 0) {
          return JSON.stringify({
            tool: 'search_docs',
            query,
            docPath,
-           message: "在指定文档中未找到相关内容"
+           message: "在指定路径中未找到相关内容"
          });
        }
 
@@ -543,16 +595,16 @@ class LocalToolsService {
          tool: 'search_docs',
          query,
          docPath,
-         results: results
+         results: finalResults
        });
 
      } catch (error) {
-       logger.error(`指定文档搜索失败: ${docPath}`, error);
+       logger.error("指定路径搜索时发生异常:", error);
        return JSON.stringify({
          tool: 'search_docs',
          query,
          docPath,
-         error: "指定文档搜索失败，请检查文档路径是否正确"
+         error: `错误：在指定路径搜索时发生异常: ${error.message}`
        });
      }
    }
@@ -585,7 +637,7 @@ class LocalToolsService {
 
      // 如果指定了文档路径，进行指定文档搜索
      if (docPath && docPath.trim()) {
-       return this._searchInSpecificDocument(query.trim(), docPath.trim(), currentDomain, dataStore);
+       return this._searchInSpecificPath(query.trim(), docPath.trim(), currentDomain, dataStore);
      }
 
      if (!dataStore.indexData || dataStore.indexData.length === 0) {
@@ -603,50 +655,31 @@ class LocalToolsService {
      }
 
      try {
-        const orGroups = query.split('|').map(g => g.trim()).filter(g => g);
-        if (orGroups.length === 0) return JSON.stringify({
+        // 将查询按空格分割为多个关键词
+        const terms = query.split(/\s+/).map(t => t.trim()).filter(t => t);
+        if (terms.length === 0) return JSON.stringify({
            tool: 'search_docs',
            query,
            message: "请输入有效的查询词"
          });
 
-        const allGroupResults = await Promise.all(orGroups.map(async (group) => {
-            const andTerms = group.split(/\s+/).map(t => t.trim()).filter(t => t);
-            if (andTerms.length === 0) return [];
+        // 对每个关键词执行独立搜索
+        const termResults = await Promise.all(terms.map(term => this._performSingleSearch(term)));
 
-            const termResults = await Promise.all(andTerms.map(term => this._performSingleSearch(term)));
+        // 统计每个文档的命中次数
+        const docHitCount = new Map<string, number>();
+        const allResults: SearchResult[] = [];
 
-            if (termResults.some(res => res.length === 0)) {
-                return [];
-            }
+        // 收集所有搜索结果并统计命中次数
+        termResults.forEach(results => {
+          results.forEach(result => {
+            const key = result.path;
+            docHitCount.set(key, (docHitCount.get(key) || 0) + 1);
+            allResults.push(result);
+          });
+        });
 
-            const docMap = new Map<string, { snippets: SearchResult[], firstResult: SearchResult }>();
-
-            for (const result of termResults[0]) {
-                docMap.set(result.path, { snippets: [result], firstResult: result });
-            }
-
-            for (let i = 1; i < termResults.length; i++) {
-                const currentResults = termResults[i];
-                const currentPaths = new Set(currentResults.map(r => r.path));
-                for (const path of docMap.keys()) {
-                    if (!currentPaths.has(path)) {
-                        docMap.delete(path);
-                    } else {
-                        const existing = docMap.get(path);
-                        if (existing) {
-                            const newSnippets = currentResults.filter(r => r.path === path);
-                            existing.snippets.push(...newSnippets);
-                        }
-                    }
-                }
-            }
-
-            return Array.from(docMap.values()).flatMap(val => val.snippets);
-        }));
-
-        const allResults = allGroupResults.flat();
-
+        // 去重（基于路径和行号）
         const uniqueResults = new Map<string, SearchResult>();
         for (const result of allResults) {
             const key = `${result.path}:${result.line}`;
@@ -656,25 +689,33 @@ class LocalToolsService {
         }
         let finalResults = Array.from(uniqueResults.values());
 
-       if (finalResults.length > 20) {
-         finalResults = finalResults.slice(0, 20);
-       }
+        // 限制结果数量
+        if (finalResults.length > 20) {
+          finalResults = finalResults.slice(0, 20);
+        }
 
-       logger.log("高级搜索成功。", { count: finalResults.length });
+        logger.log("高级搜索成功。", { count: finalResults.length });
 
-       if (finalResults.length === 0) {
-         return JSON.stringify({
-           tool: 'search_docs',
-           query,
-           message: "未找到相关文档"
-         });
-       }
+        if (finalResults.length === 0) {
+          return JSON.stringify({
+            tool: 'search_docs',
+            query,
+            message: "未找到相关文档"
+          });
+        }
 
-       finalResults.sort((a, b) => {
-         if (a.path < b.path) return -1;
-         if (a.path > b.path) return 1;
-         return a.line - b.line;
-       });
+        // 按命中次数降序排序，相同命中数按路径排序
+        finalResults.sort((a, b) => {
+          const aHits = docHitCount.get(a.path) || 0;
+          const bHits = docHitCount.get(b.path) || 0;
+          if (aHits !== bHits) {
+            return bHits - aHits; // 命中次数多的在前
+          }
+          // 相同命中次数按路径和行号排序
+          if (a.path < b.path) return -1;
+          if (a.path > b.path) return 1;
+          return a.line - b.line;
+        });
 
        // 由于 SearchResult 已经包含了元数据，直接使用即可，无需重新获取
        // 确保所有结果都有元数据，如果没有则设置默认值

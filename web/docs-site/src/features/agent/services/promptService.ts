@@ -1,8 +1,15 @@
 import yaml from 'js-yaml';
 import logger from '../../app/services/loggerService';
 import { toolPromptService } from './toolPromptService';
+import { useDataStore } from '../../app/stores/data';
 
 // --- 类型定义 ---
+interface DirectoryNode {
+    name: string;
+    isDirectory: boolean;
+    children?: DirectoryNode[];
+}
+
 interface RoleInfo {
     id: string;
     description: string;
@@ -76,6 +83,161 @@ function resolvePath(basePath: string, relativePath: string): string {
         }
     }
     return baseParts.join('/');
+}
+
+// --- File Structure Functions ---
+async function getFileStructure(domain: string): Promise<string> {
+    logger.log(`[PromptService] 开始获取文件结构，domain: ${domain}`);
+
+    try {
+        // 直接读取 catalog.json 文件获取完整的目录结构
+        const catalogUrl = `/domains/${domain}/metadata/catalog.json`;
+        const response = await fetch(catalogUrl);
+
+        if (!response.ok) {
+            throw new Error(`Failed to load catalog: ${response.status} ${response.statusText}`);
+        }
+
+        const catalogData = await response.json();
+        logger.log(`[PromptService] catalog.json 内容:`, catalogData);
+
+        // 递归格式化目录树
+        const formattedTree = formatCatalogTree(catalogData);
+
+        return formattedTree;
+    } catch (error) {
+        logger.error('[PromptService] 获取目录结构失败:', error);
+        return '# 文件结构加载失败\n';
+    }
+}
+
+function formatCatalogTree(catalog: any, prefix = '', isRoot = true, depth = 0): string {
+    let result = '';
+
+    // 限制深度，只显示前两级目录
+    const maxDepth = 2;
+
+    if (isRoot) {
+        result = '# 目录结构\n\n';
+    }
+
+    const entries = Object.entries(catalog).sort(([a], [b]) => a.localeCompare(b));
+
+    entries.forEach(([key, value], index) => {
+        const isLast = index === entries.length - 1;
+        const connector = isRoot ? '' : (isLast ? '└── ' : '├── ');
+        const newPrefix = isRoot ? '' : (isLast ? '    ' : '│   ');
+
+        if (typeof value === 'object' && value !== null && depth < maxDepth) {
+            // 这是一个目录，且深度在限制范围内
+            result += `${prefix}${connector}${key}/\n`;
+            result += formatCatalogTree(value, prefix + newPrefix, false, depth + 1);
+        } else if (typeof value === 'object' && value !== null && depth >= maxDepth) {
+            // 目录太深，只统计文件数量
+            const fileCount = Object.values(value).filter(v =>
+                typeof v === 'string' || (typeof v === 'object' && v !== null)
+            ).length;
+            result += `${prefix}${connector}${key}/ (包含 ${fileCount} 个文件)\n`;
+        } else if (typeof value === 'string' || key.endsWith('.md')) {
+            // 这是一个文件
+            if (depth < maxDepth) {
+                result += `${prefix}${connector}${key}\n`;
+            }
+        }
+    });
+
+    return result;
+}
+
+function buildDirectoryTree(items: any[]): DirectoryNode {
+    const root: DirectoryNode = {
+        name: '',
+        isDirectory: true,
+        children: []
+    };
+
+    // Sort items for consistent ordering
+    const sortedItems = [...items].sort((a, b) => {
+        const aParts = a.path.split('/');
+        const bParts = b.path.split('/');
+
+        // Compare parent directories first
+        const minLen = Math.min(aParts.length, bParts.length);
+        for (let i = 0; i < minLen - 1; i++) {
+            if (aParts[i] !== bParts[i]) {
+                return aParts[i].localeCompare(bParts[i]);
+            }
+        }
+
+        // If same parent, directories come before files
+        if (aParts.length !== bParts.length) {
+            return aParts.length - bParts.length;
+        }
+
+        // Same depth, compare names
+        return aParts[aParts.length - 1].localeCompare(bParts[bParts.length - 1]);
+    });
+
+    for (const item of sortedItems) {
+        const parts = item.path.split('/').filter(p => p);
+        let current = root;
+
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = i === parts.length - 1;
+
+            let child = current.children?.find(c => c.name === part);
+            if (!child) {
+                child = {
+                    name: part,
+                    isDirectory: !isLast || !part.endsWith('.md'),
+                    children: []
+                };
+                if (!current.children) {
+                    current.children = [];
+                }
+                current.children.push(child);
+            }
+
+            current = child;
+        }
+    }
+
+    return root;
+}
+
+function formatDirectoryTree(tree: DirectoryNode, prefix = '', isLast = true): string {
+    if (!tree.name && tree.children) {
+        // Root node - just format children
+        return tree.children.map((child, index) => {
+            const isChildLast = index === tree.children!.length - 1;
+            return formatDirectoryTree(child, '', isChildLast);
+        }).join('');
+    }
+
+    let result = '';
+    const connector = isLast ? '└── ' : '├── ';
+
+    result += `${prefix}${connector}${tree.name}${tree.isDirectory ? '/' : ''}\n`;
+
+    if (tree.children && tree.children.length > 0) {
+        const children = [...tree.children].sort((a, b) => {
+            // Directories first, then files
+            if (a.isDirectory !== b.isDirectory) {
+                return b.isDirectory ? 1 : -1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        const newPrefix = prefix + (isLast ? '    ' : '│   ');
+
+        children.forEach((child, index) => {
+            const isChildLast = index === children.length - 1;
+            result += formatDirectoryTree(child, newPrefix, isChildLast);
+        });
+    }
+
+    return result;
 }
 
 // --- Custom Instructions Management ---
@@ -447,7 +609,11 @@ async function loadSystemPrompt(domain: string, roleId: string, instructionId: s
             await toolPromptService.loadToolPrompts();
             const toolsPrompt = toolPromptService.getSystemPrompt();
 
-            const finalSystemPrompt = `${personaDefinition}\n\n${instructionsPrompt}\n\n${toolsPrompt}`;
+            // 获取文件结构
+            const fileStructure = await getFileStructure(domain);
+            const fileStructurePrompt = `\n\n# 当前领域文件结构\n\n${fileStructure}\n`;
+
+            const finalSystemPrompt = `${personaDefinition}\n\n${instructionsPrompt}${fileStructurePrompt}\n\n${toolsPrompt}`;
 
             const result = {
                 systemPrompt: finalSystemPrompt,
