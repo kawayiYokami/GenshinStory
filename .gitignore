@@ -28,3 +28,4 @@ web/docs-site/public/domains/zzz/docs/
 *.json
 !web/docs-site/public/prompts/**/*.json
 CLAUDE.md
+AGENTS.md
