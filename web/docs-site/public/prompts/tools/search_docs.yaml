@@ -5,7 +5,7 @@ usage: |
   全文搜索：
   {
     "tool": "search_docs",
-    "query": "关键词A|关键词B"
+    "query": "关键词A 关键词B"
   }
   指定目录搜索：
   {
@@ -17,7 +17,7 @@ examples:
   - |-
     {
       "tool": "search_docs",
-      "query": "原神|角色"
+      "query": "原神 角色"
     }
   - |-
     {

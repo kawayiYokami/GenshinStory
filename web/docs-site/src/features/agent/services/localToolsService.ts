@@ -398,20 +398,36 @@ class LocalToolsService {
     });
   }
 
-   private async _performSingleSearch(query: string): Promise<SearchResult[]> {
+   private async _performSingleSearch(query: string, signal?: AbortSignal): Promise<SearchResult[]> {
        query = _normalizeQuery(query);
        if (!query) return [];
+
+       // 检查是否已经中止
+       if (signal?.aborted) {
+         throw new DOMException('搜索被中止', 'AbortError');
+       }
 
        const dataStore = useDataStore();
        const appStore = useAppStore();
        const currentDomain = appStore.currentDomain;
        if (!currentDomain) return [];
 
+       // 为索引加载添加60秒超时
+       const indexLoadPromise = dataStore.loadSearchIndex(currentDomain);
+       const indexTimeoutPromise = new Promise<Map<string, number[]>>((_, reject) => {
+         setTimeout(() => reject(new Error('搜索超时')), 60000);
+       });
+
+       let searchIndex: Map<string, number[]>;
+       try {
+         searchIndex = await Promise.race([indexLoadPromise, indexTimeoutPromise]);
+       } catch (e) {
+         // 超时或加载失败时返回空结果，让AI知道搜索超时
+         return [];
+       }
+
        const queryBigrams = getBigrams(query);
        if (queryBigrams.length === 0) return [];
-
-       // 使用新的单文件搜索索引
-       const searchIndex = await dataStore.loadSearchIndex(currentDomain);
 
        const idSets: Set<number>[] = [];
        queryBigrams.forEach(bigram => {
@@ -441,6 +457,11 @@ class LocalToolsService {
        const metadataCache = new Map<string, { totalLines: number, totalTokens: number }>();
 
        for (const item of initialResults) {
+           // 检查是否已经中止
+           if (signal?.aborted) {
+             throw new DOMException('搜索被中止', 'AbortError');
+           }
+
            try {
                const logicalPath = this._getLogicalPathFromFrontendPath(item.path);
 
@@ -448,8 +469,19 @@ class LocalToolsService {
                    continue;
                }
 
-               const physicalPath = this._getPhysicalPathFromLogicalPath(logicalPath);
-               const content = await dataStore.fetchMarkdownContent(physicalPath);
+               // 为文档内容加载添加60秒超时
+               const contentPromise = dataStore.fetchMarkdownContent(this._getPhysicalPathFromLogicalPath(logicalPath));
+               const contentTimeoutPromise = new Promise<string>((_, reject) => {
+                 setTimeout(() => reject(new Error('搜索超时')), 60000);
+               });
+
+               let content: string;
+               try {
+                 content = await Promise.race([contentPromise, contentTimeoutPromise]);
+               } catch (e) {
+                 // 文档加载超时，跳过这个文档
+                 continue;
+               }
                const lines = content.split('\n');
 
                // 计算并缓存元数据
@@ -463,6 +495,11 @@ class LocalToolsService {
                }
 
                for (let i = 0; i < lines.length; i++) {
+                   // 定期检查中止信号
+                   if (i % 1000 === 0 && signal?.aborted) {
+                     throw new DOMException('搜索被中止', 'AbortError');
+                   }
+
                    if ((fileSnippetCount.get(logicalPath) || 0) >= 3) {
                        break;
                    }
@@ -485,17 +522,32 @@ class LocalToolsService {
                    }
                }
            } catch (e) {
-               logger.error(`为 ${item.path} 生成摘要失败:`, e);
+               // 静默处理错误，AI看到没有结果会知道出了问题
            }
        }
        return results;
    }
 
-   private async _searchInSpecificPath(query: string, docPath: string, currentDomain: string, dataStore: any): Promise<string> {
+   private async _searchInSpecificPath(query: string, docPath: string, currentDomain: string, dataStore: any, signal?: AbortSignal): Promise<string> {
      try {
+       // 检查是否已经中止
+       if (signal?.aborted) {
+         throw new DOMException('搜索被中止', 'AbortError');
+       }
+
        // 执行搜索获取所有匹配结果
        const terms = query.split(/\s+/).map(t => t.trim()).filter(t => t);
-       const termResults = await Promise.all(terms.map(term => this._performSingleSearch(term)));
+       const termResults = await Promise.all(terms.map(async term => {
+         return await Promise.race([
+            this._performSingleSearch(term),
+            new Promise<SearchResult[]>((_, reject) => {
+               if (signal?.aborted) reject(new DOMException('搜索被中止', 'AbortError'));
+               signal?.addEventListener('abort', () => {
+                  reject(new DOMException('搜索被中止', 'AbortError'));
+               });
+            })
+         ]);
+       }));
 
        // 统计每个文档的命中次数
        const docHitCount = new Map<string, number>();
@@ -595,12 +647,12 @@ class LocalToolsService {
        });
 
      } catch (error: any) {
-      logger.error("指定路径搜索时发生异常:", error);
+      // 静默处理异常
       return JSON.stringify({
         tool: 'search_docs',
         query,
         docPath,
-        error: `错误：在指定路径搜索时发生异常: ${error?.message || '未知错误'}`
+        message: "搜索执行失败"
       });
      }
    }
@@ -617,7 +669,36 @@ class LocalToolsService {
        });
      }
 
-     logger.log(`执行高级搜索...`, { query, docPath });
+     // 创建60秒超时控制器
+     const searchController = new AbortController();
+     const searchTimeout = setTimeout(() => {
+       searchController.abort();
+     }, 60000);
+
+     try {
+       const result = await this._searchDocsInternal(query, docPath, searchController.signal);
+       clearTimeout(searchTimeout);
+       return result;
+     } catch (error) {
+       clearTimeout(searchTimeout);
+       if (error instanceof Error && error.name === 'AbortError') {
+         return JSON.stringify({
+           tool: 'search_docs',
+           query,
+           message: "搜索超时"
+         });
+       }
+       // 其他错误也静默处理
+       return JSON.stringify({
+         tool: 'search_docs',
+         query,
+         message: "搜索执行失败"
+       });
+     }
+   }
+
+   private async _searchDocsInternal(query: string, docPath: string | undefined, signal: AbortSignal): Promise<string> {
+
      const dataStore = useDataStore();
      const appStore = useAppStore();
      const currentDomain = appStore.currentDomain;
@@ -627,25 +708,23 @@ class LocalToolsService {
            tool: 'search_docs',
            query,
            docPath,
-           error: "错误：当前域未设置"
+           message: "当前域未设置"
          });
      }
 
      // 如果指定了文档路径，进行指定文档搜索
      if (docPath && docPath.trim()) {
-       return this._searchInSpecificPath(query.trim(), docPath.trim(), currentDomain, dataStore);
+       return this._searchInSpecificPath(query.trim(), docPath.trim(), currentDomain, dataStore, signal);
      }
 
      if (!dataStore.indexData || dataStore.indexData.length === 0) {
-       logger.log(`LocalTools: 索引数据缺失，为 '${currentDomain}' 重新加载...`);
        try {
          await dataStore.fetchIndex(currentDomain);
        } catch (e) {
-         logger.error(`错误：为域 '${currentDomain}' 自动加载知识库索引失败:`, e);
          return JSON.stringify({
            tool: 'search_docs',
            query,
-           error: "错误: 无法加载知识库索引"
+           message: "无法加载搜索索引"
          });
        }
      }
@@ -659,8 +738,18 @@ class LocalToolsService {
            message: "请输入有效的查询词"
          });
 
-        // 对每个关键词执行独立搜索
-        const termResults = await Promise.all(terms.map(term => this._performSingleSearch(term)));
+        // 对每个关键词执行独立搜索，支持中断信号
+        const termResults = await Promise.all(terms.map(async term => {
+           return await Promise.race([
+              this._performSingleSearch(term, signal),
+              new Promise<SearchResult[]>((_, reject) => {
+                 if (signal.aborted) reject(new DOMException('搜索被中止', 'AbortError'));
+                 signal.addEventListener('abort', () => {
+                    reject(new DOMException('搜索被中止', 'AbortError'));
+                 });
+              })
+           ]);
+        }));
 
         // 统计每个文档的命中次数
         const docHitCount = new Map<string, number>();
