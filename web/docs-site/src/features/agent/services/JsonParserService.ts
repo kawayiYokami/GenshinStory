@@ -1,301 +1,241 @@
-import { FlatToolCall, isFlatToolCall } from '../types';
+import { FlatToolCall } from '../types';
 
-/**
- * 将带转义符的 JSON 字符串（通常作为另一个 JSON 字段的值）还原为可用的 JSON 对象。
- *
- * @param escapedJsonString - 包含转义 JSON 结构的外部 JSON 字符串。
- * @param keyToUnescape - 包含内部转义 JSON 字符串的字段名。
- * @returns 还原后的内部 JSON 对象。
- */
-function unescapeAndParseJson(escapedJsonString: string, keyToUnescape: string): any {
-    // 1. 第一次解析：解析外部 JSON 结构。
-    const outerObject = JSON.parse(escapedJsonString);
-
-    // 检查字段是否存在
-    if (!outerObject || typeof outerObject[keyToUnescape] !== 'string') {
-        throw new Error(`字段 '${keyToUnescape}' 不存在或不是字符串类型。`);
-    }
-
-    // 获取内部带转义符的 JSON 字符串值
-    const innerEscapedString: string = outerObject[keyToUnescape];
-
-    // 2. 第二次解析：解析内部字符串值，完成还原。
-    // JSON.parse() 会自动处理 " 还原为 "，\\n 还原为 \n 等操作。
-    const finalJsonObject = JSON.parse(innerEscapedString);
-
-    return finalJsonObject;
-}
-
-interface ExtractionResult {
-  json: Record<string, any>;
-  startIndex: number;
-  endIndex: number;
-  original: string;
-  repairs?: string[];
-}
-
-function stripCodeFences(text: string): string {
-  if (!text) return text;
-  return text.replace(/```json/gi, '').replace(/```/g, '').trim();
+// 定义工具调用接口，方便类型提示
+interface ToolCallResult {
+    toolCall: FlatToolCall;
+    startIndex: number;
+    endIndex: number;
 }
 
 /**
- * 简化的JSON解析服务 - 只保留核心功能
+ * JSON 解析服务 - 增强版
+ * 改进点：
+ * 1. 使用堆栈平衡法提取 JSON，完美支持 JSON 后跟随文本的情况。
+ * 2. 增加 JSON 容错修复（处理尾部逗号、非标准换行）。
+ * 3. 简化归一化逻辑，减少误判。
  */
 class JsonParserService {
-  private readonly VALID_TOOLS = ['search_docs', 'read_doc', 'ask_choice'];
+    private readonly VALID_TOOLS = ['search_docs', 'read_doc', 'ask_choice'];
 
-  /**
-   * 根据字段类型智能匹配工具参数
-   */
-  private matchToolFields(obj: Record<string, any>): FlatToolCall | null {
-    const result: any = {};
-    let toolName: string | undefined;
+    /**
+     * 主入口：解析 LLM 响应
+     */
+    public parseLlmResponse(text: string): ToolCallResult | null {
+        if (!text || !text.trim()) return null;
 
-    // 遍历所有字段进行分类
-    for (const [key, value] of Object.entries(obj)) {
-      // 1. 识别工具名
-      if (this.isValidToolName(key)) {
-        toolName = key;
-        // 根据工具类型映射默认值
-        if (typeof value === 'string') {
-          switch (key) {
-            case 'search_docs':
-              result.query = value;
-              // 如果对象中有 path 字段，也要保留
-              if (obj.path !== undefined) {
-                result.path = obj.path;
-              }
-              break;
-            case 'ask_choice':
-              result.question = value;
-              break;
-            case 'read_doc':
-              result.path = value;
-              break;
-          }
-        } else if (Array.isArray(value) && key === 'ask_choice') {
-          // 处理quest格式的suggestions数组
-          result.suggestions = value;
+        // 1. 预处理：移除 Markdown 代码块标记
+        const cleanedText = this.stripCodeFences(text);
+
+        // 2. 提取最外层的 JSON 字符串块（核心改进）
+        const jsonBlock = this.extractFirstJsonBlock(cleanedText);
+
+        if (!jsonBlock) {
+            return null;
         }
-        continue;
-      }
 
-      // 2. 路径识别
-      if (typeof value === 'string' && value.includes('/') && this.isValidPath(value)) {
-        result.path = value;
-        continue;
-      }
+        try {
+            // 3. 尝试修复并解析
+            const parsedObj = this.headerlessJsonParse(jsonBlock.jsonString);
 
-      // 3. 行范围识别
-      if (typeof value === 'string' && value.includes('-') && /^\d+-\d+$/.test(value)) {
-        result.line_range = value;
-        continue;
-      }
+            // 4. 结构归一化与工具识别
+            const toolCall = this.normalizeToolCall(parsedObj);
 
-      // 4. 数组直接保留
-      if (Array.isArray(value)) {
-        result[key] = value;
-        continue;
-      }
-
-      // 5. 其他字段直接保留
-      result[key] = value;
-    }
-
-    // 如果没有找到工具名，尝试通过name字段
-    if (!toolName && obj.name && typeof obj.name === 'string' && this.isValidToolName(obj.name)) {
-      toolName = obj.name;
-    }
-
-    // 修复：同时检查标准的 'tool' 字段
-    if (!toolName && obj.tool && typeof obj.tool === 'string' && this.isValidToolName(obj.tool)) {
-      toolName = obj.tool;
-    }
-
-    if (!toolName) {
-      return null;
-    }
-
-    return {
-      tool: toolName,
-      ...result
-    };
-  }
-
-  /**
-   * 验证是否为有效路径
-   */
-  private isValidPath(path: string): boolean {
-    const invalidChars = [' ', '&', '<', '>', '|', '"', "'", '`', '\n', '\r', '\t', '\0'];
-
-    for (const char of invalidChars) {
-      if (path.includes(char)) return false;
-    }
-
-    if (path.startsWith('.') || path.endsWith('.') || path.endsWith(' ') || path.startsWith(' ')) {
-      return false;
-    }
-
-    if (/^\d+\.\d+\/\d+\.\d+$/.test(path) || /^v\d+\.\d+\/\w+/.test(path)) {
-      return false;
-    }
-
-    if (path.includes('version') || path.includes('release') || path.includes('alpha') || path.includes('beta') || path.includes('patch')) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * 展开嵌套结构为平铺对象
-   */
-  private flattenNestedObject(obj: any): Record<string, any> {
-    if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
-      return obj;
-    }
-
-    // 处理嵌套的 tool_call 结构
-    if (obj.tool_call && obj.tool_call.name) {
-      const flattened: Record<string, any> = {
-        name: obj.tool_call.name
-      };
-
-      // 展开arguments或args中的所有字段
-      const args = obj.tool_call.arguments || obj.tool_call.args || {};
-      if (typeof args === 'object' && args !== null && !Array.isArray(args)) {
-        Object.assign(flattened, args);
-      }
-
-      return flattened;
-    }
-
-    // 处理quest格式：{ask_choice: {question: "...", suggestions: [...]}}
-    if (obj.ask_choice && typeof obj.ask_choice === 'object') {
-      const flattened: Record<string, any> = {
-        ask_choice: obj.ask_choice.question || ''
-      };
-
-      // 展开suggestions
-      if (Array.isArray(obj.ask_choice.suggestions)) {
-        flattened.suggestions = obj.ask_choice.suggestions;
-      }
-
-      // 展开其他字段
-      for (const [key, value] of Object.entries(obj.ask_choice)) {
-        if (key !== 'question' && key !== 'suggestions') {
-          flattened[key] = value;
-        }
-      }
-
-      return flattened;
-    }
-
-    return obj;
-  }
-
-  /**
-   * 验证工具名称
-   */
-  private isValidToolName(name: string): boolean {
-    return this.VALID_TOOLS.includes(name);
-  }
-
-  /**
-   * 解析LLM响应 - 统一重新构造平铺格式
-   */
-  parseLlmResponse(responseText: string): { toolCall: Record<string, any>; startIndex: number } | null {
-    if (typeof responseText !== 'string' || !responseText.trim()) {
-      return null;
-    }
-
-    // 策略优化：不再依赖脆弱的行遍历寻找最后一个 {，而是尝试解析所有可能的 JSON 块
-    // 优先尝试整个字符串（处理纯 JSON 响应）
-    try {
-      const fullParsed = JSON.parse(stripCodeFences(responseText));
-      if (typeof fullParsed === 'object' && fullParsed !== null && !Array.isArray(fullParsed)) {
-        const toolCall = this.processParsedObject(fullParsed, responseText);
-        if (toolCall) {
-          return { toolCall, startIndex: 0 };
-        }
-      }
-    } catch (e) {
-      // 忽略错误，继续寻找子串
-    }
-
-    // 查找所有 { 的位置
-    const braceIndices: number[] = [];
-    let idx = responseText.indexOf('{');
-    while (idx !== -1) {
-      braceIndices.push(idx);
-      idx = responseText.indexOf('{', idx + 1);
-    }
-
-    // 如果没有找到 {，直接返回 null
-    if (braceIndices.length === 0) {
-      return null;
-    }
-
-    // 从后往前尝试，寻找最后一个有效的顶层 JSON 对象
-    for (let i = braceIndices.length - 1; i >= 0; i--) {
-      const start = braceIndices[i];
-      const candidate = responseText.substring(start);
-      const cleaned = stripCodeFences(candidate);
-
-      try {
-        const parsed = JSON.parse(cleaned);
-        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-          // 成功解析！
-          const toolCall = this.processParsedObject(parsed, cleaned);
-          if (toolCall) {
-            return { toolCall, startIndex: start };
-          }
-        }
-      } catch (e) {
-        // 解析失败，尝试下一个候选
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * 统一处理解析后的对象（处理 feedback_data、展开嵌套、匹配工具字段）
-   */
-  private processParsedObject(parsed: any, rawJsonString: string): Record<string, any> | null {
-      // 处理feedback_data格式
-      let finalObj = parsed;
-      if ('feedback_data' in parsed) {
-        let feedbackData = parsed.feedback_data;
-        if (typeof feedbackData === 'string') {
-          // 尝试使用反转义方法
-          try {
-            feedbackData = unescapeAndParseJson(rawJsonString, 'feedback_data');
-          } catch (e) {
-            // 如果失败，尝试直接解析
-            try {
-              feedbackData = JSON.parse(feedbackData);
-            } catch (e2) {
-              // 如果还是失败，尝试使用简单的字符替换
-              feedbackData = JSON.parse(feedbackData.replace(/\\\\/g, '\\').replace(/\\"/g, '"').replace(/\\n/g, '\n'));
+            if (toolCall) {
+                return {
+                    toolCall,
+                    startIndex: jsonBlock.startIndex, // 这里返回的是相对于 stripped text 的位置，实际应用可能需要映射回原文本
+                    endIndex: jsonBlock.endIndex
+                };
             }
-          }
+        } catch (e) {
+            console.warn('JSON parsing failed even after extraction:', e);
         }
-        finalObj = feedbackData as Record<string, any>;
-      }
 
-      // 展开嵌套结构
-      const flattenedObj = this.flattenNestedObject(finalObj);
+        return null;
+    }
 
-      // 统一对所有格式进行字段匹配和重新构造
-      const toolCall = this.matchToolFields(flattenedObj);
-      if (toolCall) {
-        return toolCall;
-      }
+    /**
+     * 核心算法：基于括号计数的 JSON 提取器
+     * 解决问题：JSON.parse 在末尾有杂乱文本时会失败，此方法能精准切分出 JSON 部分。
+     */
+    private extractFirstJsonBlock(text: string): { jsonString: string; startIndex: number; endIndex: number } | null {
+        let firstOpen = text.indexOf('{');
+        if (firstOpen === -1) return null;
 
-      return flattenedObj;
-  }
+        let depth = 0;
+        let startIndex = -1;
+        let inString = false;
+        let escape = false;
+
+        for (let i = firstOpen; i < text.length; i++) {
+            const char = text[i];
+
+            // 处理字符串内的字符，避免将字符串内的 } 误判为结束
+            if (inString) {
+                if (escape) {
+                    escape = false;
+                } else if (char === '\\') {
+                    escape = true;
+                } else if (char === '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (char === '"') {
+                inString = true;
+                continue;
+            }
+
+            if (char === '{') {
+                if (depth === 0) startIndex = i;
+                depth++;
+            } else if (char === '}') {
+                depth--;
+                // 找到了最外层的闭合括号
+                if (depth === 0 && startIndex !== -1) {
+                    return {
+                        jsonString: text.substring(startIndex, i + 1),
+                        startIndex: startIndex,
+                        endIndex: i + 1
+                    };
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 容错解析：处理 LLM 常见的 JSON 语法错误
+     */
+    private headerlessJsonParse(jsonString: string): any {
+        // 1. 基础尝试
+        try {
+            return JSON.parse(jsonString);
+        } catch (e) {
+            // 继续修复
+        }
+
+        // 2. 修复常见错误
+        let repaired = jsonString
+            // 移除尾部逗号 (Match: , })
+            .replace(/,(\s*})/g, '$1')
+            .replace(/,(\s*])/g, '$1')
+            // 修复未转义的换行符 (将真实换行替换为 \n)
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '')
+            .replace(/\t/g, '\\t');
+
+        try {
+            return JSON.parse(repaired);
+        } catch (e) {
+            // 如果修复失败，抛出异常，外层会捕获
+            throw e;
+        }
+    }
+
+    /**
+     * 将各种奇怪的结构（嵌套、feedback_data等）统一为扁平的工具调用对象
+     */
+    private normalizeToolCall(obj: any): FlatToolCall | null {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+
+        let target = obj;
+
+        // 1. 处理 feedback_data (反转义逻辑)
+        if (target.feedback_data) {
+            try {
+                const inner = typeof target.feedback_data === 'string'
+                    ? JSON.parse(target.feedback_data)
+                    : target.feedback_data;
+                // 如果解析出来是对象，就用它替换当前层级
+                if (typeof inner === 'object' && !Array.isArray(inner)) {
+                    target = inner;
+                }
+            } catch (e) {
+                // 解析失败则忽略，继续使用原对象
+            }
+        }
+
+        // 2. 处理嵌套的 tool_call / function_call 包装
+        if (target.tool_call || target.function_call || target.tool) {
+            const wrapper = target.tool_call || target.function_call || target.tool;
+            // 可能是 { tool_call: { name: "xx", arguments: {...} } }
+            if (wrapper && typeof wrapper === 'object') {
+                const name = wrapper.name || (typeof wrapper === 'string' ? wrapper : null);
+                const args = wrapper.arguments || wrapper.args || wrapper.parameters || {};
+
+                // 构造新对象
+                target = { ...args };
+                if (name) target.tool = name;
+            }
+        }
+
+        // 3. 字段映射与工具推断
+        const result: any = {};
+        let detectedToolName: string | null = null;
+
+        // 显式查找工具名字段
+        if (target.tool && this.isValidToolName(target.tool)) detectedToolName = target.tool;
+        else if (target.name && this.isValidToolName(target.name)) detectedToolName = target.name;
+        // 兼容 key 为工具名的情况，例如 { "search_docs": "query..." }
+        else {
+            for (const key of Object.keys(target)) {
+                if (this.isValidToolName(key)) {
+                    detectedToolName = key;
+                    // 特殊处理：如果是 ask_choice: { ... } 或 ask_choice: "..."
+                    if (key === 'ask_choice') {
+                        if (typeof target[key] === 'string') {
+                            result.question = target[key];
+                        } else if (typeof target[key] === 'object') {
+                            Object.assign(result, target[key]);
+                        }
+                    } else if (typeof target[key] === 'string') {
+                        // search_docs: "query" -> query: "query"
+                        if (key === 'search_docs') result.query = target[key];
+                        if (key === 'read_doc') result.path = target[key];
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!detectedToolName) return null;
+
+        // 4. 组装最终结果，过滤无关字段
+        result.tool = detectedToolName;
+
+        // 复制其他有用字段
+        for (const [key, value] of Object.entries(target)) {
+            // 跳过已经是工具名的 key (除非它是结构体)
+            if (key === detectedToolName && typeof value !== 'object') continue;
+            if (key === 'tool' || key === 'name') continue;
+
+            result[key] = value;
+        }
+
+        // 5. 针对 ask_choice 的 suggestions 特殊处理 (兼容数组形式)
+        if (result.tool === 'ask_choice') {
+            if (Array.isArray(target.suggestions)) {
+                result.suggestions = target.suggestions;
+            }
+            // 兼容旧格式 { ask_choice: [suggestion1, suggestion2] }
+            if (Array.isArray(target.ask_choice)) {
+                result.suggestions = target.ask_choice;
+            }
+        }
+
+        return result as FlatToolCall;
+    }
+
+    private stripCodeFences(text: string): string {
+        return text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    }
+
+    private isValidToolName(name: string): boolean {
+        return this.VALID_TOOLS.includes(name);
+    }
 }
 
 export default new JsonParserService();
