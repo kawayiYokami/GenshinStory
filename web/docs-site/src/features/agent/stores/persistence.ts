@@ -28,13 +28,13 @@ function debounce(func: (...args: any[]) => void, wait: number) {
 
 // --- Persistence 类型定义 ---
 export interface PersistenceManager {
-  initializeStoreFromCache(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): Promise<void>;
-  persistState(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): () => void;
+  initializeStoreFromCache(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>, activeInstructionId: Ref<string>): Promise<void>;
+  persistState(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>, activeInstructionId: Ref<string>): () => void;
 }
 
 // --- Persistence 实现 ---
 export class PersistenceManagerImpl implements PersistenceManager {
-  async initializeStoreFromCache(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): Promise<void> {
+  async initializeStoreFromCache(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>, activeInstructionId: Ref<string>): Promise<void> {
     try {
       logger.log('[AgentStore] 正在从缓存初始化 store...');
       const cachedState = await sessionsStore.getItem<any>('state');
@@ -44,17 +44,19 @@ export class PersistenceManagerImpl implements PersistenceManager {
         logger.log('[AgentStore] 没有找到缓存数据，使用空状态开始。');
         sessions.value = {};
         activeSessionIds.value = { gi: null, hsr: null };
+        activeInstructionId.value = 'chat';  // 设置默认指令
       } else {
         // 兼容新旧格式的数据
-        let cachedSessions, cachedActiveIds;
+        let cachedSessions, cachedActiveIds, cachedInstructionId;
 
         if (cachedState.version && cachedState.data) {
           // 新格式：有版本号和data包装
-          ({ sessions: cachedSessions, activeSessionIds: cachedActiveIds } = cachedState.data);
+          ({ sessions: cachedSessions, activeSessionIds: cachedActiveIds, activeInstructionId: cachedInstructionId } = cachedState.data);
         } else {
           // 旧格式：直接数据
           cachedSessions = cachedState.sessions || cachedState;
           cachedActiveIds = cachedState.activeSessionIds || {};
+          cachedInstructionId = cachedState.activeInstructionId || 'chat';
         }
 
         sessions.value = (typeof cachedSessions === 'object' && cachedSessions !== null) ? cachedSessions : {};
@@ -86,6 +88,10 @@ export class PersistenceManagerImpl implements PersistenceManager {
                                  ? { ...defaultIds, ...cachedActiveIds }
                                  : defaultIds;
         logger.log('[AgentStore] 已恢复活动会话 ID。');
+
+        // 恢复指令ID
+        activeInstructionId.value = cachedInstructionId || 'chat';
+        logger.log('[AgentStore] 已恢复活动指令 ID。');
       }
 
     } catch (e) {
@@ -97,22 +103,26 @@ export class PersistenceManagerImpl implements PersistenceManager {
           // 简单地尝试解析数据，不做版本检查
           const fallbackSessions = fallbackState.sessions || fallbackState.data?.sessions || {};
           const fallbackActiveIds = fallbackState.activeSessionIds || fallbackState.data?.activeSessionIds || { gi: null, hsr: null };
+          const fallbackInstructionId = fallbackState.activeInstructionId || fallbackState.data?.activeInstructionId || 'chat';
           sessions.value = fallbackSessions;
           activeSessionIds.value = fallbackActiveIds;
+          activeInstructionId.value = fallbackInstructionId;
           logger.log('[AgentStore] 成功从损坏的缓存中恢复了部分数据。');
         } else {
           sessions.value = {};
           activeSessionIds.value = { gi: null, hsr: null };
+          activeInstructionId.value = 'chat';
         }
       } catch (fallbackError) {
         logger.error('[AgentStore] 备用恢复也失败了，使用空状态。', fallbackError);
         sessions.value = {};
         activeSessionIds.value = { gi: null, hsr: null };
+        activeInstructionId.value = 'chat';
       }
     }
   }
 
-  persistState(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>): () => void {
+  persistState(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>, activeInstructionId: Ref<string>): () => void {
     const persistFn = debounce(async () => {
       try {
         const stateToPersist = {
@@ -120,6 +130,7 @@ export class PersistenceManagerImpl implements PersistenceManager {
           data: {
             sessions: JSON.parse(JSON.stringify(sessions.value)),
             activeSessionIds: JSON.parse(JSON.stringify(activeSessionIds.value)),
+            activeInstructionId: activeInstructionId.value,
           }
         };
         await sessionsStore.setItem('state', stateToPersist);

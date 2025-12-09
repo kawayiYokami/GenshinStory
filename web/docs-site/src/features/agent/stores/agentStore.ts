@@ -100,7 +100,7 @@ export const useAgentStore = defineStore('agent', () => {
   );
 
   // Create persist function
-  const persistState = persistenceManager.persistState(sessions, activeSessionIds);
+  const persistState = persistenceManager.persistState(sessions, activeSessionIds, activeInstructionId);
 
   // --- Original Store Actions (refactored to use managers/services) ---
   /**
@@ -683,11 +683,12 @@ export const useAgentStore = defineStore('agent', () => {
 
 
   async function initializeStoreFromCache(): Promise<void> {
-    await persistenceManager.initializeStoreFromCache(sessions, activeSessionIds);
+    await persistenceManager.initializeStoreFromCache(sessions, activeSessionIds, activeInstructionId);
 
     // Set up watchers after initialization
     watch(sessions, persistState, { deep: true });
     watch(activeSessionIds, persistState, { deep: true });
+    watch(activeInstructionId, persistState, { deep: true });
   }
 
   // Expose AgentService getters
