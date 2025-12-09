@@ -19,6 +19,7 @@ interface SearchResult {
     snippet: string;
     totalLines?: number;
     totalTokens?: number;
+    hitCount?: number;  // 该文件的实际命中次数
 }
 
 interface DocMetadata {
@@ -366,6 +367,7 @@ class LocalToolsService {
 
        const results: SearchResult[] = [];
        const fileSnippetCount = new Map<string, number>();
+       const fileHitCount = new Map<string, number>();  // 记录每个文件的实际命中次数
 
        // 用于缓存每个文档的元数据，避免重复计算
        const metadataCache = new Map<string, { totalLines: number, totalTokens: number }>();
@@ -414,31 +416,49 @@ class LocalToolsService {
                      throw new DOMException('搜索被中止', 'AbortError');
                    }
 
-                   if ((fileSnippetCount.get(logicalPath) || 0) >= 3) {
-                       break;
-                   }
 
                    if (lines[i].toLowerCase().includes(query.toLowerCase())) {
+                       // 记录实际命中次数
+                       const currentHitCount = fileHitCount.get(logicalPath) || 0;
+                       fileHitCount.set(logicalPath, currentHitCount + 1);
+
+                       // 检查是否已经显示够了snippet
+                       const currentSnippetCount = fileSnippetCount.get(logicalPath) || 0;
+                       if (currentSnippetCount >= 3) {
+                           continue; // 继续计数但不显示更多snippet
+                       }
+
                        const foundLine = i + 1;
                        const snippet = formatSearchSnippet(lines[i], query);
 
+                       // 先添加结果，稍后统一更新hitCount
                        results.push({
                            path: logicalPath,
                            line: foundLine,
                            snippet: snippet,
                            totalLines: metadata.totalLines,
-                           totalTokens: metadata.totalTokens
+                           totalTokens: metadata.totalTokens,
+                           hitCount: undefined // 稍后更新
                        });
-                       const currentCount = fileSnippetCount.get(logicalPath) || 0;
-                       fileSnippetCount.set(logicalPath, currentCount + 1);
+                       fileSnippetCount.set(logicalPath, currentSnippetCount + 1);
 
                        i += 2;
                    }
                }
+
            } catch (e) {
                // 静默处理错误，AI看到没有结果会知道出了问题
            }
        }
+
+       // 所有文件扫描完成后，统一更新所有结果的hitCount
+       results.forEach(result => {
+           const finalHitCount = fileHitCount.get(result.path);
+           if (finalHitCount !== undefined) {
+               result.hitCount = finalHitCount;
+           }
+       });
+
        return results;
    }
 
@@ -607,11 +627,15 @@ class LocalToolsService {
         });
       }
 
-      // 转换为数组并添加命中次数
-      const groupedArray = Array.from(groupedResults.values()).map(group => ({
-        ...group,
-        hitCount: group.hits.length
-      }));
+      // 转换为数组并使用实际命中次数
+      const groupedArray = Array.from(groupedResults.values()).map(group => {
+        // 获取该文件第一个结果的 hitCount（因为每个相同路径的结果都有相同的 hitCount）
+        const firstResult = finalResults.find(r => r.path === group.path);
+        return {
+          ...group,
+          hitCount: firstResult?.hitCount || group.hits.length
+        };
+      });
 
       // 按命中次数降序排序，然后按路径排序
       groupedArray.sort((a, b) => {
