@@ -605,6 +605,18 @@ async function loadSystemPrompt(domain: string, roleId: string, instructionId: s
                 instructionsPrompt = await fallbackResponse.text();
             }
 
+            // 加载系统指令
+            let systemDirectivePrompt = '';
+            try {
+                const systemDirectiveResponse = await fetch(`/prompts/system_directive.md?v=${v}`);
+                if (systemDirectiveResponse.ok) {
+                    systemDirectivePrompt = await systemDirectiveResponse.text();
+                    systemDirectivePrompt = `\n\n${systemDirectivePrompt}`;
+                }
+            } catch (error) {
+                logger.warn('[PromptService] 无法加载系统指令:', error);
+            }
+
             // 加载原子化工具提示词
             await toolPromptService.loadToolPrompts();
             const toolsPrompt = toolPromptService.getSystemPrompt();
@@ -613,7 +625,7 @@ async function loadSystemPrompt(domain: string, roleId: string, instructionId: s
             const fileStructure = await getFileStructure(domain);
             const fileStructurePrompt = `\n\n# 当前领域文件结构\n\n${fileStructure}\n`;
 
-            const finalSystemPrompt = `${personaDefinition}\n\n${instructionsPrompt}${fileStructurePrompt}\n\n${toolsPrompt}`;
+            const finalSystemPrompt = `${personaDefinition}\n\n${instructionsPrompt}${fileStructurePrompt}\n\n${toolsPrompt}${systemDirectivePrompt}`;
 
             const result = {
                 systemPrompt: finalSystemPrompt,
