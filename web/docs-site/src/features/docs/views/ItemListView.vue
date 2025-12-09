@@ -130,7 +130,11 @@ watchEffect(async () => {
     // 使用 localToolsService 在当前分类下搜索
     const searchResultJson = await localToolsService.searchDocs(
       filterKeyword.value,
-      searchPath
+      searchPath,
+      {
+        maxResults: Infinity,
+        generateSummary: false
+      }
     );
 
     const searchResult = JSON.parse(searchResultJson);

@@ -110,92 +110,6 @@ class LocalToolsService {
 
   // --- 工具函数 ---
 
-  public async listDocs(path: string = '/'): Promise<string> {
-    const jsonResult = await pathService.listDocs(path);
-
-    // 检查是否是错误信息
-    if (jsonResult.startsWith("错误：")) {
-      // 将错误信息包装在 XML 中
-      return `<directory_listing path="${path}"><error><![CDATA[${jsonResult}]]></error></directory_listing>`;
-    }
-
-    try {
-      // 解析 JSON 结果
-      const results: { path: string; type: string }[] = JSON.parse(jsonResult);
-
-      // 递归函数，将扁平的路径列表转换为嵌套的 XML 结构
-      const buildXmlTree = (items: { path: string; type: string }[], basePath: string = ''): string => {
-        // 创建一个映射，将路径的第一部分映射到其子项
-        const rootMap = new Map<string, { path: string; type: string }[]>();
-
-        for (const item of items) {
-          // 计算相对于 basePath 的相对路径
-          const relativePath = item.path.startsWith(basePath) ? item.path.substring(basePath.length) : item.path;
-          const cleanPath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
-          const pathParts = cleanPath.split('/').filter(p => p);
-
-          if (pathParts.length > 0) {
-            const firstPart = pathParts[0];
-            if (!rootMap.has(firstPart)) {
-              rootMap.set(firstPart, []);
-            }
-
-            // 如果是文件或目录且没有更多层级，则直接添加
-            if (pathParts.length === 1) {
-              rootMap.get(firstPart)!.push(item);
-            } else {
-              // 如果还有更多层级，我们需要创建一个虚拟的目录条目
-              // 但实际上我们不需要在这里做任何事情，因为我们会递归处理
-              // 只需要确保父目录存在即可
-              const parentPath = [basePath, firstPart].filter(Boolean).join('/');
-              // 我们需要检查是否已经有一个条目代表这个父目录
-              const existingParent = rootMap.get(firstPart)!.find(i => i.path === parentPath && i.type === 'directory');
-              if (!existingParent) {
-                // 如果没有，我们创建一个虚拟条目
-                rootMap.get(firstPart)!.push({ path: parentPath, type: 'directory' });
-              }
-            }
-          }
-        }
-
-        let xml = '';
-        for (const [name, childItems] of rootMap.entries()) {
-          const directItem = childItems.find(i => {
-            const itemPath = i.path.startsWith('/') ? i.path.substring(1) : i.path;
-            const itemParts = itemPath.split('/').filter(p => p);
-            return itemParts.length === 1 && itemParts[0] === name;
-          });
-
-          if (directItem) {
-            if (directItem.type === 'file') {
-              xml += `<file name="${name}" />`;
-            } else {
-              // 这是一个目录，需要递归处理其子项
-              const children = items.filter(i => i.path.startsWith(directItem.path + '/'));
-              const childrenXml = buildXmlTree(children, directItem.path);
-              xml += `<directory name="${name}">${childrenXml}</directory>`;
-            }
-          } else {
-            // 这是一个中间目录，没有直接对应的条目，但仍需要处理其子项
-            const children = items.filter(i => i.path.startsWith([basePath, name].filter(Boolean).join('/') + '/'));
-            const childrenXml = buildXmlTree(children, [basePath, name].filter(Boolean).join('/'));
-            xml += `<directory name="${name}">${childrenXml}</directory>`;
-          }
-        }
-
-        return xml;
-      };
-
-      // 构建 XML 内容
-      const xmlContent = buildXmlTree(results, path);
-
-      // 返回完整的 XML 结构
-      return `<directory_listing path="${path}">${xmlContent}</directory_listing>`;
-    } catch (e) {
-      // 如果解析 JSON 或构建 XML 时出错，返回错误信息
-      return `<directory_listing path="${path}"><error><![CDATA[解析目录列表结果时出错: ${(e as Error).message}]]></error></directory_listing>`;
-    }
-  }
 
   private _applyLineRanges(content: string, lineRanges?: string[]): string {
     if (!lineRanges || lineRanges.length === 0) {
@@ -528,324 +442,218 @@ class LocalToolsService {
        return results;
    }
 
-   private async _searchInSpecificPath(query: string, docPath: string, currentDomain: string, dataStore: any, signal?: AbortSignal): Promise<string> {
-     try {
-       // 检查是否已经中止
-       if (signal?.aborted) {
-         throw new DOMException('搜索被中止', 'AbortError');
-       }
 
-       // 执行搜索获取所有匹配结果
-       const terms = query.split(/\s+/).map(t => t.trim()).filter(t => t);
-       const termResults = await Promise.all(terms.map(async term => {
-         return await Promise.race([
-            this._performSingleSearch(term),
-            new Promise<SearchResult[]>((_, reject) => {
-               if (signal?.aborted) reject(new DOMException('搜索被中止', 'AbortError'));
-               signal?.addEventListener('abort', () => {
-                  reject(new DOMException('搜索被中止', 'AbortError'));
-               });
-            })
-         ]);
-       }));
-
-       // 统计每个文档的命中次数
-       const docHitCount = new Map<string, number>();
-       const allResults: SearchResult[] = [];
-
-       // 收集所有搜索结果并统计命中次数
-       termResults.forEach(results => {
-         results.forEach(result => {
-           const key = result.path;
-           docHitCount.set(key, (docHitCount.get(key) || 0) + 1);
-           allResults.push(result);
-         });
-       });
-
-       // 按路径匹配度排序
-       const scoredResults = allResults.map(result => {
-         const path = result.path;
-
-         // 计算路径匹配分数
-         let pathScore = 0;
-
-         // 1. 精确匹配（完整路径）
-         if (path === docPath) {
-           pathScore = 100;
-         }
-         // 2. 路径前缀匹配（docPath 是目录）
-         else if (path.startsWith(docPath)) {
-           // 计算匹配深度，越深分数越高
-           const remainingPath = path.substring(docPath.length);
-           const depth = remainingPath.split('/').filter(p => p).length;
-           pathScore = Math.max(50 - depth * 5, 10);
-         }
-         // 3. 路径包含关键字匹配
-         else if (path.toLowerCase().includes(docPath.toLowerCase())) {
-           // 根据关键字在路径中的位置给分
-           const parts = path.toLowerCase().split('/');
-           const queryParts = docPath.toLowerCase().split('/');
-           let matchScore = 0;
-
-           queryParts.forEach(queryPart => {
-             parts.forEach((part, index) => {
-               if (part.includes(queryPart)) {
-                 // 越靠前的路径部分匹配，分数越高
-                 matchScore += Math.max(10 - index * 2, 1);
-               }
-             });
-           });
-           pathScore = Math.min(matchScore, 40);
-         }
-
-         // 计算该文档的总匹配行数
-         const totalHits = allResults.filter(r => r.path === path).length;
-
-         return {
-           ...result,
-           pathScore,
-           totalHits
-         };
-       });
-
-       // 过滤结果：只保留路径匹配分数大于 0 的结果
-       const filteredResults = scoredResults.filter(r => r.pathScore > 0);
-
-       // 按路径匹配分数排序，然后按总匹配行数排序
-       filteredResults.sort((a, b) => {
-         // 先按路径匹配分数排序
-         if (a.pathScore !== b.pathScore) {
-           return b.pathScore - a.pathScore;
-         }
-         // 路径匹配分数相同时，按匹配行数排序
-         return (b as any).totalHits - (a as any).totalHits;
-       });
-
-       // 限制结果数量
-       const finalResults = filteredResults.slice(0, 20).map(r => ({
-         path: r.path,
-         line: r.line,
-         snippet: r.snippet,
-         totalLines: r.totalLines || 0,
-         totalTokens: r.totalTokens || 0
-       }));
-
-       if (finalResults.length === 0) {
-         return JSON.stringify({
-           tool: 'search_docs',
-           query,
-           docPath,
-           message: "在指定路径中未找到相关内容"
-         });
-       }
-
-       return JSON.stringify({
-         tool: 'search_docs',
-         query,
-         docPath,
-         results: finalResults
-       });
-
-     } catch (error: any) {
-      // 静默处理异常
-      return JSON.stringify({
-        tool: 'search_docs',
-        query,
-        docPath,
-        message: "搜索执行失败"
-      });
-     }
-   }
-
-    public async searchDocs(query: string, docPath?: string): Promise<string> {
-     if (typeof query !== 'string' || !query.trim()) {
-       const errorMsg = "错误：查询工具收到了无效或缺失的查询参数。";
-       logger.error(errorMsg, { query, docPath });
-       return JSON.stringify({
-         tool: 'search_docs',
-         query,
-         docPath,
-         error: errorMsg
-       });
-     }
-
-     // 创建60秒超时控制器
-     const searchController = new AbortController();
-     const searchTimeout = setTimeout(() => {
-       searchController.abort();
-     }, 60000);
-
-     try {
-       const result = await this._searchDocsInternal(query, docPath, searchController.signal);
-       clearTimeout(searchTimeout);
-       return result;
-     } catch (error) {
-       clearTimeout(searchTimeout);
-       if (error instanceof Error && error.name === 'AbortError') {
-         return JSON.stringify({
-           tool: 'search_docs',
-           query,
-           message: "搜索超时"
-         });
-       }
-       // 其他错误也静默处理
-       return JSON.stringify({
-         tool: 'search_docs',
-         query,
-         message: "搜索执行失败"
-       });
-     }
-   }
-
-   private async _searchDocsInternal(query: string, docPath: string | undefined, signal: AbortSignal): Promise<string> {
-
-     const dataStore = useDataStore();
-     const appStore = useAppStore();
-     const currentDomain = appStore.currentDomain;
-
-     if (!currentDomain) {
-         return JSON.stringify({
-           tool: 'search_docs',
-           query,
-           docPath,
-           message: "当前域未设置"
-         });
-     }
-
-     // 如果指定了文档路径，进行指定文档搜索
-     if (docPath && docPath.trim()) {
-       return this._searchInSpecificPath(query.trim(), docPath.trim(), currentDomain, dataStore, signal);
-     }
-
-     if (!dataStore.indexData || dataStore.indexData.length === 0) {
-       try {
-         await dataStore.fetchIndex(currentDomain);
-       } catch (e) {
-         return JSON.stringify({
-           tool: 'search_docs',
-           query,
-           message: "无法加载搜索索引"
-         });
-       }
-     }
-
-     try {
-        // 将查询按空格分割为多个关键词
-        const terms = query.split(/\s+/).map(t => t.trim()).filter(t => t);
-        if (terms.length === 0) return JSON.stringify({
-           tool: 'search_docs',
-           query,
-           message: "请输入有效的查询词"
-         });
-
-        // 对每个关键词执行独立搜索，支持中断信号
-        const termResults = await Promise.all(terms.map(async term => {
-           return await Promise.race([
-              this._performSingleSearch(term, signal),
-              new Promise<SearchResult[]>((_, reject) => {
-                 if (signal.aborted) reject(new DOMException('搜索被中止', 'AbortError'));
-                 signal.addEventListener('abort', () => {
-                    reject(new DOMException('搜索被中止', 'AbortError'));
-                 });
-              })
-           ]);
-        }));
-
-        // 统计每个文档的命中次数
-        const docHitCount = new Map<string, number>();
-        const allResults: SearchResult[] = [];
-
-        // 收集所有搜索结果并统计命中次数
-        termResults.forEach(results => {
-          results.forEach(result => {
-            const key = result.path;
-            docHitCount.set(key, (docHitCount.get(key) || 0) + 1);
-            allResults.push(result);
-          });
-        });
-
-        // 去重（基于路径和行号）
-        const uniqueResults = new Map<string, SearchResult>();
-        for (const result of allResults) {
-            const key = `${result.path}:${result.line}`;
-            if (!uniqueResults.has(key)) {
-                uniqueResults.set(key, result);
-            }
-        }
-        let finalResults = Array.from(uniqueResults.values());
-
-        // 按文件分组结果
-        const groupedResults = new Map<string, any>();
-        for (const result of finalResults) {
-            const hitCount = docHitCount.get(result.path) || 0;
-
-            if (!groupedResults.has(result.path)) {
-                groupedResults.set(result.path, {
-                    path: result.path,
-                    totalLines: result.totalLines,
-                    totalTokens: result.totalTokens,
-                    hits: []
-                });
-            }
-
-            groupedResults.get(result.path).hits.push({
-                line: result.line,
-                snippet: result.snippet
-            });
-        }
-
-        // 转换为数组并添加命中次数
-        const groupedArray = Array.from(groupedResults.values()).map(group => ({
-            ...group,
-            hitCount: group.hits.length
-        }));
-
-        // 按命中次数降序排序，然后按路径排序
-        groupedArray.sort((a, b) => {
-            if (b.hitCount !== a.hitCount) {
-                return b.hitCount - a.hitCount;
-            }
-            return a.path.localeCompare(b.path);
-        });
-
-        // 限制返回10个文件
-        const limitedResults = groupedArray.slice(0, 10);
-
-
-        if (limitedResults.length === 0) {
-          return JSON.stringify({
-            tool: 'search_docs',
-            query,
-            message: "未找到相关文档"
-          });
-        }
-
-        // 由于 SearchResult 已经包含了元数据，直接使用即可，无需重新获取
-        // 确保所有结果都有元数据，如果没有则设置默认值
-        const resultsWithMetadata = limitedResults.map(r => ({
-            path: r.path,
-            totalLines: r.totalLines || 0,
-            totalTokens: r.totalTokens || 0,
-            hits: r.hits,
-            hitCount: r.hitCount
-        }));
-
+    public async searchDocs(
+      query: string,
+      docPath?: string,
+      options?: {
+        maxResults?: number,        // 最大返回结果数，默认50
+        generateSummary?: boolean    // 是否生成摘要，默认false
+      }
+    ): Promise<string> {
+      if (typeof query !== 'string' || !query.trim()) {
+        const errorMsg = "错误：查询工具收到了无效或缺失的查询参数。";
+        logger.error(errorMsg, { query, docPath });
         return JSON.stringify({
           tool: 'search_docs',
           query,
-          results: resultsWithMetadata,
-          grouped: true
+          docPath,
+          error: errorMsg
         });
+      }
 
-     } catch (e: any) {
-       logger.error("高级搜索时发生异常:", e);
-       return JSON.stringify({
-         tool: 'search_docs',
-         query,
-         error: `错误：在执行高级搜索时发生异常: ${e.message}`
-       });
-     }
+      // 创建60秒超时控制器
+      const searchController = new AbortController();
+      const searchTimeout = setTimeout(() => {
+        searchController.abort();
+      }, 60000);
+
+      try {
+        const result = await this._searchDocsInternal(query, docPath, searchController.signal, options);
+        clearTimeout(searchTimeout);
+        return result;
+      } catch (error) {
+        clearTimeout(searchTimeout);
+        if (error instanceof Error && error.name === 'AbortError') {
+          return JSON.stringify({
+            tool: 'search_docs',
+            query,
+            message: "搜索超时"
+          });
+        }
+        // 其他错误也静默处理
+        return JSON.stringify({
+          tool: 'search_docs',
+          query,
+          message: "搜索执行失败"
+        });
+      }
     }
+
+    private async _searchDocsInternal(
+      query: string,
+      docPath: string | undefined,
+      signal: AbortSignal,
+      options?: {
+        maxResults?: number,
+        generateSummary?: boolean
+      }
+    ): Promise<string> {
+      const dataStore = useDataStore();
+      const appStore = useAppStore();
+      const currentDomain = appStore.currentDomain;
+
+      if (!currentDomain) {
+        return JSON.stringify({
+          tool: 'search_docs',
+          query,
+          docPath,
+          message: "当前域未设置"
+        });
+      }
+
+      // 1. 预处理：分割查询词
+      const terms = query.split(/\s+/).map(t => t.trim()).filter(t => t);
+      if (terms.length === 0) return JSON.stringify({
+        tool: 'search_docs',
+        query,
+        docPath,
+        message: "请输入有效的查询词"
+      });
+
+      // 2. 执行搜索
+      const allResults = await this._performSearch(terms, signal);
+
+      // 3. 路径过滤（包含关系）
+      const filteredResults = docPath && docPath.trim()
+        ? allResults.filter(r => this._pathContains(r.path, docPath.trim()))
+        : allResults;
+
+      // 4. 分组并排序
+      const sortedResults = this._groupAndSortResults(filteredResults);
+
+      // 5. 应用结果数量限制
+      const maxResults = options?.maxResults ?? 50;
+      const limitedResults = sortedResults.slice(0, maxResults);
+
+      // 6. 生成摘要
+      const summary = (options?.generateSummary === true && limitedResults.length > 0)
+        ? this._generateSummary(limitedResults, query)
+        : undefined;
+
+      // 7. 格式化输出
+      return this._formatOutput(limitedResults, query, docPath, summary);
+    }
+
+    private async _performSearch(terms: string[], signal: AbortSignal): Promise<SearchResult[]> {
+      const dataStore = useDataStore();
+
+      // 对每个关键词执行独立搜索，支持中断信号
+      const termResults = await Promise.all(terms.map(async term => {
+        return await Promise.race([
+          this._performSingleSearch(term, signal),
+          new Promise<SearchResult[]>((_, reject) => {
+            if (signal.aborted) reject(new DOMException('搜索被中止', 'AbortError'));
+            signal.addEventListener('abort', () => {
+              reject(new DOMException('搜索被中止', 'AbortError'));
+            });
+          })
+        ]);
+      }));
+
+      // 收集所有搜索结果
+      const allResults: SearchResult[] = [];
+      termResults.forEach(results => {
+        allResults.push(...results);
+      });
+
+      return allResults;
+    }
+
+    private _pathContains(fullPath: string, filterPath: string): boolean {
+      const fullLower = fullPath.toLowerCase();
+      const filterLower = filterPath.toLowerCase();
+      return fullLower.includes(filterLower);
+    }
+
+    private _groupAndSortResults(results: SearchResult[]): any[] {
+      if (results.length === 0) return [];
+
+      // 去重（基于路径和行号）
+      const uniqueResults = new Map<string, SearchResult>();
+      for (const result of results) {
+        const key = `${result.path}:${result.line}`;
+        if (!uniqueResults.has(key)) {
+          uniqueResults.set(key, result);
+        }
+      }
+      const finalResults = Array.from(uniqueResults.values());
+
+      // 按文件分组结果
+      const groupedResults = new Map<string, any>();
+      for (const result of finalResults) {
+        if (!groupedResults.has(result.path)) {
+          groupedResults.set(result.path, {
+            path: result.path,
+            totalLines: result.totalLines,
+            totalTokens: result.totalTokens,
+            hits: []
+          });
+        }
+
+        groupedResults.get(result.path).hits.push({
+          line: result.line,
+          snippet: result.snippet
+        });
+      }
+
+      // 转换为数组并添加命中次数
+      const groupedArray = Array.from(groupedResults.values()).map(group => ({
+        ...group,
+        hitCount: group.hits.length
+      }));
+
+      // 按命中次数降序排序，然后按路径排序
+      groupedArray.sort((a, b) => {
+        if (b.hitCount !== a.hitCount) {
+          return b.hitCount - a.hitCount;
+        }
+        return a.path.localeCompare(b.path);
+      });
+
+      return groupedArray;
+    }
+
+    private _generateSummary(results: any[], query: string): string {
+      const fileCount = results.length;
+      const topFiles = results.slice(0, 3).map(r => r.path.split('/').pop()).join('、');
+
+      return `找到 ${fileCount} 个相关文件，主要包括：${topFiles}等。`;
+    }
+
+    private _formatOutput(results: any[], query: string, docPath?: string, summary?: string): string {
+      if (results.length === 0) {
+        return JSON.stringify({
+          tool: 'search_docs',
+          query,
+          docPath,
+          message: docPath ? "在指定路径中未找到相关内容" : "未找到相关文档"
+        });
+      }
+
+      const response: any = {
+        tool: 'search_docs',
+        query,
+        results,
+        grouped: true  // 添加 grouped 字段标识这是分组后的结果
+      };
+
+      if (docPath) response.docPath = docPath;
+      if (summary) response.message = summary;  // 使用 message 字段而不是 summary
+
+      return JSON.stringify(response);
+    }
+
 
    public async getDocMetadata(logicalPath: string): Promise<DocMetadata | null> {
      const dataStore = useDataStore();

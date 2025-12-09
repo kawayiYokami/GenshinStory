@@ -26,7 +26,10 @@ const searchDocsTool: Tool<SearchDocsParams> = {
         };
       }
 
-      const result = await localTools.searchDocs(query, params.path);
+      const result = await localTools.searchDocs(query, params.path, {
+        maxResults: 50,
+        generateSummary: true
+      });
       return { result };
 
     } catch (error: any) {
