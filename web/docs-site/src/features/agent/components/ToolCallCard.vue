@@ -38,6 +38,7 @@ interface ToolCall {
   query?: string;
   path?: string;
   limit?: number;
+  maxResults?: number;
   line_range?: string;
   question?: string;
   suggestions?: string[];
@@ -63,11 +64,22 @@ const formattedToolName = computed(() => {
 
 const displayValue = computed(() => {
   switch (props.toolCall.tool) {
-    case 'search_docs':
-      return props.toolCall.query || '';
+    case 'search_docs': {
+      let displayText = props.toolCall.query || '';
+      // 添加 maxResults 信息
+      if (props.toolCall.maxResults) {
+        displayText += ` (最多${props.toolCall.maxResults}条结果)`;
+      }
+      return displayText;
+    }
     case 'read_doc': {
       const path = props.toolCall.path;
-      return path ? extractFileName(path) : '';
+      let displayText = path ? extractFileName(path) : '';
+      // 添加行范围信息
+      if (props.toolCall.line_range) {
+        displayText += ` (行: ${props.toolCall.line_range})`;
+      }
+      return displayText;
     }
     case 'ask_choice':
       return props.toolCall.question || '';
