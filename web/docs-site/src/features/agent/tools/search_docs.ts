@@ -1,5 +1,5 @@
 import { Tool, ToolExecutionResult } from './tool';
-import localTools from '../services/localToolsService';
+import localTools from './implementations/localToolsService';
 import logger from '../../app/services/loggerService';
 
 interface SearchDocsParams {

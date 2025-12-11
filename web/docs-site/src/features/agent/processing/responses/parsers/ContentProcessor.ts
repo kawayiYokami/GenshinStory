@@ -1,7 +1,7 @@
 import logger from '@/features/app/services/loggerService';
 import jsonParserService from './JsonParserService';
-import toolParserService from './toolParserService';
-import type { ParsedToolCall } from './toolParserService';
+import toolParserService from '../../../tools/orchestration/toolParserService';
+import type { ParsedToolCall } from '../../../tools/orchestration/toolParserService';
 
 /**
  * 计算字符串的简单哈希值（不用于安全目的，仅用于日志记录）

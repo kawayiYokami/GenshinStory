@@ -1,12 +1,12 @@
-import logger from '../../app/services/loggerService';
-import { toolRegistryService } from '../tools/toolRegistryService';
+import logger from '../../../app/services/loggerService';
+import { toolRegistryService } from '../registry/toolRegistryService';
 
 class ToolPromptService {
   private loaded = false;
 
   async loadToolPrompts(): Promise<void> {
     if (this.loaded) return;
-    
+
     // 加载工具注册表中的所有工具
     await toolRegistryService.loadTools();
     this.loaded = true;
@@ -33,7 +33,7 @@ class ToolPromptService {
 
       if (tool.examples && tool.examples.length > 0) {
         systemPrompt += `Examples:\n`;
-        tool.examples.forEach(example => {
+        tool.examples.forEach((example: string) => {
           systemPrompt += `- ${example}\n`;
         });
       }

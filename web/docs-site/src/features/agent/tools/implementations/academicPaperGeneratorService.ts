@@ -1,6 +1,6 @@
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import yaml from 'js-yaml';
-import logger from '../../app/services/loggerService';
+import logger from '../../../app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
 import { storeToRefs } from 'pinia';
 import type { Message, MessageContentPart } from '@/features/agent/stores/agentStore';

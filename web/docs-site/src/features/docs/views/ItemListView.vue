@@ -81,7 +81,7 @@ import { useAppStore } from '@/features/app/stores/app';
 import { useDataStore } from '@/features/app/stores/data';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import { storeToRefs } from 'pinia';
-import localToolsService from '@/features/agent/services/localToolsService';
+import localToolsService from '../../agent/tools/implementations/localToolsService';
 
 interface IndexItem {
   name: string;

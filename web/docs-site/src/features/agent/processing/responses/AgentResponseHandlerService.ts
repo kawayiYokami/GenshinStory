@@ -1,11 +1,11 @@
 import { ref, type Ref, type ComputedRef } from 'vue';
-import toolParserService from '@/features/agent/services/toolParserService';
+import toolParserService from '../../tools/orchestration/toolParserService';
 import logger from '@/features/app/services/loggerService';
-import jsonParserService from '@/features/agent/services/JsonParserService';
-import { ContentProcessor } from './ContentProcessor';
-import type { Message, Session, ToolCall } from '../types';
-import type { ParsedToolCall } from './toolParserService';
-import type { MessageManager } from '../stores/messageManager';
+import jsonParserService from './parsers/JsonParserService';
+import { ContentProcessor } from './parsers/ContentProcessor';
+import type { Message, Session, ToolCall } from '@/features/agent/types';
+import type { ParsedToolCall } from '../../tools/orchestration/toolParserService';
+import type { MessageManager } from '@/features/agent/stores/messageManager';
 
 export type HandleResponseResult =
   | { type: 'tool_call', payload: ParsedToolCall }

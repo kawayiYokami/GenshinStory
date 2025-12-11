@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import localToolsService from '@/features/agent/services/localToolsService';
+import localToolsService from '../../agent/tools/implementations/localToolsService';
 import logger from '@/features/app/services/loggerService';
 import type { Ref } from 'vue';
 

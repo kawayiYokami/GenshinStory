@@ -145,11 +145,10 @@ import { useReferenceHandler } from './useReferenceHandler';
 import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
 import { AlertTriangle, Minimize2, MessageCirclePlus, Camera, FileText, GraduationCap, Loader2 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
-import { simpleContextCompressor } from '../services/simpleContextCompressor';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import html2canvas from 'html2canvas-pro';
-import { academicPaperGeneratorService } from '../services/academicPaperGeneratorService';
-import promptService from '@/features/agent/services/promptService';
+import { academicPaperGeneratorService } from '../tools/implementations/academicPaperGeneratorService';
+import promptService from '../tools/implementations/promptService';
 
 interface ReferenceItem {
   path: string;

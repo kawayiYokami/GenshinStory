@@ -1,7 +1,7 @@
 import yaml from 'js-yaml';
-import logger from '../../app/services/loggerService';
+import logger from '../../../app/services/loggerService';
 import { toolPromptService } from './toolPromptService';
-import { useDataStore } from '../../app/stores/data';
+import { useDataStore } from '@/features/app/stores/data';
 
 // --- 类型定义 ---
 interface DirectoryNode {

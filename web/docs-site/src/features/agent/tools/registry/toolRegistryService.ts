@@ -1,12 +1,14 @@
-import logger from '../../app/services/loggerService';
+import logger from '../../../app/services/loggerService';
 import yaml from 'js-yaml';
-import type { Tool } from './tool';
+import type { Tool } from '../tool';
 
 // 需要忽略的非工具文件列表
 const IGNORED_FILES = [
-  './tool.ts',
-  './toolRegistryService.ts', 
-  './toolStateService.ts'
+  '../tool.ts',
+  '../__tests__/',
+  '../implementations/',
+  '../orchestration/',
+  '../registry/'
 ];
 
 class ToolRegistryService {
@@ -17,11 +19,11 @@ class ToolRegistryService {
     if (this.loaded) return;
 
     // 动态导入所有工具模块
-    const toolModules = import.meta.glob('./*.ts', { eager: true });
-    
+    const toolModules = import.meta.glob('../*.ts', { eager: true });
+
     for (const [path, module] of Object.entries(toolModules)) {
       if (IGNORED_FILES.includes(path)) continue;
-      
+
       try {
         const tool = (module as any).default;
         if (tool && typeof tool.name === 'string' && typeof tool.execute === 'function') {
@@ -47,15 +49,15 @@ class ToolRegistryService {
     try {
       const v = Date.now();
       const response = await fetch(`/prompts/tools/${toolName}.yaml?v=${v}`);
-      
+
       if (!response.ok) {
         logger.error(`无法加载工具 ${toolName} 的YAML配置文件: ${response.status} ${response.statusText}`);
         return false;
       }
-      
+
       const yamlText = await response.text();
       const config = yaml.load(yamlText) as any;
-      
+
       // 更新工具实例的元数据
       if (config.type) toolInstance.type = config.type;
       if (config.description) toolInstance.description = config.description;
@@ -63,9 +65,9 @@ class ToolRegistryService {
       if (config.examples) toolInstance.examples = config.examples;
       if (config.error_guidance) toolInstance.error_guidance = config.error_guidance;
       if (config.prompt_trigger) toolInstance.prompt_trigger = config.prompt_trigger;
-      
+
       return true;
-      
+
     } catch (error) {
       logger.error(`加载工具 ${toolName} 的YAML配置时出错:`, error);
       return false;

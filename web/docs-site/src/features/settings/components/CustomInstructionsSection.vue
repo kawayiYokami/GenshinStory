@@ -177,7 +177,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import promptService, { type InstructionInfo, type CustomPersona } from '@/features/agent/services/promptService';
+import promptService, { type InstructionInfo, type CustomPersona } from '../../agent/tools/implementations/promptService';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 
 // Types

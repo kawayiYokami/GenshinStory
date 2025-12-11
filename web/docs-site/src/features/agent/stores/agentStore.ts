@@ -10,21 +10,20 @@ import { defineStore, storeToRefs } from 'pinia';
 import { nanoid } from 'nanoid';
 import logger, { logs } from '@/features/app/services/loggerService';
 import { useAppStore } from '@/features/app/stores/app';
-import localTools from '@/features/agent/services/localToolsService';
+import localTools from '../tools/implementations/localToolsService';
 import type { Ref } from 'vue';
 import type { LogEntry } from '@/features/app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
 import type { MessageContentPart, Message, Session, AgentInfo, Command } from '../types';
-import { ContentProcessor } from '../services/ContentProcessor';
+
 
 // --- 导入管理器和服务模块 ---
 import { MessageManagerImpl } from './messageManager';
-import { SessionManagerImpl, type SessionManager } from '@/features/agent/services/sessionManager';
+import { SessionManagerImpl, type SessionManager } from '../state/sessionManager';
 import { PersistenceManagerImpl, sessionsStore, lastUsedRolesStore, forceClearAgentCache } from './persistence';
-import promptService from '@/features/agent/services/promptService';
-import { AgentService } from '../services/agentService';
-import { simpleContextCompressor } from '../services/simpleContextCompressor';
-import contextOptimizerService from '../services/contextOptimizerService';
+import promptService from '../tools/implementations/promptService';
+import { AgentService } from '../engine/agentService';
+import contextOptimizerService from '../context/contextOptimizerService';
 
 // --- 导入类型定义 ---
 

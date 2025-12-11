@@ -1,8 +1,8 @@
-import logger from '../../app/services/loggerService';
+import logger from '../../../app/services/loggerService';
 import { useDataStore } from '@/features/app/stores/data';
 import { useAppStore } from '@/features/app/stores/app';
 import type { IndexItem } from '@/features/app/stores/data';
-import pathService from '../../app/services/pathService';
+import pathService from '../../../app/services/pathService';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import { stripMarkdown } from '@/lib/markdown/markdownStripper';
 

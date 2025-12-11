@@ -7,11 +7,11 @@ import { type ComputedRef } from 'vue';
 import type { Session } from '../types';
 import type { MessageManager } from '../stores/messageManager';
 import { AgentFlowService } from './AgentFlowService';
-import { AgentContextService } from './AgentContextService';
-import { AgentApiService } from './AgentApiService';
-import { AgentToolService } from './AgentToolService';
-import { AgentResponseHandlerService } from './AgentResponseHandlerService';
-import { agentCacheService } from './AgentCacheService';
+import { AgentContextService } from '../context/AgentContextService';
+import { AgentApiService } from '../communication/AgentApiService';
+import { AgentToolService } from '../tools/orchestration/AgentToolService';
+import { AgentResponseHandlerService } from '../processing/responses/AgentResponseHandlerService';
+import { agentCacheService } from '../state/AgentCacheService';
 
 /**
  * 代理服务类

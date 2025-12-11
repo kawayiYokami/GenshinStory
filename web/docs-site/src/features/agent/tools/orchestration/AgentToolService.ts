@@ -1,10 +1,10 @@
 import type { ComputedRef } from 'vue';
-import toolParserService from '@/features/agent/services/toolParserService';
-import contextOptimizerService from './contextOptimizerService';
+import toolParserService from './toolParserService';
+import contextOptimizerService from '../../context/contextOptimizerService';
 import logger from '@/features/app/services/loggerService';
-import type { Message, Session } from '../types';
+import type { Message, Session } from '../../types';
 import type { ParsedToolCall } from './toolParserService';
-import type { MessageManager } from '../stores/messageManager';
+import type { MessageManager } from '../../stores/messageManager';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 
 export class AgentToolService {

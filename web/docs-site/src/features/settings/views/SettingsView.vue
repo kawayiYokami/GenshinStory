@@ -59,7 +59,7 @@ import { useAppStore } from '@/features/app/stores/app';
 import { useThemeStore } from '@/features/app/stores/themeStore';
 import type { ThemeName } from '@/features/app/stores/themeStore';
 import { useResponsive } from '@/composables/useResponsive';
-import promptService, { type InstructionInfo } from '@/features/agent/services/promptService';
+import promptService, { type InstructionInfo } from '@/features/agent/tools/implementations/promptService';
 import SettingsHeader from '../components/SettingsHeader.vue';
 import AIConfigSection from '../components/AIConfigSection.vue';
 import ThemeSection from '../components/ThemeSection.vue';

@@ -1,10 +1,10 @@
 
-import logger from '../../app/services/loggerService';
-import { toolPromptService } from './toolPromptService';
-import { toolRegistryService } from '../tools/toolRegistryService';
-import type { DocRequest } from './localToolsService';
-import jsonParserService from './JsonParserService';
-import { FlatToolCall } from '../types';
+import logger from '../../../app/services/loggerService';
+import { toolPromptService } from '../implementations/toolPromptService';
+import { toolRegistryService } from '../registry/toolRegistryService';
+import type { DocRequest } from '../implementations/localToolsService';
+import jsonParserService from '../../processing/responses/parsers/JsonParserService';
+import { FlatToolCall } from '../../types';
 
 // --- 类型定义 ---
 interface ToolCallParams {

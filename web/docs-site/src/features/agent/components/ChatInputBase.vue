@@ -13,7 +13,7 @@
       :disabled="isLoading"
       @paste="handlePaste"
       maxlength="10000"
-      class="flex-1 min-h-[24px] max-h-[200px] p-0 bg-transparent border-none outline-none resize-none text-sm leading-6 text-base-content placeholder:text-base-content/50"
+      class="flex-1 min-h-6 max-h-[200px] p-0 bg-transparent border-none outline-none resize-none text-sm leading-6 text-base-content placeholder:text-base-content/50"
       rows="1"
     ></textarea>
 

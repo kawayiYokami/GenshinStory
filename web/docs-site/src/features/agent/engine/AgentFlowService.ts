@@ -1,12 +1,12 @@
 import { ref, type ComputedRef } from 'vue';
 import logger from '@/features/app/services/loggerService';
 import type { Command, Message, Session } from '../types';
-import type { ParsedToolCall } from './toolParserService';
+import type { ParsedToolCall } from '../tools/orchestration/toolParserService';
 import type { MessageManager } from '../stores/messageManager';
-import { AgentContextService } from './AgentContextService';
-import { AgentApiService } from './AgentApiService';
-import { AgentToolService } from './AgentToolService';
-import { AgentResponseHandlerService, type HandleResponseResult } from './AgentResponseHandlerService';
+import { AgentContextService } from '../context/AgentContextService';
+import { AgentApiService } from '../communication/AgentApiService';
+import { AgentToolService } from '../tools/orchestration/AgentToolService';
+import { AgentResponseHandlerService, type HandleResponseResult } from '../processing/responses/AgentResponseHandlerService';
 
 export class AgentFlowService {
   public isProcessing = ref(false);

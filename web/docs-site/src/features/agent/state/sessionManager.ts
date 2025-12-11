@@ -6,7 +6,7 @@
 import { ref, type Ref } from 'vue';
 import { nanoid } from 'nanoid';
 import localforage from 'localforage';
-import promptService from '@/features/agent/services/promptService';
+import promptService from '../tools/implementations/promptService';
 import logger from '@/features/app/services/loggerService';
 import type { Session, AgentInfo } from '@/features/agent/types';
 

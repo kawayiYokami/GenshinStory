@@ -1,4 +1,4 @@
-import { FlatToolCall } from '../types';
+import { FlatToolCall } from '@/features/agent/types';
 
 // 定义工具调用接口，方便类型提示
 interface ToolCallResult {

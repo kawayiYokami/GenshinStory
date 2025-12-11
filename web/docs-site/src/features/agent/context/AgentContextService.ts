@@ -1,5 +1,5 @@
 import type { ComputedRef } from 'vue';
-import contextOptimizerService from '@/features/agent/services/contextOptimizerService';
+import contextOptimizerService from './contextOptimizerService';
 import logger from '@/features/app/services/loggerService';
 import type { Message, Session } from '../types';
 import type { MessageManager } from '../stores/messageManager';
