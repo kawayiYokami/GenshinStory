@@ -4,7 +4,7 @@ import { toolPromptService } from './toolPromptService';
 import { toolRegistryService } from '../tools/toolRegistryService';
 import type { DocRequest } from './localToolsService';
 import jsonParserService from './JsonParserService';
-import { FlatToolCall, NestedToolCall, isFlatToolCall, convertToFlatToolCall } from '../types';
+import { FlatToolCall } from '../types';
 
 // --- 类型定义 ---
 interface ToolCallParams {

@@ -78,18 +78,8 @@ export class AgentApiService {
         // 处理工具调用消息：将tool_calls拼接到content中
         if (m.tool_calls && m.tool_calls.length > 0) {
           const toolCallJsons = m.tool_calls.map(call => {
-            // 检查是否为平铺格式（有tool属性）
-            if ('tool' in call) {
-              const { tool, ...params } = call;
-              return JSON.stringify({tool, ...params});
-            } else {
-              // 嵌套格式，需要转换
-              const nestedCall = call as any;
-              return JSON.stringify({
-                tool: nestedCall.tool_call.name,
-                ...nestedCall.tool_call.arguments
-              });
-            }
+            const { tool, ...params } = call;
+            return JSON.stringify({tool, ...params});
           });
           messageForApi.content += toolCallJsons.join('');
         }
