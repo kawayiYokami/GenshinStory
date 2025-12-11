@@ -7,6 +7,7 @@ interface SearchDocsParams {
   path?: string;
   regex?: string;
   args?: string;
+  maxResults?: number;
 }
 
 const searchDocsTool: Tool<SearchDocsParams> = {
@@ -26,8 +27,14 @@ const searchDocsTool: Tool<SearchDocsParams> = {
         };
       }
 
+      // 处理maxResults参数，默认为10，最大不超过50
+      let maxResults = 10; // 默认值
+      if (params.maxResults !== undefined) {
+        maxResults = Math.min(Math.max(1, params.maxResults), 50); // 确保在1-50范围内
+      }
+
       const result = await localTools.searchDocs(query, params.path, {
-        maxResults: 50,
+        maxResults,
         generateSummary: true
       });
       return { result };

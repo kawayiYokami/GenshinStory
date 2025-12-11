@@ -195,6 +195,16 @@ class JsonParserService {
                         // search_docs: "query" -> query: "query"
                         if (key === 'search_docs') result.query = target[key];
                         if (key === 'read_doc') result.path = target[key];
+                    } else if (typeof target[key] === 'object' && target[key] !== null) {
+                        // 处理完整参数对象格式，如 { "search_docs": { "query": "...", "maxResults": 10 } }
+                        if (key === 'search_docs') {
+                            Object.assign(result, target[key]);
+                            result.tool = key;
+                        }
+                        if (key === 'read_doc') {
+                            Object.assign(result, target[key]);
+                            result.tool = key;
+                        }
                     }
                     break;
                 }

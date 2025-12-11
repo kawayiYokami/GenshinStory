@@ -68,6 +68,18 @@ function convertParams(toolName: string, params: Record<string, any>): ToolCallP
             break;
 
         case 'search_docs':
+            // search_docs 工具特殊处理，确保 maxResults 参数保持数字类型
+            for (const [key, value] of Object.entries(params)) {
+                if (key === 'maxResults' && typeof value === 'number') {
+                    // 保持 maxResults 为数字类型
+                    converted[key] = value;
+                } else if (typeof value === 'string') {
+                    converted[key] = value;
+                } else {
+                    converted[key] = JSON.stringify(value);
+                }
+            }
+            break;
         default:
             // 其他工具保持原有逻辑，支持 doc_path 参数
             for (const [key, value] of Object.entries(params)) {
@@ -132,6 +144,7 @@ function parseToolCall(input: string | Record<string, any>): ParsedToolCall | nu
             if (parsedResult.query) params.query = parsedResult.query;
             if (parsedResult.path) params.path = parsedResult.path;
             if (parsedResult.limit) params.limit = parsedResult.limit;
+            if (parsedResult.maxResults) params.maxResults = parsedResult.maxResults;
             break;
         case 'read_doc':
             if (parsedResult.path) params.path = parsedResult.path;
