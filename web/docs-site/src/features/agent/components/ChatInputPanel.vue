@@ -146,7 +146,7 @@ import DaisyDropdown from '@/components/ui/DaisyDropdown.vue';
 import { AlertTriangle, Minimize2, MessageCirclePlus, Camera, FileText, GraduationCap, Loader2 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
-import html2canvas from 'html2canvas-pro';
+import { snapdom } from '@zumer/snapdom';
 import { academicPaperGeneratorService } from '../tools/implementations/academicPaperGeneratorService';
 import promptService from '../tools/implementations/promptService';
 
@@ -435,49 +435,38 @@ const handleNewSession = async () => {
   }
 };
 
-// 截图处理方法
+// 截图处理方法 - 使用 snapdom
+// 截图处理方法 - 使用 snapdom 并手动展开滚动区域
+// 截图处理方法 - 使用 snapdom 并手动展开滚动区域
 const handleScreenshot = async () => {
+  const historyPanel = document.querySelector('.overflow-y-auto.scrollbar-hide.flex-1') as HTMLElement;
+  if (!historyPanel) {
+    toast.error('找不到聊天历史容器');
+    console.error('找不到聊天历史容器');
+    return;
+  }
+
+  // 保存原始样式
+  const originalStyle = {
+    overflow: historyPanel.style.overflow,
+    maxHeight: historyPanel.style.maxHeight,
+  };
+
   try {
-    console.log('开始截图...');
+    toast.info('正在准备截图, 请稍候...');
 
-    // 找到聊天历史容器 - 使用更精确的选择器
-    const historyPanel = document.querySelector('.overflow-y-auto.scrollbar-hide.flex-1') as HTMLElement;
-    if (!historyPanel) {
-      console.error('找不到聊天历史容器');
-      toast.error('找不到聊天历史容器');
-      return;
-    }
+    // 临时修改样式以显示完整内容
+    historyPanel.style.overflow = 'visible';
+    historyPanel.style.maxHeight = 'none';
 
-    console.log('找到历史容器:', historyPanel);
+    // 滚动到顶部以确保从头开始捕获
+    historyPanel.scrollTop = 0;
 
-    // 存储原始样式
-    const originalMaxHeight = historyPanel.style.maxHeight;
-    const originalOverflow = historyPanel.style.overflow;
-
-    console.log('原始样式:', { maxHeight: originalMaxHeight, overflow: originalOverflow });
-
-    // 临时解除滚动限制
-    historyPanel.style.maxHeight = 'unset';
-    historyPanel.style.overflow = 'unset';
-
-    // 修复动画和透明度问题 - 临时禁用所有动画和过渡
-    const style = document.createElement('style');
-    style.textContent = `
-      .overflow-y-auto.scrollbar-hide.flex-1 * {
-        transition: none !important;
-        animation: none !important;
-        animation-play-state: paused !important;
-      }
-    `;
-    document.head.appendChild(style);
-
-    console.log('已解除滚动限制并禁用动画');
-
-    // 等待DOM更新和动画停止
+    // 等待DOM更新
     await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 100)); // 等待动画完全停止
 
-    console.log('开始生成截图...');
+    toast.info('正在生成截图...');
+    console.log('开始截图 (snapdom)...');
 
     // 获取主容器的背景色
     const mainContainer = document.querySelector('.drawer.mx-auto.lg\\:drawer-open') as HTMLElement;
@@ -485,40 +474,34 @@ const handleScreenshot = async () => {
       ? getComputedStyle(mainContainer).backgroundColor
       : '#ffffff';
 
-    console.log('获取到的背景色:', bgColor);
-
-    // 截图 - 使用html2canvas-pro简化配置，设置正确的背景色
-    const canvas = await html2canvas(historyPanel, {
-      useCORS: true,
-      backgroundColor: bgColor
+    // 使用 snapdom 捕获 DOM
+    const result = await snapdom(historyPanel, {
+      backgroundColor: bgColor,
+      embedFonts: true,
     });
 
-    console.log('截图生成成功，Canvas尺寸:', canvas.width, 'x', canvas.height);
-
-    // 恢复原始样式
-    historyPanel.style.maxHeight = originalMaxHeight;
-    historyPanel.style.overflow = originalOverflow;
-
-    // 移除临时样式，恢复动画
-    if (style.parentNode) {
-      style.parentNode.removeChild(style);
-    }
-
-    console.log('已恢复原始样式和动画');
+    // 从捕获结果中生成 PNG data URL
+    const dataUrl = await result.toPng();
 
     // 下载图片
     const link = document.createElement('a');
     link.download = `对话截图-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.png`;
-    link.href = canvas.toDataURL();
+    link.href = dataUrl.src;
     link.click();
 
     console.log('截图已下载');
     toast.success('截图已保存');
   } catch (error) {
     console.error('截图失败:', error);
-    toast.error('截图失败，请重试');
+    toast.error(`截图失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  } finally {
+    // 无论成功或失败，都恢复原始样式
+    historyPanel.style.overflow = originalStyle.overflow;
+    historyPanel.style.maxHeight = originalStyle.maxHeight;
+    console.log('截图流程结束，样式已恢复');
   }
 };
+
 
 // Watchers
 // 同步模型名称
@@ -559,69 +542,13 @@ onMounted(async () => {
   // Initialization handled by child components
   try {
     const instructions = await promptService.listAvailableInstructions();
-    instructionOptions.value = instructions.map(i => ({
-      value: i.id,
-      label: i.name
+    instructionOptions.value = instructions.map(instr => ({
+      value: instr.id,
+      label: instr.name
     }));
-  } catch (e) {
-    console.error('Failed to load instructions:', e);
+  } catch (error) {
+    console.error('Failed to load instructions:', error);
+    toast.error('加载指令失败');
   }
-});
-
-defineExpose({
-  adjustTextareaHeight: () => chatInputBaseRef.value?.adjustTextareaHeight(),
-  focus: () => chatInputBaseRef.value?.focus(),
 });
 </script>
-
-<style scoped>
-/* 思考点动画（DaisyUI没有提供） */
-.thinking-dot {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 9999px;
-  background-color: hsl(var(--p));
-  animation: pulse 1.4s ease-in-out infinite both;
-}
-
-.thinking-dot:nth-child(1) { animation-delay: -0.32s; }
-.thinking-dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes pulse {
-  0%, 80%, 100% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* 压缩时的思考点动画容器 */
-.thinking-dots {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-}
-.line-clamp-2 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* 无边框透明下拉框样式 */
-.transparent-dropdown :deep(.btn) {
-  background: transparent;
-  border-color: transparent;
-}
-
-.transparent-dropdown :deep(.btn:hover) {
-  background: rgba(0, 0, 0, 0.05) !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
-}
-
-
-</style>

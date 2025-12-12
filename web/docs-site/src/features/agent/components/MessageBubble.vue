@@ -29,7 +29,7 @@
       <div class="bg-primary text-primary-content rounded-2xl px-4 py-2 shadow-sm border border-primary">
         <div v-if="Array.isArray(message.content)" class="space-y-2">
           <div v-for="(item, index) in message.content" :key="index">
-            <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm">{{ item.text }}</p>
+            <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm inline-block">{{ item.text }}</p>
             <div v-if="item.type === 'image_url' && item.image_url" class="card bg-base-100 shadow-xl">
               <figure class="px-2 pt-2">
                 <img :src="item.image_url.url" class="rounded-lg max-h-64 object-contain" alt="User uploaded content"/>
@@ -49,7 +49,7 @@
             </div>
           </div>
         </div>
-        <span v-else class="whitespace-pre-wrap text-sm">{{ message.content }}</span>
+        <span v-else class="whitespace-pre-wrap text-sm inline-block">{{ message.content }}</span>
       </div>
     </div>
 
