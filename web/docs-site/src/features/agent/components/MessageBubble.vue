@@ -4,10 +4,10 @@
     <!-- 压缩摘要消息特殊样式 -->
     <div v-if="message.isCompressed" class="card bg-base-200 border border-base-300 shadow-xs rounded-2xl">
       <div class="card-body p-0">
-        <div class="collapse collapse-arrow bg-base-200/50 p-0 rounded-2xl">
+        <div class="collapse collapse-arrow bg-base-100 p-0 rounded-2xl">
           <!-- 直接绑定到 isCompressedExpanded 是合理的，因为每个消息气泡组件实例都有自己的状态 -->
           <input type="checkbox" v-model="isCompressedExpanded" />
-          <div class="collapse-title compressed-message-card p-0">
+          <div class="collapse-title compressed-message-card">
             <div class="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20">
               <Archive class="h-4 w-4 text-primary" />
             </div>
@@ -435,7 +435,6 @@ const handleDocClick = (path: string): void => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
   cursor: pointer;
 }
 
