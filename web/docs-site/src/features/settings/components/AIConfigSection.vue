@@ -210,6 +210,21 @@
           />
         </div>
 
+        <div>
+          <label class="label label-text" for="max-iterations">最大迭代次数 (Max Iterations)</label>
+          <input
+            id="max-iterations"
+            type="number"
+            v-model.number="activeConfig.maxIterations"
+            min="0"
+            step="1"
+            class="input input-bordered w-full"
+          />
+          <label class="label label-text-alt text-base-content/70">
+            设置为 0 表示无限制
+          </label>
+        </div>
+
         <div class="form-control">
           <label class="label cursor-pointer" for="stream-checkbox">
             <span class="label-text">启用流式输出</span>

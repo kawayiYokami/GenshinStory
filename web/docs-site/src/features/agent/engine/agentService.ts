@@ -43,7 +43,8 @@ export class AgentService {
       contextService,
       apiService,
       toolService,
-      responseHandlerService
+      responseHandlerService,
+      activeConfig
     );
   }
 

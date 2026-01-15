@@ -21,6 +21,7 @@ export interface Config {
     stream: boolean;
     maxContextLength: number;
     requestInterval: number;
+    maxIterations: number; // AI 迭代次数限制，0 表示无限制
     availableModels: string[];
     modelsLastFetched: number | null;
     customParams?: CustomParam[];
@@ -51,6 +52,7 @@ function migrateFromOldStorage(): Config[] | null {
     stream: true,
     maxContextLength: parseInt(localStorage.getItem('maxContextLength') || '128000', 10),
     requestInterval: parseInt(localStorage.getItem('requestInterval') || '1000', 10),
+    maxIterations: 10, // 默认迭代次数限制为 10
     availableModels: [],
     modelsLastFetched: null,
     customParams: [], // 迁移时也初始化空数组
@@ -79,6 +81,7 @@ function loadConfigs(): Config[] {
         customParams: c.customParams || [], // 确保向后兼容性
         availableModels: c.availableModels || [],
         modelsLastFetched: c.modelsLastFetched || null,
+        maxIterations: c.maxIterations ?? 10, // 向后兼容：旧数据默认为 10
       }));
     } catch (e) {
       logger.error("!!! 严重: 从 localStorage 解析配置失败。数据可能已损坏。", e);
@@ -164,6 +167,7 @@ export const useConfigStore = defineStore('config', () => {
       stream: true,
       maxContextLength: 65536,
       requestInterval: 1000,
+      maxIterations: 10, // 默认迭代次数限制为 10
       availableModels: [initialModelName], // 初始化时，第1项就是当前模型
       modelsLastFetched: null,
       customParams: [], // 新配置初始化空的自定义参数数组

@@ -3,6 +3,7 @@ import logger from '@/features/app/services/loggerService';
 import type { Command, Message, Session } from '../types';
 import type { ParsedToolCall } from '../tools/orchestration/toolParserService';
 import type { MessageManager } from '../stores/messageManager';
+import type { Config } from '@/features/app/stores/config';
 import { AgentContextService } from '../context/AgentContextService';
 import { AgentApiService } from '../communication/AgentApiService';
 import { AgentToolService } from '../tools/orchestration/AgentToolService';
@@ -22,6 +23,7 @@ export class AgentFlowService {
   private apiService: AgentApiService;
   private toolService: AgentToolService;
   private responseHandlerService: AgentResponseHandlerService;
+  private activeConfig: ComputedRef<Config | null>;
 
   constructor(
     messageManager: MessageManager,
@@ -29,13 +31,15 @@ export class AgentFlowService {
     contextService: AgentContextService,
     apiService: AgentApiService,
     toolService: AgentToolService,
-    responseHandlerService: AgentResponseHandlerService
+    responseHandlerService: AgentResponseHandlerService,
+    activeConfig: ComputedRef<Config | null>
   ) {
     this.messageManager = messageManager;
     this.contextService = contextService;
     this.apiService = apiService;
     this.toolService = toolService;
     this.responseHandlerService = responseHandlerService;
+    this.activeConfig = activeConfig;
   }
 
   private get orderedMessages(): Message[] {
@@ -150,8 +154,10 @@ export class AgentFlowService {
 
       try {
         if (command.type === 'CALL_AI') {
-          if (this.consecutiveAiTurns.value++ >= 10) {
-            await this.messageManager.addMessage({ role: 'assistant', type: 'error', content: "AI已连续迭代10次，自动中断。" });
+          const maxIterations = this.activeConfig.value?.maxIterations ?? 10;
+          // 如果 maxIterations 为 0，表示无限制
+          if (maxIterations > 0 && this.consecutiveAiTurns.value++ >= maxIterations) {
+            await this.messageManager.addMessage({ role: 'assistant', type: 'error', content: `AI已连续迭代${maxIterations}次，自动中断。` });
             break;
           }
           await this.handleApiCall();
