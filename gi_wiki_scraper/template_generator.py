@@ -6,7 +6,7 @@ import json
 import importlib
 from pathlib import Path
 from typing import Dict, Any, List
-from parsers.base_parser import BaseParser
+from .parsers.base_parser import BaseParser
 
 
 class TemplateGenerator:
@@ -109,11 +109,10 @@ class TemplateGenerator:
         """
         try:
             module_name, class_name = parser_class_path.split('.')
-            module_path = f"parsers.{module_name}"
+            module_path = f".parsers.{module_name}"
 
             # 动态导入模块
-            module = importlib.import_module(module_path)
-
+            module = importlib.import_module(module_path, __package__)
             # 获取类
             parser_class = getattr(module, class_name)
 
