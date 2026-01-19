@@ -195,16 +195,16 @@ def scan_markdown_files(md_root_dir: Path, domain: str) -> List[Dict[str, Any]]:
 
                 # 确定子分类（如果有）
                 # 只有当路径是 category/subcategory/name-id.md 时才有子分类
-                # 如果是 category/name-id.md，则没有子分类
+                # 如果是 category/name-id.md，则使用 "未分类" 作为默认子分类
                 if len(path_parts) >= 3:
                     sub_category = path_parts[1]
-                    has_subcategory = True
                 else:
-                    sub_category = None
-                    has_subcategory = False
+                    sub_category = "未分类"
 
                 # 构建 URL 路径（去掉 .md 后缀）
-                if has_subcategory:
+                # 有子分类：/v2/{domain}/category/{category}/{subcategory}/{name-id}
+                # 无子分类：/v2/{domain}/category/{category}/{name-id}
+                if len(path_parts) >= 3:
                     url_path = f"/v2/{domain}/category/{category}/{sub_category}/{stem}"
                     key = f"{category}-{sub_category}-{item_id}"
                 else:
@@ -216,13 +216,10 @@ def scan_markdown_files(md_root_dir: Path, domain: str) -> List[Dict[str, Any]]:
                     "id": item_id,
                     "name": item_name,  # 保持原样，不替换 -
                     "type": category.capitalize(),  # 首字母大写
+                    "category": sub_category,  # 所有文件都有 category 字段
                     "path": url_path,
                     "key": key
                 }
-                
-                # 只有当有子分类时才添加 category 字段
-                if has_subcategory:
-                    index_item["category"] = sub_category  # 保持原样
                 
                 index_data.append(index_item)
 
