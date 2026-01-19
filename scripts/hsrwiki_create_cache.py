@@ -63,6 +63,11 @@ def main():
     text_map_service = TextMapService(game_loader)
     cache_service = CacheService()
 
+    # 初始化全局标签管理器
+    from hsrwiki_data_parser.models._core import GlobalTagManager
+    logging.info("Initializing GlobalTagManager...")
+    GlobalTagManager.initialize(os.path.join(project_root, 'hsr_wiki_scraper', 'output', 'link'))
+
     # --- 2. Process All Data Types ---
     # Note: Messages are processed first as they are from a different loader
     processing_map = {

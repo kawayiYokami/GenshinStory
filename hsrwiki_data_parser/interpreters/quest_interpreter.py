@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from hsrwiki_data_parser.models.quest import Quest
 from hsrwiki_data_parser.services.dataloader import DataLoader
+from hsrwiki_data_parser.models._core import GlobalTagManager
 
 class QuestInterpreter:
     def __init__(self, loader: DataLoader):
@@ -24,11 +25,14 @@ class QuestInterpreter:
             try:
                 data.pop('source_url', None)
                 quest = Quest(**data)
+                # 手动加载标签
+                if quest.id:
+                    quest.tags = GlobalTagManager.get_tags(str(quest.id))
                 quests.append(quest)
             except ValidationError as e:
                 logging.error(f"Validation error for quest with id {data.get('id', 'N/A')}: {e}")
             except Exception as e:
                 logging.error(f"An unexpected error occurred for quest id {data.get('id', 'N/A')}: {e}")
-        
+
         logging.info(f"Successfully interpreted {len(quests)} quests.")
         return quests

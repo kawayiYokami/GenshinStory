@@ -121,10 +121,17 @@ def get_tag_based_classification(item: Any, category_name: str) -> str:
     if classification_field == "复合分类":
         return get_materials_classification(item)
 
-    # 从 GlobalTagManager 直接获取标签
-    from hsrwiki_data_parser.models._core import GlobalTagManager
-    item_id = str(getattr(item, 'id', ''))
-    tags = GlobalTagManager.get_tags(item_id) or {}
+    # 优先使用对象的 tags 字段（从缓存中加载）
+    tags = getattr(item, 'tags', None)
+
+    # 如果对象没有 tags 字段，尝试从 GlobalTagManager 获取
+    if not tags:
+        from hsrwiki_data_parser.models._core import GlobalTagManager
+        item_id = str(getattr(item, 'id', ''))
+        tags = GlobalTagManager.get_tags(item_id)
+
+    if not tags:
+        return "未分类"
 
     # 获取分类字段值
     classification_value = tags.get(classification_field)

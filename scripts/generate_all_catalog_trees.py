@@ -24,21 +24,24 @@ sys.path.insert(0, str(project_root))
 GAME_CONFIGS = {
     "gi": {
         "domain": "gi",
-        "input_path": project_root / "web/docs-site/public/domains/gi/metadata/index.json",
+        "md_root_dir": project_root / "web/docs-site/public/domains/gi/docs",
+        "index_output_path": project_root / "web/docs-site/public/domains/gi/metadata/index.json",
         "output_path": project_root / "web/docs-site/public/domains/gi/metadata/catalog.json",
         "md_root_prefix": "/domains/gi/docs",
         "search_output_dir": project_root / "web/docs-site/public/domains/gi/metadata/search"
     },
     "hsr": {
         "domain": "hsr",
-        "input_path": project_root / "web/docs-site/public/domains/hsr/metadata/index.json",
+        "md_root_dir": project_root / "web/docs-site/public/domains/hsr/docs",
+        "index_output_path": project_root / "web/docs-site/public/domains/hsr/metadata/index.json",
         "output_path": project_root / "web/docs-site/public/domains/hsr/metadata/catalog.json",
         "md_root_prefix": "/domains/hsr/docs",
         "search_output_dir": project_root / "web/docs-site/public/domains/hsr/metadata/search"
     },
     "zzz": {
         "domain": "zzz",
-        "input_path": project_root / "web/docs-site/public/domains/zzz/metadata/index.json",
+        "md_root_dir": project_root / "web/docs-site/public/domains/zzz/docs",
+        "index_output_path": project_root / "web/docs-site/public/domains/zzz/metadata/index.json",
         "output_path": project_root / "web/docs-site/public/domains/zzz/metadata/catalog.json",
         "md_root_prefix": "/domains/zzz/docs",
         "search_output_dir": project_root / "web/docs-site/public/domains/zzz/metadata/search"
@@ -143,6 +146,92 @@ def create_catalog_tree(index_data: List[Dict[str, Any]], output_path: Path, md_
     except Exception as e:
         logging.error(f"写入目录树时出错: {e}")
         sys.exit(1)
+
+
+def scan_markdown_files(md_root_dir: Path, domain: str) -> List[Dict[str, Any]]:
+    """
+    扫描所有 Markdown 文件，提取元数据生成索引
+
+    Args:
+        md_root_dir: Markdown 根目录
+        domain: 游戏域名
+
+    Returns:
+        索引数据列表
+    """
+    logging.info(f"开始扫描 {domain} 的 Markdown 文件...")
+    index_data = []
+
+    # 遍历所有 Markdown 文件
+    for md_file in md_root_dir.rglob("*.md"):
+        try:
+            # 读取文件内容
+            with open(md_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # 提取元数据（从文件名和路径）
+            relative_path = md_file.relative_to(md_root_dir)
+            path_parts = list(relative_path.parts)
+
+            # 解析路径：category/subcategory/filename.md 或 category/filename.md
+            if len(path_parts) >= 2:
+                category = path_parts[0]
+                filename = path_parts[-1]
+                
+                # 提取 ID 和名称
+                # 文件名格式：name-id.md 或 name.md
+                stem = filename[:-3]  # 去掉 .md
+                
+                # 尝试提取 ID（文件名末尾的数字）
+                import re
+                id_match = re.search(r'-(\d+)$', stem)
+                if id_match:
+                    item_id = int(id_match.group(1))
+                    item_name = stem[:id_match.start()]
+                else:
+                    # 如果没有 ID，使用文件名作为 ID（转换为数字哈希）
+                    item_id = hash(stem) % (10 ** 9)
+                    item_name = stem
+
+                # 确定子分类（如果有）
+                # 只有当路径是 category/subcategory/name-id.md 时才有子分类
+                # 如果是 category/name-id.md，则没有子分类
+                if len(path_parts) >= 3:
+                    sub_category = path_parts[1]
+                    has_subcategory = True
+                else:
+                    sub_category = None
+                    has_subcategory = False
+
+                # 构建 URL 路径（去掉 .md 后缀）
+                if has_subcategory:
+                    url_path = f"/v2/{domain}/category/{category}/{sub_category}/{stem}"
+                    key = f"{category}-{sub_category}-{item_id}"
+                else:
+                    url_path = f"/v2/{domain}/category/{category}/{stem}"
+                    key = f"{category}-{item_id}"
+
+                # 添加到索引
+                index_item = {
+                    "id": item_id,
+                    "name": item_name,  # 保持原样，不替换 -
+                    "type": category.capitalize(),  # 首字母大写
+                    "path": url_path,
+                    "key": key
+                }
+                
+                # 只有当有子分类时才添加 category 字段
+                if has_subcategory:
+                    index_item["category"] = sub_category  # 保持原样
+                
+                index_data.append(index_item)
+
+        except Exception as e:
+            logging.error(f"处理文件 {md_file} 时出错: {e}")
+            continue
+
+    logging.info(f"扫描完成，共找到 {len(index_data)} 个 Markdown 文件")
+    return index_data
 
 
 def generate_search_index(index_data: List[Dict[str, Any]], search_output_dir: Path, md_root_prefix: str, domain: str):
@@ -278,23 +367,33 @@ def process_domain(domain: str, config: Dict[str, Any]):
     logging.info(f"开始处理游戏域: {domain.upper()}")
     logging.info(f"{'='*60}")
 
-    input_path = config["input_path"]
+    md_root_dir = config["md_root_dir"]
     output_path = config["output_path"]
     md_root_prefix = config["md_root_prefix"]
     search_output_dir = config["search_output_dir"]
+    index_output_path = config["index_output_path"]
 
-    # 检查输入文件是否存在
-    if not input_path.exists():
-        logging.error(f"错误：索引文件不存在于 {input_path}。请先运行对应的 generate_markdown 脚本。")
+    # 检查 Markdown 目录是否存在
+    if not md_root_dir.exists():
+        logging.error(f"错误：Markdown 目录不存在于 {md_root_dir}。请先运行对应的 generate_markdown 脚本。")
         return False
 
-    # 读取索引数据
+    # 扫描 Markdown 文件生成索引数据
     try:
-        with open(input_path, 'r', encoding='utf-8') as f:
-            index_data = json.load(f)
-        logging.info(f"成功加载 {len(index_data)} 条索引条目")
+        index_data = scan_markdown_files(md_root_dir, domain)
+        logging.info(f"成功扫描 {len(index_data)} 个 Markdown 文件")
     except Exception as e:
-        logging.error(f"读取索引文件失败: {e}")
+        logging.error(f"扫描 Markdown 文件失败: {e}")
+        return False
+
+    # 保存 index.json
+    try:
+        index_output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(index_output_path, 'w', encoding='utf-8') as f:
+            json.dump(index_data, f, ensure_ascii=False, indent=2)
+        logging.info(f"索引文件已保存: {index_output_path}")
+    except Exception as e:
+        logging.error(f"保存索引文件失败: {e}")
         return False
 
     # 生成目录树

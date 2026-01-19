@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from hsrwiki_data_parser.models.relic import Relic
 from hsrwiki_data_parser.services.dataloader import DataLoader
+from hsrwiki_data_parser.models._core import GlobalTagManager
 
 class RelicInterpreter:
     def __init__(self, loader: DataLoader):
@@ -32,11 +33,14 @@ class RelicInterpreter:
                     data['set_effects'] = effects_list
 
                 relic = Relic(**data)
+                # 手动加载标签
+                if relic.id:
+                    relic.tags = GlobalTagManager.get_tags(str(relic.id))
                 relics.append(relic)
             except ValidationError as e:
                 logging.error(f"Validation error for relic with id {data.get('id', 'N/A')}: {e}")
             except Exception as e:
                 logging.error(f"An unexpected error occurred for relic id {data.get('id', 'N/A')}: {e}")
-        
+
         logging.info(f"Successfully interpreted {len(relics)} relics.")
         return relics
