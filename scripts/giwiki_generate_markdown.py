@@ -3,8 +3,6 @@ import logging
 import sys
 import re
 import json
-import gzip
-import msgpack
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -252,63 +250,6 @@ def export_catalog_index(metadata_index: List[Dict[str, Any]], output_dir: str):
     save_file(output_path, json.dumps(metadata_index, ensure_ascii=False, indent=2))
     logging.info(f"编目索引已保存到: {output_path}")
 
-def export_search_index_chunked(search_index: Dict[str, List[Dict[str, Any]]], base_output_dir: str):
-    """
-    导出优化的搜索索引（差值编码+MessagePack格式）。
-    生成两个文件：index.msg（完整索引）和metadata.msg（元数据）。
-    """
-    logging.info("开始导出优化搜索索引（差值编码+MessagePack）...")
-
-    if not search_index:
-        logging.error("错误：搜索索引为空。")
-        return
-
-    # 处理搜索索引，按第一个字符分组并差值编码
-    chunked_index = {}
-    for keyword, results in search_index.items():
-        if not keyword:
-            continue
-        first_char = keyword[0]
-        if first_char not in chunked_index:
-            chunked_index[first_char] = {}
-
-        # 提取ID、排序并差值编码
-        sorted_ids = sorted(set(int(item['id']) for item in results))
-        chunked_index[first_char][keyword] = delta_encode(sorted_ids)
-
-    # 生成MessagePack文件
-    output_dir = Path(base_output_dir) / "search"
-    if output_dir.exists():
-        import shutil
-        shutil.rmtree(output_dir)
-        logging.info(f"已清理旧的索引目录: {output_dir}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # 完整索引文件
-    index_data = msgpack.packb(chunked_index, use_bin_type=True)
-    with open(output_dir / "index.msg", "wb") as f:
-        f.write(index_data)
-
-    # 元数据文件
-    metadata = {
-        "version": "2.0",
-        "format": "delta+msgpack",
-        "keywords": len(chunked_index),
-        "total_ids": sum(len(chunk) for chunk in chunked_index.values()),
-        "chunks": len(chunked_index)
-    }
-
-    metadata_data = msgpack.packb(metadata, use_bin_type=True)
-    with open(output_dir / "metadata.msg", "wb") as f:
-        f.write(metadata_data)
-
-    size_mb = len(index_data) / (1024 * 1024)
-    logging.info(f"优化索引已生成: {size_mb:.1f}MB")
-    logging.info(f"索引文件: {output_dir / 'index.msg'}")
-    logging.info(f"元数据文件: {output_dir / 'metadata.msg'}")
-    logging.info(f"分片数量: {len(chunked_index)}")
-    logging.info(f"词条总数: {sum(len(chunk) for chunk in chunked_index.values())}")
-
 def main():
     """主执行函数（修复版本，完全基于缓存）"""
     # --- 1. 检查缓存文件 ---
@@ -335,27 +276,15 @@ def main():
         logging.error(f"加载缓存数据失败: {e}")
         sys.exit(1)
 
-    # --- 3. 清理旧文件 ---
-    output_path = Path(MARKDOWN_OUTPUT_DIR)
-    if output_path.exists():
-        import shutil
-        shutil.rmtree(output_path)
-        logging.info(f"已清理旧的Markdown目录: {output_path}")
-
-    # --- 4. 基于缓存执行导出 ---
+    # --- 3. 基于缓存执行导出 ---
     try:
         metadata_index = export_all_to_markdown_from_cache(cache_data, MARKDOWN_OUTPUT_DIR, CLASSIFICATION_MAP)
         export_catalog_index(metadata_index, JSON_OUTPUT_DIR)
 
-        # 导出搜索索引
-        if 'search_index' in cache_data:
-            export_search_index_chunked(cache_data['search_index'], JSON_OUTPUT_DIR)
-        else:
-            logging.warning("缓存中未找到搜索索引数据")
-
-        logging.info("所有文件已生成。")
-        logging.info(f"  - Markdown: {output_path.resolve()}")
-        logging.info(f"  - JSON Indices: {Path(JSON_OUTPUT_DIR).resolve()}")
+        logging.info("Markdown 文件和目录索引已生成。")
+        logging.info(f"  - Markdown: {Path(MARKDOWN_OUTPUT_DIR).resolve()}")
+        logging.info(f"  - JSON Index: {Path(JSON_OUTPUT_DIR) / 'index.json'}")
+        logging.info("注意：搜索索引将由 generate_all_catalog_trees.py 生成")
 
     except Exception as e:
         logging.error(f"导出过程中发生错误: {e}")
