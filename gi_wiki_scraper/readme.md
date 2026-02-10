@@ -1,0 +1,1 @@
+uv run python -m gi_wiki_scraper.run_all_parsers_incremental
