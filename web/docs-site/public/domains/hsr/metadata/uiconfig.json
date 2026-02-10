@@ -1,0 +1,84 @@
+{
+  "categoryTranslations": {
+    "messages": "短信",
+    "characters": "角色",
+    "relics": "遗器",
+    "books": "书籍",
+    "materials": "材料",
+    "quests": "任务",
+    "outfits": "装扮",
+    "rogue_events": "事件",
+    "rogue_miracles": "奇物",
+    "rogue_magic_scepters": "权杖",
+    "lightcones": "光锥"
+  },
+  "navigation": [
+    {
+      "id": "agent",
+      "type": "route",
+      "label": "问答",
+      "iconKey": "agent"
+    },
+    {
+      "id": "search",
+      "type": "route",
+      "label": "搜索",
+      "iconKey": "search"
+    },
+    {
+      "id": "messages",
+      "type": "category",
+      "iconKey": "dialogue"
+    },
+    {
+      "id": "characters",
+      "type": "category",
+      "iconKey": "character"
+    },
+    {
+      "id": "lightcones",
+      "type": "category",
+      "iconKey": "weapon"
+    },
+    {
+      "id": "relics",
+      "type": "category",
+      "iconKey": "relicset"
+    },
+    {
+      "id": "books",
+      "type": "category",
+      "iconKey": "book"
+    },
+    {
+      "id": "materials",
+      "type": "category",
+      "iconKey": "material"
+    },
+    {
+      "id": "quests",
+      "type": "category",
+      "iconKey": "quest"
+    },
+    {
+      "id": "outfits",
+      "type": "category",
+      "iconKey": "weapon"
+    },
+    {
+      "id": "rogue_events",
+      "type": "category",
+      "iconKey": "rogue_events"
+    },
+    {
+      "id": "rogue_magic_scepters",
+      "type": "category",
+      "iconKey": "miracles"
+    },
+    {
+      "id": "rogue_miracles",
+      "type": "category",
+      "iconKey": "miracles"
+    }
+  ]
+}

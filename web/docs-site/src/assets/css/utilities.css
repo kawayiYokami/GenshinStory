@@ -1,0 +1,130 @@
+/*
+ * 自定义Tailwind CSS工具类
+ * 用于优化重复样式和提高代码可维护性
+ */
+
+/* 居中对齐的Flex容器 */
+.flex-centered {
+  @apply flex items-center justify-center;
+}
+
+/* 居中对齐的Flex容器（列方向） */
+.flex-centered-col {
+  @apply flex flex-col items-center justify-center;
+}
+
+/* 圆形图标容器 */
+.icon-circle {
+  @apply flex h-8 w-8 items-center justify-center rounded-full;
+}
+
+/* 小圆形图标容器 */
+.icon-circle-sm {
+  @apply flex h-6 w-6 items-center justify-center rounded-full;
+}
+
+/* 按钮样式 */
+.btn-icon {
+  @apply btn btn-ghost btn-sm p-0 min-h-0 h-auto;
+}
+
+.btn-icon-circle {
+  @apply btn btn-circle btn-ghost btn-xs;
+}
+
+/* 卡片样式 */
+.card-hover {
+  @apply hover:bg-base-200 transition-colors;
+}
+
+/* 文本截断 */
+.text-truncate {
+  @apply truncate;
+}
+
+/* 网格布局 */
+.grid-responsive {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+}
+
+.grid-color-palette {
+  @apply grid grid-cols-5 gap-1;
+}
+
+/* 加载指示器 */
+.loading-centered {
+  @apply flex items-center justify-center py-8;
+}
+
+/* 会话操作按钮 */
+.session-action-btn {
+  @apply btn btn-ghost btn-xs text-error;
+}
+
+/* 调试面板按钮 */
+.debug-panel-btn {
+  @apply btn btn-ghost btn-sm;
+}
+
+/* 搜索按钮 */
+.search-btn {
+  @apply btn btn-ghost btn-sm;
+}
+
+/* 新会话按钮 */
+.new-session-btn {
+  @apply btn btn-ghost btn-sm;
+}
+
+/* 关闭按钮 */
+.close-btn {
+  @apply btn btn-sm btn-circle btn-ghost;
+}
+
+/* 工具调用卡片 */
+.tool-call-card {
+  @apply flex items-center gap-3;
+}
+
+/* 工具结果卡片 */
+.tool-result-card {
+  @apply collapse-title flex items-center gap-3 min-h-0 p-2;
+}
+
+/* 问题建议标签 */
+.question-suggestion-tag {
+  @apply inline-flex items-center justify-between cursor-pointer px-2 py-1 hover:bg-primary/10 rounded-lg text-xs transition-colors min-w-0;
+}
+
+.question-suggestion-select-btn {
+  @apply btn btn-circle btn-ghost btn-xs opacity-0 hover:opacity-100 transition-opacity duration-200 ml-1 flex-shrink-0;
+}
+
+/* 删除对话按钮 */
+.delete-message-btn {
+  @apply btn btn-circle btn-ghost btn-xs;
+}
+
+/* 重试按钮 */
+.retry-btn {
+  @apply btn btn-sm btn-ghost;
+}
+
+/* 下拉菜单按钮 */
+.dropdown-btn {
+  @apply btn btn-sm btn-ghost flex items-center gap-1 min-w-[120px] justify-between;
+}
+
+/* 警告关闭按钮 */
+.alert-close-btn {
+  @apply btn btn-sm btn-ghost;
+}
+
+/* 附件按钮 */
+.attachment-btn {
+  @apply btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:text-error;
+}
+/* 无效内部链接 */
+.invalid-link {
+  @apply text-error/70 line-through decoration-wavy decoration-error/50 cursor-not-allowed hover:text-error;
+}

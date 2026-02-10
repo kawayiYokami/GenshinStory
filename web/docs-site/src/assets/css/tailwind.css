@@ -1,0 +1,497 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: all; /* Enable all built-in themes */
+}
+
+@plugin "@headlessui/tailwindcss" {
+  prefix: "ui";
+}
+
+/* --------------------------------------------- */
+/* 基础层样式 (Base Layer Styles)                */
+/* --------------------------------------------- */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  /* 主题过渡效果 */
+  .theme-transitioning {
+    /* 只对背景相关元素应用过渡 */
+    --bg-transition: background-color var(--transition-duration) ease;
+  }
+
+  /* 主要背景元素过渡 */
+  .theme-transitioning body,
+  .theme-transitioning .drawer,
+  .theme-transitioning .card,
+  .theme-transitioning .modal,
+  .theme-transitioning .navbar,
+  .theme-transitioning .bg-base-100,
+  .theme-transitioning .bg-base-200,
+  .theme-transitioning .bg-base-300 {
+    transition: background-color var(--transition-duration) ease;
+  }
+
+  /* 按钮背景过渡 */
+  .theme-transitioning .btn {
+    transition: background-color var(--transition-duration) ease;
+  }
+
+  /* 输入框背景过渡 */
+  .theme-transitioning .form-input,
+  .theme-transitioning .form-select {
+    transition: background-color var(--transition-duration) ease;
+  }
+
+  html,
+  body {
+    font-size: 15px;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  }
+
+  /* 增强的焦点可见性，用于无障碍访问 (Enhanced Focus Visibility for Accessibility) */
+  *:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* 高对比度模式支持 (High Contrast Mode Support) */
+  @media (prefers-contrast: high) {
+    *:focus-visible {
+      outline-width: 3px;
+    }
+  }
+
+  /* 自定义滚动条样式 (Custom scrollbar styles) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  /* --- 统一的散文样式容器 (Unified Prose Styling Container) --- */
+  .prose-styling-container,
+  .markdown-body {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--color-on-surface-variant);
+  }
+
+  .prose-styling-container h1, .markdown-body h1,
+  .prose-styling-container h2, .markdown-body h2,
+  .prose-styling-container h3, .markdown-body h3,
+  .prose-styling-container h4, .markdown-body h4,
+  .prose-styling-container h5, .markdown-body h5,
+  .prose-styling-container h6, .markdown-body h6 {
+    color: var(--color-on-surface);
+    margin-top: 1.5em;
+    margin-bottom: 1em;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .prose-styling-container h1, .markdown-body h1 {
+    font-size: 2em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--color-outline);
+  }
+  .prose-styling-container h2, .markdown-body h2 {
+    font-size: 1.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--color-outline);
+  }
+  .prose-styling-container h3, .markdown-body h3 { font-size: 1.25em; }
+  .prose-styling-container h4, .markdown-body h4 { font-size: 1em; }
+  .prose-styling-container h5, .markdown-body h5 { font-size: 0.875em; }
+  .prose-styling-container h6, .markdown-body h6 { font-size: 0.85em; color: var(--color-on-surface-variant); }
+
+  .prose-styling-container p, .markdown-body p {
+    margin-top: 0;
+    margin-bottom: 1em;
+  }
+
+  .prose-styling-container a, .markdown-body a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  .prose-styling-container a:hover, .markdown-body a:hover {
+    text-decoration: underline;
+  }
+
+  .prose-styling-container strong, .markdown-body strong {
+    font-weight: 600;
+  }
+
+  .prose-styling-container em, .markdown-body em {
+    font-style: italic;
+  }
+
+  .prose-styling-container del, .markdown-body del {
+    text-decoration: line-through;
+  }
+
+  .prose-styling-container code, .markdown-body code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    border-radius: 6px;
+    background-color: var(--color-surface-variant);
+    color: var(--color-on-surface-variant);
+    border: 1px solid var(--color-outline);
+  }
+
+  .prose-styling-container pre, .markdown-body pre {
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    border-radius: 6px;
+    background-color: var(--color-surface-variant);
+    border: 1px solid var(--color-outline);
+    margin-top: 0;
+    margin-bottom: 1em;
+  }
+
+  .prose-styling-container pre code, .markdown-body pre code {
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    background-color: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .prose-styling-container blockquote, .markdown-body blockquote {
+    margin: 0 0 1em;
+    padding: 0 1em;
+    border-left: 0.25em solid var(--color-outline);
+    color: var(--color-on-surface-variant);
+  }
+
+  .prose-styling-container ul, .markdown-body ul,
+  .prose-styling-container ol, .markdown-body ol {
+    padding-left: 2em;
+    margin-top: 0;
+    margin-bottom: 1em;
+  }
+
+  .prose-styling-container ul ul, .markdown-body ul ul,
+  .prose-styling-container ul ol, .markdown-body ul ol,
+  .prose-styling-container ol ol, .markdown-body ol ol,
+  .prose-styling-container ol ul, .markdown-body ol ul {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .prose-styling-container li, .markdown-body li {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+  }
+
+  .prose-styling-container hr, .markdown-body hr {
+    height: 0.25em;
+    padding: 0;
+    margin: 24px 0;
+    background-color: var(--color-outline);
+    border: 0;
+  }
+
+  .prose-styling-container table, .markdown-body table {
+    width: 100%;
+    max-width: 100%;
+    overflow: auto;
+    margin-top: 0;
+    margin-bottom: 16px;
+    border-collapse: collapse;
+  }
+
+  .prose-styling-container th, .markdown-body th {
+    font-weight: 600;
+    padding: 6px 13px;
+    border: 1px solid var(--color-outline);
+    background-color: var(--color-surface-variant);
+  }
+
+  .prose-styling-container td, .markdown-body td {
+    padding: 6px 13px;
+    border: 1px solid var(--color-outline);
+  }
+
+  .prose-styling-container tr, .markdown-body tr {
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-outline);
+  }
+
+  .prose-styling-container tr:nth-child(2n), .markdown-body tr:nth-child(2n) {
+    background-color: var(--color-surface-variant);
+  }
+
+  .prose-styling-container img, .markdown-body img {
+    max-width: 100%;
+    box-sizing: content-box;
+    background-color: var(--color-surface);
+  }
+
+  .prose-styling-container kbd, .markdown-body kbd {
+    display: inline-block;
+    padding: 3px 5px;
+    font: 11px ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    line-height: 10px;
+    color: var(--color-on-surface);
+    vertical-align: middle;
+    background-color: var(--color-surface-variant);
+    border: solid 1px var(--color-outline);
+    border-bottom-color: var(--color-outline);
+    border-radius: 6px;
+    box-shadow: inset 0 -1px 0 var(--color-outline);
+  }
+}
+
+/* --------------------------------------------- */
+/* 组件层样式 (Components Layer Styles)          */
+/* --------------------------------------------- */
+
+@layer components {
+  /* --- 表单元素 (Form Elements) --- */
+  .form-input, .form-select {
+      @apply p-2 rounded border bg-base-200 text-base-content w-full;
+      border-color: var(--color-outline);
+    }
+
+  /* --- 开关 (切换) (Switch (Toggle)) --- */
+  .switch {
+    @apply relative inline-block w-12 h-7;
+  }
+  .switch input {
+    @apply opacity-0 w-0 h-0;
+  }
+  .slider {
+    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-base-300 transition-all duration-400;
+  }
+  .slider:before {
+    @apply absolute h-5 w-5 left-1 bottom-1 bg-base-content transition-all duration-400;
+    content: "";
+  }
+  input:checked + .slider {
+    @apply bg-primary;
+  }
+  input:checked + .slider:before {
+    @apply bg-primary-content transform translate-x-5;
+  }
+  .slider.round {
+    @apply rounded-full;
+  }
+  .slider.round:before {
+    @apply rounded-full;
+  }
+
+  /* --- 聊天输入面板 (Chat Input Panel) --- */
+  .chat-input-panel {
+      @apply px-4 pb-4 flex-shrink-0;
+      background-color: var(--color-surface);
+      border-top: 1px solid var(--color-outline);
+    }
+  .chat-textarea {
+      @apply w-full p-5 rounded-3xl border bg-base-100 resize-none font-sans text-base-content transition-all duration-200;
+      border-color: var(--color-outline);
+      min-height: 80px;
+    }
+  .chat-textarea:focus {
+    @apply outline-hidden;
+  }
+  .send-button {
+    @apply w-10 h-10 rounded-full bg-primary text-primary-content border-none flex items-center justify-center cursor-pointer;
+  }
+  .send-button:hover {
+    @apply bg-primary/90 transform scale-105 shadow-md;
+  }
+  .send-button:active {
+    @apply bg-primary/80 transform scale-95;
+  }
+  .send-button:disabled {
+    @apply bg-base-300 text-base-content cursor-not-allowed transform-none;
+  }
+  .send-button.stop-button {
+    @apply bg-error text-error-content;
+  }
+  .send-button.stop-button:hover {
+    @apply bg-error/90 transform scale-105;
+  }
+
+  /* --- 消息气泡 (Message Bubble) --- */
+  .message-bubble {
+    @apply max-w-4xl w-full mx-auto px-4;
+  }
+  .message-bubble.user {
+    @apply bg-transparent text-base-content;
+  }
+  .message-bubble.assistant {
+    @apply bg-transparent text-base-content;
+  }
+  .message-bubble .content {
+    @apply p-3 rounded-lg;
+  }
+  .retry-button {
+      @apply mt-2 bg-transparent border text-base-content px-2.5 py-1 rounded-md text-sm;
+      border-color: var(--color-outline);
+    }
+  .retry-button:hover {
+      @apply bg-primary text-primary-content;
+      border-color: var(--color-primary);
+    }
+
+  /* --- Agent 选择器模态框 (Agent Selector Modal) --- */
+  .modal-content {
+    @apply bg-base-100 p-5;
+  }
+  .modal-header {
+      @apply flex justify-between items-center border-b pb-2.5;
+      border-color: var(--color-outline);
+    }
+  .modal-title {
+    @apply m-0 text-base-content;
+  }
+  .close-button {
+    @apply cursor-pointer text-base-content;
+  }
+  .agent-list-button {
+      @apply w-full text-left p-3 bg-transparent border rounded-lg cursor-pointer text-base-content transition-colors duration-200;
+      border-color: var(--color-outline);
+    }
+  .agent-list-button:hover {
+      @apply bg-base-200;
+      border-color: var(--color-primary);
+    }
+  .agent-list-button.active {
+      @apply bg-primary text-primary-content font-bold;
+      border-color: var(--color-primary);
+    }
+
+  /* --- 引用下拉框 (Reference Dropdown) --- */
+  .reference-dropdown {
+      @apply absolute bottom-full mb-2 w-full max-h-60 overflow-y-auto bg-base-100 border rounded-xl shadow-md z-10;
+      border-color: var(--color-outline);
+    }
+  .reference-item {
+    @apply p-3 cursor-pointer text-base-content mb-1;
+  }
+  .reference-item:hover {
+    @apply bg-base-200;
+  }
+  .reference-item.active {
+    @apply bg-primary text-primary-content;
+  }
+
+  /* --- 会话历史面板 (Session History Panel) --- */
+  .session-item {
+    @apply p-3 border border-transparent rounded-lg cursor-pointer;
+  }
+  .session-item:hover {
+    @apply bg-base-200;
+  }
+  .session-item.active {
+      @apply bg-primary text-primary-content font-bold;
+      border-color: var(--color-primary);
+    }
+  .session-name {
+    @apply font-semibold text-primary text-sm;
+  }
+  .session-item.active .session-name {
+    @apply text-primary-content;
+  }
+  .session-details {
+    @apply text-sm text-base-content;
+  }
+  .delete-button {
+    @apply bg-transparent border-none text-base-content cursor-pointer;
+  }
+  .delete-button:hover {
+    @apply bg-error text-error-content;
+  }
+
+  /* --- 头部操作按钮 (Header Action Button) --- */
+  .btn-header-action {
+    @apply p-1.5 rounded-lg cursor-pointer font-medium transition-colors duration-200 bg-transparent text-base-content border-none hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-header-action svg {
+    @apply w-5 h-5;
+  }
+}
+
+/* --------------------------------------------- */
+/* 增强的交互状态 (Enhanced Interactive States)  */
+/* --------------------------------------------- */
+
+@layer components {
+  /* 增强的表单输入交互 (Enhanced Form Input Interactions) */
+  .form-input, .form-select {
+    @apply transition-colors duration-200;
+  }
+  .form-input:focus {
+    @apply border-primary shadow-[0_0_0_2px_var(--color-primary)];
+  }
+  .form-select:focus {
+    @apply border-primary/70;
+  }
+  .form-input:hover, .form-select:hover {
+    @apply border-primary/70;
+  }
+
+  /* 增强的列表项交互 (Enhanced List Item Interactions) */
+  .agent-list-button, .session-item, .reference-item {
+    transition: all 0.3s ease-out;
+  }
+  .agent-list-button:hover, .session-item:hover, .reference-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 增强的焦点状态 (Enhanced Focus States) */
+  .btn-header-action:focus-visible,
+  .send-button:focus-visible,
+  .form-input:focus-visible,
+  .agent-list-button:focus-visible,
+  .session-item:focus-visible,
+  .reference-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* 增强的激活状态 (Enhanced Active States) */
+  .agent-list-button.active,
+  .session-item.active,
+  .reference-item.active {
+    @apply transform scale-[1.02] shadow-md;
+  }
+}
+
+/* --------------------------------------------- */
+/* 导入拆分的CSS文件                            */
+/* --------------------------------------------- */
+
+/* 导入自定义主题 */
+@import './themes.css';
+
+/* 导入自定义工具类 */
+@import './utilities.css';

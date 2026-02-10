@@ -1,0 +1,12 @@
+[project]
+name = "GenshinStory"
+version = "0.1.0"
+description = "AI-driven dialogue platform for game characters"
+authors = [
+    { name = "kawayiYokami" },
+]
+urls = { Homepage = "https://github.com/kawayiYokami/GenshinStory" }
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0,<3.0"
+]

@@ -1,0 +1,42 @@
+# Ignore large game data directories
+.*/
+.*
+.__pycache__/
+AnimeGameData/
+turnbasedgamedata/
+scraper/
+logs/
+test_outputs/
+ZenlessData/
+hsr_data_parser/
+game_data_parser/
+zzz_data_parser/
+scripts/gi_create_cache.py
+scripts/gi_generate_catalog_tree.py
+scripts/gi_generate_markdown.py
+scripts/hsr_create_cache.py
+scripts/hsr_generate_catalog_tree.py
+scripts/hsr_generate_markdown.py
+scripts/zzz_create_cache.py
+scripts/zzz_generate_markdown.py
+# Python
+__pycache__/
+*.pyc
+/docs/
+metadata/
+web/docs-site/public/domains/hsr/docs/
+web/docs-site/public/domains/gi/docs/
+web/docs-site/public/domains/zzz/docs/
+
+# TypeScript compilation output
+/web/docs-site/src/**/*.js
+/web/docs-site/src/**/*.js.map
+/web/docs-site/src/**/*.vue.js
+/web/docs-site/src/modules
+
+# HTML and JSON files
+*.html
+*.json
+!web/docs-site/public/prompts/**/*.json
+CLAUDE.md
+AGENTS.md

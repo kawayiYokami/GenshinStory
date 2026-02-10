@@ -1,0 +1,38 @@
+# Netlify configuration file
+
+[build]
+# Directory (relative to the root) that contains the deploy-ready assets.
+publish = "web/docs-site/dist"
+
+# The full command to run to build the site.
+# 1. Run the Python scripts to generate data and markdown files.
+# 2. Change directory into the frontend application.
+# 3. Install frontend dependencies and build the static site.
+command = "pip install pydantic msgpack && python scripts/generate_all_content.py && cd web/docs-site && npm install && npm run build"
+
+[build.environment]
+# Set the Python and Node.js versions to ensure a consistent build environment.
+# These should match the versions you use in development.
+PYTHON_VERSION = "3.10"
+NODE_VERSION = "20"
+
+# 禁止缓存入口 HTML 文件和 Service Worker，确保用户总是获取最新版本
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+# 对带有 Hash 的静态资源启用长期缓存 (1年)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

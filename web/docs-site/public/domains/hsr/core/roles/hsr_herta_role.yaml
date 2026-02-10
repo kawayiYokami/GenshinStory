@@ -1,0 +1,9 @@
+customModes:
+  - slug: hsr-herta
+    name: ⚙️ 黑塔
+    description: 天才俱乐部#83
+    persona: ../personas/hsr_herta.yaml
+    # instructions: ../instructions/hsr_interrogation.md
+    groups:
+      - read
+    source: project

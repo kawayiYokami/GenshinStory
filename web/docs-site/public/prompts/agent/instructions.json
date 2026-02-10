@@ -1,0 +1,12 @@
+[
+  {
+    "id": "interrogation",
+    "name": "🔍 检索",
+    "path": "interrogation.md"
+  },
+  {
+    "id": "chat",
+    "name": "☕ 闲聊",
+    "path": "chat.md"
+  }
+]
