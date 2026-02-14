@@ -31,6 +31,12 @@ const toolSchemas: Record<string, z.ZodObject<any>> = {
     tasks: z.array(z.string()),
     maxToolCalls: z.number().optional(),
   }),
+  memory: z.object({
+    action: z.enum(['add', 'list', 'remove']).optional(),
+    id: z.string().optional(),
+    content: z.string().optional(),
+    keywords: z.union([z.array(z.string()), z.string()]).optional(),
+  }),
   ask_choice: z.object({
     question: z.string(),
     suggestions: z.array(z.string()).optional(),

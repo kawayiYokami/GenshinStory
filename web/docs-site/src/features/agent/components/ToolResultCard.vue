@@ -89,6 +89,66 @@
                                                 </div>
                                               </template>
                                             </div>                              </div>
+          
+          <!-- Memory 结果 -->
+          <div v-else-if="isMemoryResult" class="pt-2 px-1">
+            <!-- add 操作 -->
+            <div v-if="memoryAction === 'add' && memoryRecord" class="py-2 px-3">
+              <div class="text-sm text-base-content/90 mb-2">{{ memoryRecord.content }}</div>
+              <div class="flex flex-wrap gap-1">
+                <span 
+                  v-for="(kw, i) in memoryRecord.keywords" 
+                  :key="i" 
+                  class="badge badge-sm badge-primary"
+                >
+                  {{ kw }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- remove 操作 -->
+            <div v-else-if="memoryAction === 'remove'" class="py-2 px-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium" :class="memoryRemoved ? 'text-success' : 'text-base-content/50'">
+                  {{ memoryRemoved ? '✓ 记忆已删除' : '未找到对应记忆' }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- list 操作 -->
+            <div v-else-if="memoryAction === 'list'" class="py-2 px-3">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-base-content/60">记忆库</span>
+                <span class="text-xs text-base-content/50">共 {{ memoryTotal }} 条</span>
+              </div>
+              <div v-if="memoryRecords.length > 0" class="space-y-2">
+                <template v-for="(record, idx) in memoryRecords" :key="record.id">
+                  <div v-if="idx > 0" class="divider my-1"></div>
+                  <div class="py-2">
+                    <div class="text-sm text-base-content/90 mb-1.5">{{ record.content }}</div>
+                    <div class="flex flex-wrap gap-1">
+                      <span 
+                        v-for="(kw, i) in record.keywords" 
+                        :key="i" 
+                        class="badge badge-xs badge-ghost"
+                      >
+                        {{ kw }}
+                      </span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <div v-else class="text-xs text-base-content/50 text-center py-4">
+                暂无记忆
+              </div>
+            </div>
+            
+            <!-- 未知操作 -->
+            <div v-else class="py-2 px-3">
+              <div class="text-xs text-base-content/50">{{ parsedData.message || '记忆操作完成' }}</div>
+            </div>
+          </div>
+          
           <!-- Search 结果 -->
           <div v-else-if="parsedResults.length > 0" class="pt-2 px-1">
             <div class="flex items-center justify-between mb-2">
@@ -190,7 +250,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { Compass, FileText, List, Search, Wrench } from 'lucide-vue-next';
+import { Compass, FileText, List, Search, Wrench, Bookmark } from 'lucide-vue-next';
 import { extractFileName } from '@/utils/pathUtils';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import linkProcessorService from '@/lib/linkProcessor/linkProcessorService';
@@ -233,6 +293,20 @@ interface ParsedData {
   grouped: boolean;
   message: string;
   reports: ExploreReport[];
+  // memory 专用字段
+  memoryAction?: 'add' | 'remove' | 'list';
+  memoryRecords?: MemoryRecord[];
+  memoryTotal?: number;
+  memoryRemoved?: boolean;
+  memoryRecord?: MemoryRecord;
+}
+
+interface MemoryRecord {
+  id: string;
+  content: string;
+  keywords: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Props {
@@ -339,6 +413,23 @@ const parsedData = computed<ParsedData>(() => {
     };
   }
 
+  // memory 工具解析
+  if (data.tool === 'memory') {
+    return {
+      tool: 'memory',
+      query: '',
+      results: [],
+      grouped: false,
+      message: String(data.message || ''),
+      reports: [],
+      memoryAction: data.action as 'add' | 'remove' | 'list' | undefined,
+      memoryRecords: Array.isArray(data.records) ? (data.records as MemoryRecord[]) : undefined,
+      memoryTotal: typeof data.total === 'number' ? data.total : undefined,
+      memoryRemoved: typeof data.removed === 'boolean' ? data.removed : undefined,
+      memoryRecord: data.record as MemoryRecord | undefined,
+    };
+  }
+
   if (typeof data.query === 'string' && Array.isArray(data.results)) {
     return {
       tool: typeof data.tool === 'string' ? data.tool : '',
@@ -377,6 +468,7 @@ const toolDisplayNameMap: Record<string, string> = {
   search_docs: '检索',
   read_doc: '阅读',
   explore: '探索',
+  memory: '记忆',
   ask_choice: '询问',
 };
 
@@ -389,6 +481,7 @@ const toolIcon = computed(() => {
     case 'search_docs': return Search;
     case 'read_doc': return FileText;
     case 'explore': return Compass;
+    case 'memory': return Bookmark;
     case 'ask_choice': return List;
     default: return Wrench;
   }
@@ -423,6 +516,12 @@ const statusIconClass = computed(() => {
 
 const exploreReports = computed(() => parsedData.value.reports || []);
 const isExploreResult = computed(() => resolvedToolName.value === 'explore' || parsedData.value.tool === 'explore');
+const isMemoryResult = computed(() => resolvedToolName.value === 'memory' || parsedData.value.tool === 'memory');
+const memoryAction = computed(() => parsedData.value.memoryAction);
+const memoryRecords = computed(() => parsedData.value.memoryRecords || []);
+const memoryTotal = computed(() => parsedData.value.memoryTotal ?? memoryRecords.value.length);
+const memoryRemoved = computed(() => parsedData.value.memoryRemoved);
+const memoryRecord = computed(() => parsedData.value.memoryRecord);
 const parsedResults = computed(() => parsedData.value.results as Array<SearchResult | GroupedSearchResult>);
 const isGrouped = computed(() => parsedData.value.grouped);
 const totalFiles = computed(() => parsedResults.value.length);
@@ -489,6 +588,16 @@ const compactSummary = computed(() => {
     return q.length > 20 ? q.slice(0, 20) + '...' : q || '等待选择';
   }
 
+  if (tool === 'memory') {
+    const action = String(input.action || 'add').trim() || 'add';
+    const keywords = input.keywords;
+    if (Array.isArray(keywords) && keywords.length > 0) {
+      const text = keywords.map(item => String(item || '').trim()).filter(Boolean).join('、');
+      return `${action} · ${text}`.slice(0, 32);
+    }
+    return action;
+  }
+
   return '已执行';
 });
 
@@ -496,6 +605,18 @@ const compactSummary = computed(() => {
 const resultCountText = computed(() => {
   if (isExploreResult.value) {
     return `${completedTaskCount.value}个结果`;
+  }
+  if (isMemoryResult.value) {
+    if (memoryAction.value === 'list') {
+      return `${memoryTotal.value}条记忆`;
+    }
+    if (memoryAction.value === 'add') {
+      return '已保存';
+    }
+    if (memoryAction.value === 'remove') {
+      return memoryRemoved.value ? '已删除' : '未找到';
+    }
+    return '完成';
   }
   if (isGrouped.value) {
     return `${parsedResults.value.length}个文件`;

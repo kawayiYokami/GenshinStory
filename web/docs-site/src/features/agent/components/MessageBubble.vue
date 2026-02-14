@@ -28,14 +28,14 @@
       </button>
       <div class="bg-primary text-primary-content rounded-2xl px-4 py-2 shadow-sm border border-primary">
         <div v-if="Array.isArray(message.content)" class="space-y-2">
-          <div v-for="(item, index) in message.content" :key="index">
-            <p v-if="item.type === 'text'" class="whitespace-pre-wrap text-sm inline-block">{{ item.text }}</p>
+          <p v-if="firstUserTextPart" class="whitespace-pre-wrap text-sm inline-block">{{ firstUserTextPart.text }}</p>
+          <div v-for="(item, index) in userNonTextParts" :key="index">
             <div v-if="item.type === 'image_url' && item.image_url" class="card bg-base-100 shadow-xl">
               <figure class="px-2 pt-2">
                 <img :src="item.image_url.url" class="rounded-lg max-h-64 object-contain" alt="User uploaded content"/>
               </figure>
             </div>
-            <div v-if="item.type === 'doc' && item.path" class="card card-compact bg-base-100 shadow-xl border-l-4 border-primary">
+            <div v-else-if="item.type === 'doc' && item.path" class="card card-compact bg-base-100 shadow-xl border-l-4 border-primary">
               <div class="card-body">
                 <a :href="item.path"
                    @click.prevent="handleDocClick(item.path!)"
@@ -141,6 +141,7 @@ import QuestionSuggestions from './QuestionSuggestions.vue';
 interface ContentPart {
   type: 'text' | 'image_url' | 'doc';
   text?: string;
+  content?: string;
   image_url?: {
     url: string;
   };
@@ -218,13 +219,42 @@ const isCompressedExpanded = ref<boolean>(false);
 // 导入工具函数
 import { cleanContentFromToolCalls } from '../utils/messageUtils';
 
+const userContentParts = computed<ContentPart[]>(() => {
+  return Array.isArray(props.message.content) ? (props.message.content as ContentPart[]) : [];
+});
+
+const firstUserTextPart = computed<ContentPart | null>(() => {
+  return userContentParts.value.find(part => part && part.type === 'text') || null;
+});
+
+const userNonTextParts = computed<ContentPart[]>(() => {
+  return userContentParts.value.filter(part => part && part.type !== 'text');
+});
+
+function normalizeMessageContentToText(content: string | ContentPart[]): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  return content
+    .map(item => {
+      if (!item || typeof item !== 'object') return '';
+      if (item.type === 'text') return String(item.text || '');
+      if (item.type === 'doc') return String(item.content || item.name || '');
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
 // 创建本地 refs 来驱动 useSmartBuffer
-const localContent = ref<string>(cleanContentFromToolCalls(props.message.content as string || ' ', props.message.tool_calls));
+const localContent = ref<string>(
+  cleanContentFromToolCalls(normalizeMessageContentToText(props.message.content) || ' ', props.message.tool_calls)
+);
 const renderCompleted = ref<boolean>(props.message.streamCompleted || false);
 
 // 当 props 变化时，更新本地 refs
 watch(() => props.message.content, (newContent) => {
-  const contentStr = typeof newContent === 'string' ? newContent : (newContent ? JSON.stringify(newContent) : ' ');
+  const contentStr = normalizeMessageContentToText(newContent as string | ContentPart[]);
   localContent.value = cleanContentFromToolCalls(contentStr || ' ', props.message.tool_calls);
 });
 
@@ -241,8 +271,7 @@ watch(() => props.message.streamCompleted, async (newValue) => {
 
 // 监听 tool_calls 的变化
 watch(() => props.message.tool_calls, (newToolCalls) => {
-  const content = props.message.content;
-  const contentStr = typeof content === 'string' ? content : (content ? JSON.stringify(content) : ' ');
+  const contentStr = normalizeMessageContentToText(props.message.content);
   localContent.value = cleanContentFromToolCalls(contentStr || ' ', newToolCalls);
 }, { deep: true });
 
@@ -306,7 +335,10 @@ const thinkingStatusLabel = computed(() => {
 
 // 移除思维链后的原始内容
 const contentWithoutThinkingRaw = computed(() => {
-  return (localContent.value || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  const content = typeof localContent.value === 'string'
+    ? localContent.value
+    : String(localContent.value ?? '');
+  return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 });
 
 // useSmartBuffer 使用移除思维链后的内容

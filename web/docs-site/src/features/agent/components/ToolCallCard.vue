@@ -60,7 +60,8 @@ const toolNameMap: Record<string, string> = {
   read_doc: '阅读文档',
   list_docs: '列出文档',
   ask_choice: '询问选择',
-  explore: '探索任务'
+  explore: '探索任务',
+  memory: '记忆工具'
 };
 
 const formattedToolName = computed(() => {
@@ -90,6 +91,14 @@ const displayValue = computed(() => {
       return props.toolCall.question || '';
     case 'explore':
       return `任务数: ${Array.isArray(props.toolCall.tasks) ? props.toolCall.tasks.length : 0}`;
+    case 'memory': {
+      const action = String((props.toolCall as any).action || 'add');
+      const keywords = (props.toolCall as any).keywords;
+      if (Array.isArray(keywords) && keywords.length > 0) {
+        return `${action}: ${keywords.join('、')}`;
+      }
+      return action;
+    }
     default:
       return JSON.stringify(props.toolCall);
   }

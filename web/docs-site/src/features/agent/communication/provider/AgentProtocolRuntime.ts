@@ -41,7 +41,7 @@ export class AgentProtocolRuntime {
       try {
         await toolRegistryService.loadTools();
         const tools = toolRegistryService.toSdkToolDefinitions({
-          includedTools: ['search_docs', 'read_doc', 'explore', 'ask_choice'],
+          includedTools: ['search_docs', 'read_doc', 'explore', 'memory', 'ask_choice'],
         });
         const structuredResult = await llmProviderService.createStructuredChatCompletion(
           apiMessages,

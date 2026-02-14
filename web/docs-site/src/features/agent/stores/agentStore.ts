@@ -16,6 +16,7 @@ import type { Ref } from 'vue';
 import type { LogEntry } from '@/features/app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
 import type { MessageContentPart, Message, Session, AgentInfo, Command } from '../types';
+import memoryStoreService from '@/features/memory/services/memoryStoreService';
 
 
 // --- 导入管理器和服务模块 ---
@@ -72,8 +73,55 @@ export const useAgentStore = defineStore('agent', () => {
   const messageIds = computed(() => currentSession.value?.messageIds || []);
   const orderedMessages = computed(() => {
     if (!currentSession.value) return [];
-    return messageIds.value.map(id => messagesById.value[id]);
+    return messageIds.value
+      .map(id => messagesById.value[id])
+      .filter((message): message is Message => Boolean(message && typeof message.id === 'string'));
   });
+
+  function stripMemoryBlock(text: string): string {
+    const raw = String(text || '');
+    if (!raw.trim()) return '';
+
+    let cleaned = raw
+      // 新格式
+      .replace(/<系统提醒>[\s\S]*?<\/系统提醒>/g, '')
+      .replace(/<记忆>[\s\S]*?<\/记忆>/g, '')
+      // 旧格式兼容
+      .replace(/\[记忆文本块\][\s\S]*?\[\/记忆文本块\]/g, '');
+
+    return cleaned.trim();
+  }
+
+  function extractPureUserText(message: Message): string {
+    if (!message || message.role !== 'user') return '';
+
+    if (typeof message.content === 'string') {
+      return stripMemoryBlock(message.content);
+    }
+
+    if (!Array.isArray(message.content)) return '';
+
+    const textParts = message.content
+      .filter(part => part.type === 'text' && typeof part.text === 'string')
+      .map(part => stripMemoryBlock(part.text || ''))
+      .filter(Boolean);
+
+    return textParts.join('\n').trim();
+  }
+
+  function collectRecentUserTurnsWithCurrentInput(currentInput: string, maxTurns = 10): string[] {
+    if (!currentSession.value) return [currentInput].filter(Boolean);
+
+    const historyTurns = currentSession.value.messageIds
+      .map(id => currentSession.value!.messagesById[id])
+      .filter((message): message is Message => Boolean(message))
+      .filter(message => message && message.role === 'user')
+      .map(message => extractPureUserText(message as Message))
+      .filter(Boolean);
+
+    const allTurns = [...historyTurns, currentInput.trim()].filter(Boolean);
+    return allTurns.slice(-maxTurns);
+  }
 
   // --- Managers and Services ---
   const messageManager: MessageManagerImpl = new MessageManagerImpl(currentSession.value || null);
@@ -409,8 +457,23 @@ export const useAgentStore = defineStore('agent', () => {
     const references = isRichContent ? payload.references : [];
     const contentPayload: MessageContentPart[] = [];
 
-    if (text && text.trim()) {
-      contentPayload.push({ type: 'text', text: text });
+    const normalizedText = String(text || '').trim();
+    if (normalizedText) {
+      contentPayload.push({ type: 'text', text: normalizedText });
+
+      const recentTurns = collectRecentUserTurnsWithCurrentInput(normalizedText, 10);
+      const memoryMatches = await memoryStoreService.findRelevantByRecentUserTurns(recentTurns, {
+        maxTurns: 10,
+        maxResults: 7,
+      });
+
+      if (memoryMatches.length > 0) {
+        const memoryBlock = memoryStoreService.formatMemoryBlock(memoryMatches);
+        if (memoryBlock) {
+          contentPayload.push({ type: 'text', text: memoryBlock });
+          logger.log(`[AgentStore] 已附加记忆文本块，命中 ${memoryMatches.length} 条记忆。`);
+        }
+      }
     }
 
     if (references && references.length > 0) {

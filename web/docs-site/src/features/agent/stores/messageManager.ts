@@ -25,20 +25,36 @@ export class MessageManagerImpl implements MessageManager {
     this.currentSession = session;
   }
 
-  async addMessage(messageData: Partial<Message>): Promise<Message | null> {
-    if (!this.currentSession) return null;
+  private resolveUniqueMessageId(session: Session, preferredId?: string): string {
+    const baseId = (preferredId || nanoid()).trim();
+    if (!session.messagesById[baseId]) return baseId;
 
-    const id = messageData.id || nanoid();
+    let uniqueId = `${baseId}_${nanoid(6)}`;
+    while (session.messagesById[uniqueId]) {
+      uniqueId = `${baseId}_${nanoid(6)}`;
+    }
+    logger.warn(`[MessageManager] 检测到重复消息ID "${baseId}"，已自动改写为 "${uniqueId}"。`);
+    return uniqueId;
+  }
+
+  async addMessage(messageData: Partial<Message>): Promise<Message | null> {
+    const session = this.currentSession;
+    if (!session) return null;
+
+    const id = this.resolveUniqueMessageId(session, messageData.id);
     const message: Message = {
       id,
       type: 'text',
       role: 'user', // default role
+      createdAt: new Date().toISOString(),
       randomSeed: Math.floor(Math.random() * 1000000), // 生成随机种子，用于确定性选择表情图片
       ...messageData,
     } as Message;
 
-    this.currentSession.messagesById[id] = message;
-    this.currentSession.messageIds.push(id);
+    session.messagesById[id] = message;
+    if (!session.messageIds.includes(id)) {
+      session.messageIds.push(id);
+    }
     await nextTick();
     return message;
   }
@@ -49,10 +65,11 @@ export class MessageManagerImpl implements MessageManager {
 
     const message = session.messagesById[messageId];
     if (message) {
-      session.messagesById[messageId] = {
-        ...message,
-        ...updates,
-      };
+      if (typeof updates.id === 'string' && updates.id !== messageId) {
+        logger.warn(`[MessageManager] 忽略 updateMessage 中对消息ID的变更请求: ${messageId} -> ${updates.id}`);
+      }
+      const { id: _ignoredId, ...safeUpdates } = updates;
+      Object.assign(message, safeUpdates);
       await nextTick();
     }
   }
@@ -77,7 +94,10 @@ export class MessageManagerImpl implements MessageManager {
     const index = session.messageIds.indexOf(oldId);
     if (index === -1) return;
 
-    const newId = newMessageData.id || nanoid();
+    const preferredId = newMessageData.id || nanoid();
+    const newId = preferredId === oldId
+      ? oldId
+      : this.resolveUniqueMessageId(session, preferredId);
 
     // 先设置默认值，再用传入数据覆盖（与 addMessage 保持一致）
     const message: Message = {
@@ -92,7 +112,6 @@ export class MessageManagerImpl implements MessageManager {
 
     delete session.messagesById[oldId];
     session.messagesById[newId] = message;
-
     session.messageIds.splice(index, 1, newId);
     await nextTick();
   }
@@ -103,13 +122,10 @@ export class MessageManagerImpl implements MessageManager {
 
     const message = session.messagesById[messageId];
     if (message) {
-        const oldContent = message.content;
-        const newContent = (Array.isArray(oldContent) ? oldContent.map(c=>c.text).join('') : (oldContent || '')) + chunk;
-        session.messagesById[messageId] = {
-            ...message,
-            content: newContent,
-        };
-        await nextTick();
+      const oldContent = message.content;
+      const newContent = (Array.isArray(oldContent) ? oldContent.map(c => c.text).join('') : (oldContent || '')) + chunk;
+      message.content = newContent;
+      await nextTick();
     }
   }
 

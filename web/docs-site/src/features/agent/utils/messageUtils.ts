@@ -8,12 +8,14 @@ export interface ToolCall {
 /**
  * 清洗消息内容中的工具调用 JSON
  */
-export function cleanContentFromToolCalls(content: string, toolCalls?: ToolCall[]): string {
+export function cleanContentFromToolCalls(content: unknown, toolCalls?: ToolCall[]): string {
+  let baseContent = typeof content === 'string' ? content : String(content ?? '');
+
   if (!toolCalls || toolCalls.length === 0) {
-    return content;
+    return baseContent;
   }
 
-  let cleanedContent = content;
+  let cleanedContent = baseContent;
 
   // 直接使用 toolCall.original 进行替换，因为现在存储的是原始JSON
   for (const toolCall of toolCalls) {

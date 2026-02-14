@@ -22,7 +22,9 @@ export class AgentContextService {
   private get orderedMessages(): Message[] {
     const session = this.currentSession.value;
     if (!session) return [];
-    return session.messageIds.map(id => session.messagesById[id]);
+    return session.messageIds
+      .map(id => session.messagesById[id])
+      .filter((message): message is Message => Boolean(message && typeof message.id === 'string'));
   }
 
   public async checkAndCompressContextIfNeeded(): Promise<void> {

@@ -14,6 +14,20 @@ function toTextContent(content: Message['content']): string {
     .join('\n');
 }
 
+function toUserTextContent(content: Message['content']): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+
+  const firstTextPart = content.find(part => part.type === 'text');
+  const firstText = firstTextPart?.text || '';
+  const docParts = content
+    .filter(part => part.type === 'doc')
+    .map(part => part.content || '')
+    .filter(Boolean);
+
+  return [firstText, ...docParts].filter(Boolean).join('\n');
+}
+
 function toolCallIdFrom(toolCall: ToolCall, messageId: string, index: number): string {
   return toolCall.action_id || `tc_${messageId}_${index}`;
 }
@@ -58,7 +72,8 @@ export function toModelMessages(storeMessages: Message[]): ModelMessage[] {
     }
 
     if (message.role === 'user') {
-      result.push({ role: 'user', content: toTextContent(message.content) });
+      // 仅使用用户第一段文本，避免附加记忆文本块进入后续上下文；保留文档块内容。
+      result.push({ role: 'user', content: toUserTextContent(message.content) });
       continue;
     }
 

@@ -1,0 +1,15 @@
+name: "memory"
+type: "execution"
+description: "写入、列出或删除关键记忆（包含正文与关键词）。仅用于主会话。"
+usage: |
+  参数说明：
+  - action: string，可选。支持 add / list / remove，默认 add。
+  - content: string。action=add 时必填，记忆正文。
+  - keywords: string[] 或 string。action=add 时必填，关键词列表。
+  - id: string，可选。action=add 时可用于覆盖指定记忆；action=remove 时必填。
+  约束：
+  - action=add 时，keywords 至少包含 1 个关键词。
+examples: []
+error_guidance: |
+  action=add 缺少 content 或 keywords 时返回错误。
+  action=remove 缺少 id 时返回错误。

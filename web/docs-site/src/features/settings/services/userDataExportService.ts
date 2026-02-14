@@ -250,10 +250,13 @@ function normalizeMemoryRecords(records: unknown[]): MemoryRecord[] {
     .filter(item => typeof item.id === 'string' && typeof item.content === 'string')
     .map(item => {
       const now = new Date().toISOString();
+      const keywords = Array.isArray(item.keywords)
+        ? item.keywords.filter(keyword => typeof keyword === 'string')
+        : [];
       return {
         id: item.id as string,
         content: item.content as string,
-        tags: Array.isArray(item.tags) ? item.tags.filter(tag => typeof tag === 'string') : [],
+        keywords,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : now,
         updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : now,
         metadata: item.metadata && typeof item.metadata === 'object'
@@ -557,4 +560,3 @@ export async function importUserData(
     warnings,
   };
 }
-

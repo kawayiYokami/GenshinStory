@@ -25,6 +25,49 @@ function debounce(func: (...args: any[]) => void, wait: number) {
   };
 }
 
+function ensureSessionMessageIntegrity(session: Session): void {
+  if (!session.messagesById || typeof session.messagesById !== 'object') {
+    session.messagesById = {};
+  }
+  if (!Array.isArray(session.messageIds)) {
+    session.messageIds = [];
+  }
+
+  const sourceMessagesById = session.messagesById as Record<string, any>;
+  const seenIds = new Set<string>();
+  const normalizedIds: string[] = [];
+  const normalizedMessagesById: Record<string, any> = {};
+  const fallbackCreatedAt = session.createdAt || new Date().toISOString();
+
+  const attachMessage = (id: string, message: any) => {
+    if (!id || seenIds.has(id)) return;
+    if (!message || typeof message !== 'object') return;
+
+    seenIds.add(id);
+    if (message.id !== id) {
+      message.id = id;
+    }
+    if (typeof message.createdAt !== 'string' || !message.createdAt) {
+      message.createdAt = fallbackCreatedAt;
+    }
+    normalizedIds.push(id);
+    normalizedMessagesById[id] = message;
+  };
+
+  for (const rawId of session.messageIds) {
+    if (typeof rawId !== 'string' || !rawId.trim()) continue;
+    const id = rawId.trim();
+    attachMessage(id, sourceMessagesById[id]);
+  }
+
+  for (const [id, message] of Object.entries(sourceMessagesById)) {
+    attachMessage(id, message);
+  }
+
+  session.messageIds = normalizedIds;
+  session.messagesById = normalizedMessagesById;
+}
+
 // --- Persistence 类型定义 ---
 export interface PersistenceManager {
   initializeStoreFromCache(sessions: Ref<{ [key: string]: Session }>, activeSessionIds: Ref<{ [key: string]: string | null }>, activeInstructionId: Ref<string>): Promise<void>;
@@ -60,10 +103,11 @@ export class PersistenceManagerImpl implements PersistenceManager {
 
         sessions.value = (typeof cachedSessions === 'object' && cachedSessions !== null) ? cachedSessions : {};
 
-        // 修复过去记录中的 tool_result 消息状态
+        // 清洗历史缓存中的消息结构，并修复过去记录中的 tool_result 消息状态
         Object.keys(sessions.value).forEach(sessionId => {
           const session = sessions.value[sessionId];
-          if (session && session.messageIds) {
+          if (session && typeof session === 'object') {
+            ensureSessionMessageIntegrity(session);
             session.messageIds.forEach(messageId => {
               const message = session.messagesById[messageId];
               if (message) {

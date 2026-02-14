@@ -12,7 +12,7 @@
  */
 export interface FlatToolCall {
   /** 工具名称 */
-  tool: 'search_docs' | 'read_doc' | 'ask_choice' | 'explore';
+  tool: 'search_docs' | 'read_doc' | 'ask_choice' | 'explore' | 'memory';
 
   // 共用参数
   /** 路径参数 - search_docs: 搜索目录路径, read_doc: 读取文件路径 */
@@ -39,6 +39,12 @@ export interface FlatToolCall {
   // explore 专用参数
   tasks?: string[];
   maxToolCalls?: number;
+
+  // memory 专用参数
+  action?: 'add' | 'list' | 'remove';
+  id?: string;
+  content?: string;
+  keywords?: string[] | string;
 
   // 元数据字段
   /** 工具调用唯一ID */

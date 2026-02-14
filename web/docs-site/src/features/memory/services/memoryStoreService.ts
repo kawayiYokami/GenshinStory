@@ -3,7 +3,7 @@ import { memoryLibraryStore } from '@/features/app/services/storageFacade';
 export interface MemoryRecord {
   id: string;
   content: string;
-  tags: string[];
+  keywords: string[];
   createdAt: string;
   updatedAt: string;
   metadata?: Record<string, unknown>;
@@ -12,8 +12,14 @@ export interface MemoryRecord {
 export interface MemoryRecordInput {
   id?: string;
   content: string;
-  tags?: string[];
+  keywords?: string[];
   metadata?: Record<string, unknown>;
+}
+
+export interface MemoryMatch {
+  record: MemoryRecord;
+  hitCount: number;
+  lastHitTurnIndex: number;
 }
 
 export interface MemoryLibraryAdapter {
@@ -24,10 +30,25 @@ export interface MemoryLibraryAdapter {
 
 const MEMORY_RECORDS_KEY = 'records';
 
+function normalizeKeywords(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const unique = new Set<string>();
+
+  for (const keyword of raw) {
+    const text = String(keyword || '').trim();
+    if (!text) continue;
+    unique.add(text);
+  }
+
+  return Array.from(unique);
+}
+
 function normalizeRecord(record: MemoryRecord): MemoryRecord {
+  const normalizedKeywords = normalizeKeywords(record.keywords);
+
   return {
     ...record,
-    tags: Array.isArray(record.tags) ? record.tags : [],
+    keywords: normalizedKeywords,
     createdAt: record.createdAt || new Date().toISOString(),
     updatedAt: record.updatedAt || new Date().toISOString(),
   };
@@ -59,11 +80,16 @@ class MemoryStoreService implements MemoryLibraryAdapter {
 
     const index = records.findIndex(record => record.id === id);
     const current = index >= 0 ? records[index] : null;
+    const nextKeywords = normalizeKeywords(
+      Array.isArray(input.keywords) && input.keywords.length > 0
+        ? input.keywords
+        : current?.keywords
+    );
 
     const nextRecord: MemoryRecord = {
       id,
       content: input.content,
-      tags: Array.isArray(input.tags) ? input.tags : (current?.tags || []),
+      keywords: nextKeywords,
       metadata: input.metadata ?? current?.metadata,
       createdAt: current?.createdAt || now,
       updatedAt: now,
@@ -104,8 +130,83 @@ class MemoryStoreService implements MemoryLibraryAdapter {
     await memoryLibraryStore.setItem(MEMORY_RECORDS_KEY, merged);
     return cloneSerializable(merged);
   }
+
+  public async findRelevantByRecentUserTurns(
+    userTurns: string[],
+    options?: { maxTurns?: number; maxResults?: number }
+  ): Promise<MemoryMatch[]> {
+    const maxTurns = Math.max(1, options?.maxTurns ?? 10);
+    const maxResults = Math.max(1, options?.maxResults ?? 7);
+    const normalizedTurns = userTurns
+      .map(turn => String(turn || '').trim())
+      .filter(Boolean)
+      .slice(-maxTurns)
+      .map(text => text.toLowerCase());
+
+    if (normalizedTurns.length === 0) return [];
+
+    const records = await this.list();
+    const matches: MemoryMatch[] = [];
+
+    for (const record of records) {
+      if (!record.keywords || record.keywords.length === 0) continue;
+
+      let hitCount = 0;
+      let lastHitTurnIndex = -1;
+
+      for (const keyword of record.keywords) {
+        const normalizedKeyword = String(keyword || '').trim().toLowerCase();
+        if (!normalizedKeyword) continue;
+
+        for (let turnIndex = normalizedTurns.length - 1; turnIndex >= 0; turnIndex -= 1) {
+          if (normalizedTurns[turnIndex].includes(normalizedKeyword)) {
+            hitCount += 1;
+            if (turnIndex > lastHitTurnIndex) {
+              lastHitTurnIndex = turnIndex;
+            }
+            break;
+          }
+        }
+      }
+
+      if (hitCount >= 1) {
+        matches.push({ record, hitCount, lastHitTurnIndex });
+      }
+    }
+
+    matches.sort((left, right) => {
+      if (right.hitCount !== left.hitCount) {
+        return right.hitCount - left.hitCount;
+      }
+      if (right.lastHitTurnIndex !== left.lastHitTurnIndex) {
+        return right.lastHitTurnIndex - left.lastHitTurnIndex;
+      }
+      return new Date(right.record.updatedAt).getTime() - new Date(left.record.updatedAt).getTime();
+    });
+
+    return matches.slice(0, maxResults);
+  }
+
+  public formatMemoryBlock(matches: MemoryMatch[]): string {
+    if (!Array.isArray(matches) || matches.length === 0) return '';
+
+    const lines: string[] = [];
+    lines.push('<系统提醒>历史记忆仅供参考；若与当前证据冲突，以当前证据为准。</系统提醒>');
+    lines.push('<记忆>');
+
+    matches.forEach(item => {
+      const content = String(item.record.content || '').trim();
+      if (content) {
+        lines.push(content);
+      }
+    });
+
+    if (lines.length === 2) return '';
+
+    lines.push('</记忆>');
+    return lines.join('\n');
+  }
 }
 
 export const memoryStoreService = new MemoryStoreService();
 export default memoryStoreService;
-
