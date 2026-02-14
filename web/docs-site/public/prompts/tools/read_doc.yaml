@@ -1,31 +1,14 @@
 name: "read_doc"
 type: "execution"
-description: "读取单个文档的内容，支持指定行号范围，输出带行号的内容"
+description: "读取单个文档内容，可按行号范围读取。"
 usage: |
-  {
-    "tool": "read_doc",
-    "path": "文档路径"
-  }
-  或者带行号范围：
-  {
-    "tool": "read_doc",
-    "path": "文档路径",
-    "line_range": "起始行-结束行"
-  }
-examples:
-  - |-
-    {
-      "tool": "read_doc",
-      "path": "src/app.ts",
-      "line_range": "10-20"
-    }
-  - |-
-    {
-      "tool": "read_doc",
-      "path": "path/to/document.md",
-      "line_range": "1-30"
-    }
+  参数说明：
+  - path: string，必填。文档路径。
+  - line_range: string，可选。读取范围，格式为 "start-end"。
+  约束：
+  - 每次只读取一个文档。
+examples: []
 error_guidance: |
-  文档路径无效或文件不存在时返回错误，行号范围超出时提示有效范围。
-  注意：每次只能读取一个文档，如果需要读取多个文档，请分多次调用。
+  path 无效或文件不存在时返回错误。
+  line_range 格式错误或越界时返回错误并提示有效范围。
   建议：除非有充分理由需要完整读取文件，建议每次最多读取30行以提高效率。
