@@ -11,6 +11,8 @@
           <List v-else-if="toolCall.tool === 'list_docs'" class="h-4 w-4 text-base-content" />
           <!-- Ask Choice Icon -->
           <List v-else-if="toolCall.tool === 'ask_choice'" class="h-4 w-4 text-base-content" />
+          <!-- Explore Icon -->
+          <Compass v-else-if="toolCall.tool === 'explore'" class="h-4 w-4 text-base-content" />
           <!-- Default/Generic Tool Icon -->
           <Wrench v-else class="h-4 w-4 text-base-content" />
         </div>
@@ -29,12 +31,14 @@ import {
   Search,
   FileText,
   List,
+  Compass,
   Wrench
 } from 'lucide-vue-next';
 import { extractFileName } from '@/utils/pathUtils';
 
 interface ToolCall {
   tool: string;
+  tasks?: string[];
   query?: string;
   path?: string;
   limit?: number;
@@ -55,7 +59,8 @@ const toolNameMap: Record<string, string> = {
   search_docs: '检索文档',
   read_doc: '阅读文档',
   list_docs: '列出文档',
-  ask_choice: '询问选择'
+  ask_choice: '询问选择',
+  explore: '探索任务'
 };
 
 const formattedToolName = computed(() => {
@@ -83,6 +88,8 @@ const displayValue = computed(() => {
     }
     case 'ask_choice':
       return props.toolCall.question || '';
+    case 'explore':
+      return `任务数: ${Array.isArray(props.toolCall.tasks) ? props.toolCall.tasks.length : 0}`;
     default:
       return JSON.stringify(props.toolCall);
   }

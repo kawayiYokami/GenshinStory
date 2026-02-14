@@ -162,12 +162,12 @@ const scrollManager = useScrollManager({
 // --- Computed Properties ---
 /**
  * 计算属性：可见消息列表
- * 过滤掉隐藏的消息和系统/工具消息，只显示用户和智能体的对话
+ * 过滤掉隐藏消息和系统消息；保留 tool 消息用于展示工具执行卡片。
  */
 const visibleMessages = computed(() => {
   return agentStore.orderedMessages.filter(m => {
-    // 过滤掉所有 is_hidden 的消息，以及所有纯粹的系统/工具消息
-    return !m.is_hidden && m.role !== 'system' && m.role !== 'tool';
+    // 保留 tool 角色，避免工具完成后卡片消失
+    return !m.is_hidden && m.role !== 'system';
   });
 });
 

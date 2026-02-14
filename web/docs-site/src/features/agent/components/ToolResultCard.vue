@@ -1,36 +1,112 @@
 <template>
   <div class="card card-compact bg-base-100 border border-base-300 shadow-xs rounded-2xl" ref="toolResultCard">
     <div class="card-body p-0">
-      <div class="collapse collapse-arrow rounded-2xl ">
-        <input type="checkbox" />
-        <div class="collapse-title p-0 min-h-0">
-          <div class="tool-result-card items-center">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-success shrink-0">
-              <Info class="h-4 w-4 text-base-content" />
+      <div class="px-3 py-3 border-b border-base-200">
+        <div class="flex items-start gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-full shrink-0" :class="iconBgClass">
+            <component :is="toolIcon" class="h-4 w-4 text-base-content" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="text-sm font-medium text-base-content">{{ cardTitle }}</div>
+              <span class="badge badge-xs" :class="statusBadgeClass">{{ statusLabel }}</span>
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-base-content">检索结果</div>
-              <div class="text-xs opacity-70 truncate">{{ searchQuery }}</div>
-            </div>
+            <div class="text-xs opacity-70 mt-0.5 break-words">{{ callSummary }}</div>
           </div>
         </div>
-        <div class="collapse-content ">
-          <div class="pt-0 p-0">
-            <div v-if="parsedResults.length > 0" class="search-results-list">
+      </div>
+
+      <div class="collapse collapse-arrow rounded-b-2xl">
+        <input type="checkbox" v-model="resultExpanded" />
+        <div class="collapse-title py-2 px-3 min-h-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-base-content/60">执行结果</span>
+            <span v-if="isExploreResult && !isPending && expectedTaskCount !== null" class="text-[11px] text-base-content/60">
+              任务 {{ completedTaskCount }}/{{ expectedTaskCount }} · 子调用 {{ totalUsedCalls }} 次
+            </span>
+          </div>
+        </div>
+
+        <div class="collapse-content pt-0 px-3 pb-3">
+          <div v-if="isPending" class="flex items-center gap-2 text-xs opacity-80">
+            <span class="loading loading-spinner loading-xs"></span>
+            <span>{{ pendingText }}</span>
+          </div>
+
+          <template v-else>
+            <div v-if="isExploreResult" class="space-y-2">
+              <div class="flex flex-wrap gap-2">
+                <span v-if="expectedTaskCount !== null" class="badge badge-sm badge-ghost">计划任务 {{ expectedTaskCount }}</span>
+                <span class="badge badge-sm badge-ghost">返回任务 {{ completedTaskCount }}</span>
+                <span class="badge badge-sm badge-primary">子调用 {{ totalUsedCalls }} 次</span>
+                <span v-if="configuredMaxToolCalls > 0" class="badge badge-sm badge-ghost">单任务上限 {{ configuredMaxToolCalls }}</span>
+                <span v-if="statusCounts.success > 0" class="badge badge-sm badge-success">成功 {{ statusCounts.success }}</span>
+                <span v-if="statusCounts.partial > 0" class="badge badge-sm badge-warning">部分 {{ statusCounts.partial }}</span>
+                <span v-if="statusCounts.failed > 0" class="badge badge-sm badge-error">失败 {{ statusCounts.failed }}</span>
+                <span v-if="statusCounts.timeout > 0" class="badge badge-sm badge-error">超时 {{ statusCounts.timeout }}</span>
+              </div>
+
+              <div v-if="exploreReports.length > 0" class="space-y-2">
+                <div
+                  v-for="(item, idx) in exploreReports"
+                  :key="`${item.task || idx}-${idx}`"
+                  class="rounded-xl border border-base-200 bg-base-100 p-3"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="text-sm font-medium">{{ item.task || `任务 ${idx + 1}` }}</div>
+                    <div class="flex items-center gap-1">
+                      <span class="badge badge-xs" :class="reportStatusClass(item.status)">{{ reportStatusLabel(item.status) }}</span>
+                      <span class="badge badge-xs badge-ghost">{{ Number(item.usedCalls || 0) }}/{{ Number(item.maxToolCalls || configuredMaxToolCalls || 0) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-2 text-xs opacity-85 whitespace-pre-wrap">{{ item.answer || item.summary || '无结论' }}</div>
+
+                  <div v-if="item.insights && item.insights.length > 0" class="mt-2 text-xs">
+                    <div class="font-semibold opacity-80">见解</div>
+                    <div v-for="(insight, i2) in item.insights" :key="`insight-${idx}-${i2}`" class="opacity-70">
+                      {{ i2 + 1 }}. {{ insight }}
+                    </div>
+                  </div>
+
+                  <div v-if="item.references && item.references.length > 0" class="mt-2 text-xs">
+                    <div class="font-semibold opacity-80">相关文件行号</div>
+                    <div class="mt-1 flex flex-wrap gap-1.5">
+                      <template v-for="(refText, r2) in item.references" :key="`ref-${idx}-${r2}`">
+                        <button
+                          v-if="buildRawLinkFromReference(refText)"
+                          class="badge badge-sm badge-outline internal-doc-link font-mono"
+                          :data-raw-link="buildRawLinkFromReference(refText)"
+                          :data-snippet="item.answer || item.summary || ''"
+                          @click="handleLinkClick"
+                        >
+                          {{ refText }}
+                        </button>
+                        <span v-else class="badge badge-sm badge-outline font-mono">{{ refText }}</span>
+                      </template>
+                    </div>
+                  </div>
+
+                  <div v-if="item.error" class="mt-2 text-[11px] text-error">错误: {{ item.error }}</div>
+                </div>
+              </div>
+
+              <div v-else class="text-xs opacity-70">暂无可展示的探索结果。</div>
+            </div>
+
+            <div v-else-if="parsedResults.length > 0" class="search-results-list">
               <div class="flex items-center justify-between mb-2 px-1">
                 <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">
                   找到 {{ isGrouped ? totalFiles : parsedResults.length }} 个相关结果
                 </span>
               </div>
               <div class="space-y-2">
-                <!-- 分组模式显示 -->
                 <template v-if="isGrouped">
                   <div
                     v-for="(group, index) in parsedResults"
                     :key="index"
                     class="search-result-group border border-base-200 rounded-xl bg-base-100"
                   >
-                    <!-- 文件标题 -->
                     <button
                       class="search-result-item internal-doc-link w-full text-left group relative p-3 rounded-t-xl hover:bg-base-200 transition-colors"
                       :data-path="group.path || ''"
@@ -54,7 +130,6 @@
                       </div>
                     </button>
 
-                    <!-- 命中详情 -->
                     <div class="border-t border-base-200 px-3 pb-3 pt-2">
                       <div class="space-y-2">
                         <div
@@ -81,7 +156,6 @@
                   </div>
                 </template>
 
-                <!-- 原始非分组模式 -->
                 <template v-else>
                   <button
                     v-for="(item, index) in parsedResults"
@@ -91,12 +165,9 @@
                     :data-raw-link="`[[${item.title || extractFileName(item.path || '')}|path:${item.path || ''}${(item as SearchResult).line ? ':' + (item as SearchResult).line : ''}]]`"
                     @click="handleLinkClick"
                   >
-                    <!-- 标题行 -->
                     <div class="flex items-start justify-between gap-3 w-full">
                       <div class="flex items-center gap-2 min-w-0">
-                        <span
-                          class="font-semibold text-sm text-base-content group-hover:text-accent-content transition-colors truncate"
-                        >
+                        <span class="font-semibold text-sm text-base-content group-hover:text-accent-content transition-colors truncate">
                           {{ item.title || extractFileName(item.path || '') }}
                         </span>
                       </div>
@@ -105,7 +176,6 @@
                       </div>
                     </div>
 
-                    <!-- 摘要 -->
                     <div v-if="(item as SearchResult).snippet" class="relative pl-3 w-full">
                       <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-base-300 group-hover:bg-accent-content transition-colors rounded-full"></div>
                       <div class="text-xs text-base-content/70 line-clamp-2 leading-relaxed font-mono">
@@ -113,7 +183,6 @@
                       </div>
                     </div>
 
-                    <!-- 路径 -->
                     <div class="flex items-center gap-1.5 px-1 mt-0.5 w-full">
                       <span class="text-[10px] text-base-content/40 truncate font-mono">{{ item.path }}</span>
                     </div>
@@ -122,12 +191,11 @@
               </div>
             </div>
 
-            <!-- 原始内容作为后备 -->
-            <div v-if="!hasValidResults" class="mt-2">
+            <div v-else class="mt-1">
               <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-2">原始响应内容</div>
               <pre class="whitespace-pre-wrap break-all font-mono text-xs bg-base-100 border border-base-200 p-3 rounded-xl text-base-content/80">{{ formattedContent }}</pre>
             </div>
-          </div>
+          </template>
         </div>
       </div>
     </div>
@@ -135,9 +203,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Info, ExternalLink } from 'lucide-vue-next';
-import { processSingleLinkText } from '@/features/viewer/services/MarkdownRenderingService';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { Compass, FileText, List, Search, Wrench } from 'lucide-vue-next';
 import { extractFileName } from '@/utils/pathUtils';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
 import linkProcessorService from '@/lib/linkProcessor/linkProcessorService';
@@ -164,148 +231,389 @@ interface GroupedSearchResult {
   hitCount?: number;
 }
 
+interface ExploreReport {
+  task?: string;
+  status?: 'success' | 'partial' | 'failed' | 'timeout';
+  answer?: string;
+  insights?: string[];
+  references?: string[];
+  summary?: string;
+  usedCalls?: number;
+  maxToolCalls?: number;
+  error?: string;
+}
+
+interface ParsedData {
+  tool: string;
+  query: string;
+  results: Array<SearchResult | GroupedSearchResult>;
+  grouped: boolean;
+  message: string;
+  reports: ExploreReport[];
+}
+
 interface Props {
   content?: string;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  status?: string;
+  isPending?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  content: ''
+  content: '',
+  toolName: '',
+  toolInput: () => ({}),
+  status: 'done',
+  isPending: false,
 });
 
 const toolResultCard = ref<HTMLElement | null>(null);
+const resultExpanded = ref<boolean>(false);
 
-// 处理内部链接点击
+watch(
+  () => props.isPending,
+  (pending) => {
+    if (pending) {
+      resultExpanded.value = false;
+    }
+  },
+  { immediate: true }
+);
+
 const handleLinkClick = async (event: Event) => {
   const target = (event.target as HTMLElement).closest('.internal-doc-link') as HTMLElement | null;
-  if (target && target.dataset.rawLink) {
-    event.preventDefault();
-    event.stopPropagation();
+  if (!target || !target.dataset.rawLink) return;
 
-    const rawLink = target.dataset.rawLink;
-    let snippet = target.dataset.snippet;
+  event.preventDefault();
+  event.stopPropagation();
 
-    // 清理摘要格式
-    if (snippet) {
-      snippet = snippet.replace(/^>\s*/, '').replace(/\.\.\.$/, '');
+  const rawLink = target.dataset.rawLink;
+  let snippet = target.dataset.snippet;
+  if (snippet) {
+    snippet = snippet.replace(/^>\s*/, '').replace(/\.\.\.$/, '');
+  }
+
+  try {
+    const result: LinkResolutionResult = await linkProcessorService.resolveLink(rawLink);
+    if (result.isValid && result.resolvedPath) {
+      const docViewerStore = useDocumentViewerStore();
+      docViewerStore.open(result.resolvedPath, undefined, snippet ? [snippet] : undefined);
+      return;
     }
-
-    if (rawLink) {
-      try {
-        const result: LinkResolutionResult = await linkProcessorService.resolveLink(rawLink);
-
-        if (result.isValid && result.resolvedPath) {
-          const docViewerStore = useDocumentViewerStore();
-          // 不传递行号，只传递摘要作为关键词
-          docViewerStore.open(result.resolvedPath, undefined, snippet ? [snippet] : undefined);
-        } else {
-          alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
-        }
-      } catch (error) {
-        console.error('处理链接点击时出错:', error);
-        alert(`链接处理失败: ${error}`);
-      }
-    }
+    alert(`链接指向的路径 "${result.originalPath}" 无法被解析或找到。`);
+  } catch (error) {
+    console.error('处理链接点击时出错:', error);
+    alert(`链接处理失败: ${error}`);
   }
 };
 
-// 判断是否为分组结果的辅助函数
-const isGroupedResult = (item: any): item is GroupedSearchResult => {
-  return item && typeof item === 'object' && 'hits' in item && Array.isArray(item.hits);
+const isGroupedResult = (item: unknown): item is GroupedSearchResult => {
+  return Boolean(item && typeof item === 'object' && 'hits' in (item as Record<string, unknown>) && Array.isArray((item as GroupedSearchResult).hits));
 };
 
-// 组件挂载时添加事件监听
 onMounted(() => {
   if (toolResultCard.value) {
     toolResultCard.value.addEventListener('click', handleLinkClick);
   }
 });
 
-// 组件卸载时清理事件监听
 onUnmounted(() => {
   if (toolResultCard.value) {
     toolResultCard.value.removeEventListener('click', handleLinkClick);
   }
 });
 
-// 解析搜索结果 - 支持分组格式、新的平铺格式和旧格式
-const parsedData = computed(() => {
-  if (!props.content) return { query: '', results: [], grouped: false };
+function parseJsonContent(content: string): unknown {
+  const text = String(content || '').trim();
+  if (!text) return null;
 
   try {
-    // 尝试从内容中提取JSON部分
-    let jsonStr = props.content;
-
-    // 如果内容包含非JSON文本，尝试查找JSON对象
-    const jsonMatch = props.content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[0];
-    }
-
-    const parsed = JSON.parse(jsonStr);
-
-    // 新的平铺格式：{"tool": "search_docs", "query": "玛拉妮", "results": [...], "grouped": true}
-    if (parsed.tool === 'search_docs') {
-      return {
-        query: parsed.query || '',
-        results: parsed.results || [],
-        grouped: parsed.grouped === true
-      };
-    }
-
-    // 兼容旧格式：{"query": "...", "results": [...], "grouped": true}
-    if (parsed.query && Array.isArray(parsed.results)) {
-      return {
-        query: parsed.query,
-        results: parsed.results,
-        grouped: parsed.grouped === true
-      };
-    } else if (parsed.docs && Array.isArray(parsed.docs)) {
-      // 兼容旧文档列表格式：{"docs": [...]}
-      return {
-        query: '展开查看文档',
-        results: parsed.docs,
-        grouped: false
-      };
-    }
-  } catch (error) {
-    console.error('Failed to parse tool result:', error);
-    console.log('Content that failed to parse:', props.content);
+    return JSON.parse(text);
+  } catch {
+    // ignore
   }
 
-  return { query: '', results: [], grouped: false };
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+    } catch {
+      // ignore
+    }
+  }
+
+  return null;
+}
+
+const parsedData = computed<ParsedData>(() => {
+  const parsed = parseJsonContent(props.content);
+  if (!parsed || typeof parsed !== 'object') {
+    return { tool: '', query: '', results: [], grouped: false, message: '', reports: [] };
+  }
+
+  const data = parsed as Record<string, unknown>;
+
+  if (data.tool === 'explore') {
+    return {
+      tool: 'explore',
+      query: '',
+      results: [],
+      grouped: false,
+      message: String(data.message || ''),
+      reports: Array.isArray(data.reports) ? (data.reports as ExploreReport[]) : [],
+    };
+  }
+
+  if (data.tool === 'search_docs') {
+    return {
+      tool: 'search_docs',
+      query: String(data.query || ''),
+      results: Array.isArray(data.results) ? (data.results as Array<SearchResult | GroupedSearchResult>) : [],
+      grouped: data.grouped === true,
+      message: String(data.message || ''),
+      reports: [],
+    };
+  }
+
+  if (typeof data.query === 'string' && Array.isArray(data.results)) {
+    return {
+      tool: typeof data.tool === 'string' ? data.tool : '',
+      query: data.query,
+      results: data.results as Array<SearchResult | GroupedSearchResult>,
+      grouped: data.grouped === true,
+      message: String(data.message || ''),
+      reports: [],
+    };
+  }
+
+  if (Array.isArray(data.docs)) {
+    return {
+      tool: typeof data.tool === 'string' ? data.tool : '',
+      query: '展开查看文档',
+      results: data.docs as Array<SearchResult | GroupedSearchResult>,
+      grouped: false,
+      message: '',
+      reports: [],
+    };
+  }
+
+  return { tool: '', query: '', results: [], grouped: false, message: '', reports: [] };
 });
 
-const searchQuery = computed(() => parsedData.value.query);
-const parsedResults = computed(() => parsedData.value.results as (SearchResult | GroupedSearchResult)[]);
+const toolInputRecord = computed(() => {
+  if (!props.toolInput || typeof props.toolInput !== 'object') return {} as Record<string, unknown>;
+  return props.toolInput;
+});
+
+const resolvedToolName = computed(() => {
+  return String(props.toolName || parsedData.value.tool || 'unknown_tool');
+});
+
+const toolDisplayNameMap: Record<string, string> = {
+  search_docs: '检索文档',
+  read_doc: '阅读文档',
+  explore: '探索',
+  ask_choice: '询问选择',
+};
+
+const toolIcon = computed(() => {
+  switch (resolvedToolName.value) {
+    case 'search_docs':
+      return Search;
+    case 'read_doc':
+      return FileText;
+    case 'explore':
+      return Compass;
+    case 'ask_choice':
+      return List;
+    default:
+      return Wrench;
+  }
+});
+
+const isPending = computed(() => Boolean(props.isPending));
+const pendingText = computed(() => {
+  const text = String(props.content || '').trim();
+  return text || '工具正在执行中...';
+});
+
+const isErrorResult = computed(() => {
+  if (isPending.value) return false;
+  const text = String(props.content || '').trim();
+  if (!text) return false;
+  return text.startsWith('错误(') || text.startsWith('错误:') || text.startsWith('ERROR(');
+});
+
+const statusLabel = computed(() => {
+  if (isPending.value) return '执行中';
+  if (isErrorResult.value) return '失败';
+  return '已完成';
+});
+
+const statusBadgeClass = computed(() => {
+  if (isPending.value) return 'badge-info';
+  if (isErrorResult.value) return 'badge-error';
+  return 'badge-success';
+});
+
+const iconBgClass = computed(() => {
+  if (isPending.value) return 'bg-info/30';
+  if (isErrorResult.value) return 'bg-error/20';
+  return 'bg-success/30';
+});
+
+const exploreReports = computed(() => parsedData.value.reports || []);
+const isExploreResult = computed(() => resolvedToolName.value === 'explore' || parsedData.value.tool === 'explore');
+const parsedResults = computed(() => parsedData.value.results as Array<SearchResult | GroupedSearchResult>);
 const isGrouped = computed(() => parsedData.value.grouped);
 const totalFiles = computed(() => parsedResults.value.length);
-const hasValidResults = computed(() => parsedResults.value.length > 0);
 
-// 格式化原始内容为后备显示
-const formattedContent = computed(() => {
-  try {
-    // 尝试从内容中提取JSON部分
-    let jsonStr = props.content;
-
-    // 如果内容包含非JSON文本，尝试查找JSON对象
-    const jsonMatch = props.content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[0];
-    }
-
-    const parsed = JSON.parse(jsonStr);
-    return JSON.stringify(parsed, null, 2); // 格式化JSON
-  } catch {
-    return props.content;
+const requestedTasks = computed(() => {
+  const raw = (toolInputRecord.value as Record<string, unknown>).tasks;
+  if (Array.isArray(raw)) {
+    return raw.map(item => String(item || '').trim()).filter(Boolean);
   }
+  if (typeof raw === 'string') {
+    const text = raw.trim();
+    if (!text) return [];
+    if (text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          return parsed.map(item => String(item || '').trim()).filter(Boolean);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return [text];
+  }
+  return [];
 });
 
-// 导航到文档（保留作为后备）
-const navigateToDocument = (path?: string) => {
-  if (!path) return;
+const taskCountFromContent = computed<number | null>(() => {
+  const content = String(props.content || '');
+  const match = content.match(/(\d+)\s*个任务/);
+  if (!match) return null;
+  const count = Number(match[1]);
+  return Number.isFinite(count) && count >= 0 ? count : null;
+});
 
-  // 发送自定义事件给父组件处理导航
-  const event = new CustomEvent('navigate-to-document', { detail: { path } });
-  window.dispatchEvent(event);
-};
+const expectedTaskCount = computed<number | null>(() => {
+  if (requestedTasks.value.length > 0) return requestedTasks.value.length;
+  if (taskCountFromContent.value !== null) return taskCountFromContent.value;
+  if (exploreReports.value.length > 0) return exploreReports.value.length;
+  return null;
+});
+
+const completedTaskCount = computed(() => exploreReports.value.length);
+const totalUsedCalls = computed(() => {
+  return exploreReports.value.reduce((sum, item) => sum + Number(item.usedCalls || 0), 0);
+});
+
+const configuredMaxToolCalls = computed(() => {
+  const fromInput = Number((toolInputRecord.value as Record<string, unknown>).maxToolCalls || 0);
+  if (Number.isFinite(fromInput) && fromInput > 0) {
+    return Math.floor(fromInput);
+  }
+  const fromReport = Number(exploreReports.value[0]?.maxToolCalls || 0);
+  if (Number.isFinite(fromReport) && fromReport > 0) {
+    return Math.floor(fromReport);
+  }
+  return 0;
+});
+
+const statusCounts = computed(() => {
+  return exploreReports.value.reduce((acc, item) => {
+    const key = String(item.status || '');
+    if (key === 'success') acc.success += 1;
+    if (key === 'partial') acc.partial += 1;
+    if (key === 'failed') acc.failed += 1;
+    if (key === 'timeout') acc.timeout += 1;
+    return acc;
+  }, { success: 0, partial: 0, failed: 0, timeout: 0 });
+});
+
+function timeoutLabelFromInput(): string {
+  const timeoutMs = Number((toolInputRecord.value as Record<string, unknown>).timeoutMs || 0);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return '';
+  const minutes = Math.round((timeoutMs / 60000) * 10) / 10;
+  return `${minutes} 分钟`;
+}
+
+const callSummary = computed(() => {
+  const tool = resolvedToolName.value;
+  const input = toolInputRecord.value as Record<string, unknown>;
+
+  if (tool === 'explore') {
+    const taskText = expectedTaskCount.value !== null
+      ? `${expectedTaskCount.value} 个`
+      : '若干';
+    const maxCalls = configuredMaxToolCalls.value > 0 ? `，单任务上限 ${configuredMaxToolCalls.value} 次` : '';
+    const timeout = timeoutLabelFromInput();
+    const timeoutText = timeout ? `，超时 ${timeout}` : '';
+    return `发起 ${taskText}探索子任务${maxCalls}${timeoutText}。`;
+  }
+
+  if (tool === 'search_docs') {
+    const query = String(input.query || '').trim();
+    const path = String(input.path || '').trim();
+    const maxResults = Number(input.maxResults || 0);
+    const resultLimit = Number.isFinite(maxResults) && maxResults > 0 ? `，最多 ${Math.floor(maxResults)} 条` : '';
+    return `query: ${query || '(空)'}${path ? `，path: ${path}` : ''}${resultLimit}`;
+  }
+
+  if (tool === 'read_doc') {
+    const path = String(input.path || '').trim();
+    const range = String(input.line_range || '').trim();
+    return `${path || '(未指定路径)'}${range ? `，行 ${range}` : ''}`;
+  }
+
+  if (tool === 'ask_choice') {
+    return String(input.question || '等待用户选择').trim();
+  }
+
+  return '已调用工具。';
+});
+
+const cardTitle = computed(() => {
+  const display = toolDisplayNameMap[resolvedToolName.value] || resolvedToolName.value;
+  return `工具执行 · ${display}`;
+});
+
+const formattedContent = computed(() => {
+  const parsed = parseJsonContent(props.content);
+  if (parsed && typeof parsed === 'object') {
+    return JSON.stringify(parsed, null, 2);
+  }
+  return props.content;
+});
+
+function reportStatusLabel(status?: string): string {
+  if (status === 'success') return '成功';
+  if (status === 'partial') return '部分成功';
+  if (status === 'timeout') return '超时';
+  if (status === 'failed') return '失败';
+  return '未知';
+}
+
+function reportStatusClass(status?: string): string {
+  if (status === 'success') return 'badge-success';
+  if (status === 'partial') return 'badge-warning';
+  if (status === 'timeout' || status === 'failed') return 'badge-error';
+  return 'badge-ghost';
+}
+
+function buildRawLinkFromReference(reference: string): string {
+  const text = String(reference || '').trim();
+  if (!text) return '';
+  const match = text.match(/^(.+?):(\d+(?:-\d+)?)$/);
+  if (!match) return '';
+  const filePath = match[1];
+  const lineToken = match[2];
+  const firstLine = lineToken.split('-')[0];
+  return `[[${extractFileName(filePath)}|path:${filePath}:${firstLine}]]`;
+}
 </script>

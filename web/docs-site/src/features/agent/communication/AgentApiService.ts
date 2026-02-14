@@ -90,7 +90,9 @@ export class AgentApiService {
     if (useStructured) {
       try {
         await toolRegistryService.loadTools();
-        const tools = toolRegistryService.toSdkToolDefinitions();
+        const tools = toolRegistryService.toSdkToolDefinitions({
+          includedTools: ['search_docs', 'read_doc', 'explore', 'ask_choice'],
+        });
         const structuredResult = await llmProviderService.createStructuredChatCompletion(
           apiMessages,
           this.activeConfig.value,
@@ -157,6 +159,76 @@ export class AgentApiService {
       toolName: string;
       toolInput: Record<string, unknown>;
     } | null = null;
+    const streamedToolCallIds = new Set<string>();
+    const streamedToolResultIds = new Set<string>();
+
+    const toPlainResultContent = (value: unknown): string => {
+      if (typeof value === 'string') return value;
+      if (value === undefined || value === null) return '';
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    };
+
+    const toToolInput = (raw: unknown): Record<string, unknown> => {
+      const parseJsonObject = (text: string): Record<string, unknown> => {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed as Record<string, unknown>;
+          }
+        } catch {
+          // ignore
+        }
+        return {};
+      };
+
+      if (raw === null || raw === undefined) return {};
+      if (typeof raw === 'string') {
+        return parseJsonObject(raw);
+      }
+      if (typeof raw !== 'object' || Array.isArray(raw)) return {};
+
+      const obj = raw as Record<string, unknown>;
+      const nestedInput = obj.input;
+      const nestedArgs = obj.args;
+
+      if (nestedInput && typeof nestedInput === 'object' && !Array.isArray(nestedInput)) {
+        return nestedInput as Record<string, unknown>;
+      }
+      if (typeof nestedInput === 'string') {
+        const parsed = parseJsonObject(nestedInput);
+        if (Object.keys(parsed).length > 0) return parsed;
+      }
+      if (nestedArgs && typeof nestedArgs === 'object' && !Array.isArray(nestedArgs)) {
+        return nestedArgs as Record<string, unknown>;
+      }
+      if (typeof nestedArgs === 'string') {
+        const parsed = parseJsonObject(nestedArgs);
+        if (Object.keys(parsed).length > 0) return parsed;
+      }
+
+      return obj;
+    };
+
+    const normalizeToolCall = (toolCall: any, fallbackId: string) => {
+      const toolName = String(toolCall?.toolName || toolCall?.name || '');
+      const toolCallId = String(toolCall?.toolCallId || toolCall?.id || toolCall?.callId || fallbackId);
+      const toolInput = toToolInput(toolCall?.input ?? toolCall?.args ?? {});
+      return { toolName, toolCallId, toolInput };
+    };
+
+    const normalizeToolResult = (toolResult: any, fallbackId: string) => {
+      const toolName = String(toolResult?.toolName || toolResult?.name || '');
+      const toolCallId = String(toolResult?.toolCallId || toolResult?.id || toolResult?.callId || fallbackId);
+      let output = toolResult?.result ?? toolResult?.output ?? toolResult?.content ?? toolResult?.value ?? '';
+      if (output && typeof output === 'object' && 'value' in output) {
+        output = (output as { value: unknown }).value;
+      }
+      return { toolName, toolCallId, output };
+    };
 
     logger.log('[AgentApiService] 开始消费 fullStream...');
 
@@ -208,13 +280,17 @@ export class AgentApiService {
             case 'tool-call':
               // SDK 自动执行工具，这里只更新 UI 状态
               logger.log(`[AgentApiService] tool-call 事件: ${part.toolName}`, { toolCallId: part.toolCallId, args: part.args });
+              const normalizedToolInput = toToolInput(part.args ?? part.input ?? {});
 
               // 保存工具调用信息，供 tool-result 时使用
               currentToolCall = {
                 toolCallId: part.toolCallId,
                 toolName: part.toolName,
-                toolInput: part.args || {},
+                toolInput: normalizedToolInput,
               };
+              if (part.toolCallId) {
+                streamedToolCallIds.add(String(part.toolCallId));
+              }
 
               // 先闭合当前文本消息（如果有）
               if (messageId) {
@@ -226,14 +302,45 @@ export class AgentApiService {
                 messageId = null;
               }
 
+              // 关键修复：为执行工具补齐 assistant.tool_calls 历史，
+              // 确保后续的 tool_result 在协议层有合法前置。
+              if (part.toolName && part.toolName !== 'ask_choice') {
+                const toolCallMessage = await this.messageManager.addMessage({
+                  role: 'assistant',
+                  type: 'text',
+                  content: '',
+                  status: 'done',
+                  streamCompleted: true,
+                  tool_calls: [{
+                    tool: part.toolName,
+                    action_id: part.toolCallId,
+                    ...normalizedToolInput,
+                  }] as any,
+                });
+
+                if (toolCallMessage) {
+                  assistantMessage = toolCallMessage;
+                }
+              }
+
+              let statusContent = `正在执行工具: ${part.toolName}...`;
+              if (part.toolName === 'explore') {
+                const tasks = Array.isArray(normalizedToolInput.tasks)
+                  ? normalizedToolInput.tasks.map(task => String(task || '').trim()).filter(Boolean)
+                  : [];
+                if (tasks.length > 0) {
+                  statusContent = `正在执行工具: ${part.toolName}（${tasks.length} 个任务）...`;
+                }
+              }
+
               const statusMsg = await this.messageManager.addMessage({
                 role: 'assistant',
                 type: 'tool_status',
-                content: `正在执行工具: ${part.toolName}...`,
+                content: statusContent,
                 status: 'rendering',
                 toolCallId: part.toolCallId,
                 toolName: part.toolName,
-                toolInput: part.args || {},
+                toolInput: normalizedToolInput,
               });
               if (statusMsg) {
                 currentToolStatusId = statusMsg.id;
@@ -251,7 +358,10 @@ export class AgentApiService {
               // 获取工具调用信息（优先使用 part 中的，其次使用保存的）
               const toolCallId = part.toolCallId || currentToolCall?.toolCallId;
               const toolName = part.toolName || currentToolCall?.toolName;
-              const toolInput = part.input || part.args || currentToolCall?.toolInput || {};
+              const toolInput = toToolInput(part.input ?? part.args ?? currentToolCall?.toolInput ?? {});
+              if (toolCallId) {
+                streamedToolResultIds.add(String(toolCallId));
+              }
 
               // 如果有状态消息，替换为结果消息
               if (currentToolStatusId) {
@@ -321,10 +431,97 @@ export class AgentApiService {
       logger.warn('[AgentApiService] 获取 finishReason/steps 失败:', e);
     }
 
+    // 关键修复：当 provider 未通过 fullStream 派发工具事件时，
+    // 依赖 steps 回填 tool_call/tool_result，确保 explore 等工具一定进入会话记录。
+    try {
+      const candidateSteps: any[] = Array.isArray(steps) ? [...steps] : [];
+      const topToolCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
+      const topToolResults = Array.isArray(result?.toolResults) ? result.toolResults : [];
+      if (candidateSteps.length === 0 && (topToolCalls.length > 0 || topToolResults.length > 0)) {
+        candidateSteps.push({ toolCalls: topToolCalls, toolResults: topToolResults });
+      }
+
+      for (let stepIndex = 0; stepIndex < candidateSteps.length; stepIndex += 1) {
+        const step = candidateSteps[stepIndex];
+        const stepToolCalls = Array.isArray(step?.toolCalls) ? step.toolCalls : [];
+        const stepToolResults = Array.isArray(step?.toolResults) ? step.toolResults : [];
+
+        const resultsById = new Map<string, any>();
+        for (let resultIndex = 0; resultIndex < stepToolResults.length; resultIndex += 1) {
+          const normalized = normalizeToolResult(stepToolResults[resultIndex], `step_${stepIndex}_result_${resultIndex}`);
+          if (normalized.toolCallId) {
+            resultsById.set(normalized.toolCallId, normalized);
+          }
+        }
+
+        for (let callIndex = 0; callIndex < stepToolCalls.length; callIndex += 1) {
+          const call = normalizeToolCall(stepToolCalls[callIndex], `step_${stepIndex}_call_${callIndex}`);
+          if (!call.toolName || call.toolName === 'ask_choice') {
+            continue;
+          }
+
+          if (!streamedToolCallIds.has(call.toolCallId)) {
+            await this.messageManager.addMessage({
+              role: 'assistant',
+              type: 'text',
+              content: '',
+              status: 'done',
+              streamCompleted: true,
+              tool_calls: [{
+                tool: call.toolName,
+                action_id: call.toolCallId,
+                ...(call.toolInput || {}),
+              }] as any,
+            });
+            streamedToolCallIds.add(call.toolCallId);
+          }
+
+          if (!streamedToolResultIds.has(call.toolCallId)) {
+            const matched = resultsById.get(call.toolCallId);
+            const rawOutput = matched?.output ?? '';
+            const resultContent = toPlainResultContent(rawOutput);
+
+            await this.messageManager.addMessage({
+              role: 'tool',
+              type: 'tool_result',
+              content: resultContent,
+              status: 'done',
+              toolCallId: call.toolCallId,
+              toolName: call.toolName,
+              toolInput: call.toolInput || {},
+            });
+            streamedToolResultIds.add(call.toolCallId);
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn('[AgentApiService] 从 steps 回填工具消息失败:', e);
+    }
+
     // 如果流结束时还没计算思维耗时，现在计算
     if (reasoningStartTime && reasoningDuration === null) {
       reasoningDuration = Math.round((Date.now() - reasoningStartTime) / 1000);
       logger.log(`[AgentApiService] 思维链完成（流结束），耗时: ${reasoningDuration}s`);
+    }
+
+    // 非流式模式下可能没有 text-delta，兜底补一条 assistant 文本消息
+    if (!assistantMessage && !messageId) {
+      const finalText = typeof result?.text === 'string'
+        ? result.text
+        : (typeof result?.outputText === 'string' ? result.outputText : '');
+      if (finalText && finalText.trim()) {
+        const finalMsg = await this.messageManager.addMessage({
+          role: 'assistant',
+          content: finalText,
+          type: 'text',
+          status: 'done',
+          streamCompleted: true,
+        });
+        if (finalMsg) {
+          assistantMessage = finalMsg;
+          messageId = finalMsg.id;
+        }
+      }
     }
 
     // 如果没有创建消息但有 reasoning，创建一个空消息承载

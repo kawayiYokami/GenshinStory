@@ -96,6 +96,13 @@ export function toModelMessages(storeMessages: Message[]): ModelMessage[] {
 
     // 处理 tool_result 消息
     if (message.role === 'tool' || message.type === 'tool_result') {
+      // 关键约束：tool 消息必须响应前置 assistant.tool_calls。
+      // 当前会话存储里通常只有 tool_result，没有结构化的 assistant tool_calls，
+      // 因此这里必须在存在 pendingToolPairs 时才允许序列化为 role=tool。
+      if (pendingToolPairs.length === 0) {
+        continue;
+      }
+
       const fallbackPair = pendingToolPairs[0];
       const toolCallId = message.toolCallId || fallbackPair?.toolCallId;
       const toolName = message.toolName || fallbackPair?.toolName;

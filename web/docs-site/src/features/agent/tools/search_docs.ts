@@ -8,6 +8,7 @@ interface SearchDocsParams {
   regex?: string;
   args?: string;
   maxResults?: number;
+  scoutId?: string;
 }
 
 const searchDocsTool: Tool<SearchDocsParams> = {

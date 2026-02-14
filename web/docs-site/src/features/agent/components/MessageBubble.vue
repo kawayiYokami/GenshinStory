@@ -56,7 +56,7 @@
   </div>
 
   <!-- 助理消息：简化为直接内容展示，靠左对齐，右侧留空 -->
-  <div v-else class="message-container animate-slide-in-left" :class="{ 'streaming-message': !message.streamCompleted && message.type === 'text' && message.status !== 'error', 'typing-indicator': !message.streamCompleted && message.type === 'text' && message.status !== 'error' }" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
+  <div v-else-if="!shouldHideAssistantMessage" class="message-container animate-slide-in-left" :class="{ 'streaming-message': !message.streamCompleted && message.type === 'text' && message.status !== 'error', 'typing-indicator': !message.streamCompleted && message.type === 'text' && message.status !== 'error' }" style="animation-duration: 0.3s;" :data-message-id="message.id" :data-message-role="message.role">
     <!-- DEBUG: Raw Content View -->
     <pre v-if="showRawContent" class="raw-content-debug">{{ message }}</pre>
 
@@ -95,14 +95,6 @@
       <!-- 主要内容 -->
       <div v-if="renderedHtml" class="prose-styling-container" v-html="renderedHtml"></div>
 
-      <!-- 工具调用 -->
-      <template v-if="message.tool_calls && message.tool_calls.length > 0">
-        <div class="divider divider-start text-xs opacity-60">工具调用</div>
-        <div class="flex flex-wrap gap-2">
-          <ToolCallCard v-for="toolCall in message.tool_calls" :key="toolCall.tool + JSON.stringify(toolCall.params)" :tool-call="toolCall" />
-        </div>
-      </template>
-
       <!-- 建议问题（从内容中解析） -->
       <div v-if="parsedQuestion" class="mt-3">
         <QuestionSuggestions
@@ -113,17 +105,14 @@
       </div>
     </template>
 
-    <!-- 其他消息类型 -->
-    <div v-else-if="message.type === 'tool_status'" class="card bg-info text-info-content shadow-xl">
-      <div class="card-body p-3">
-        <div class="flex items-center gap-2">
-          <span class="loading loading-spinner loading-xs"></span>
-          <span class="text-sm font-medium">{{ message.content }}</span>
-        </div>
-      </div>
-    </div>
-
-    <ToolResultCard v-else-if="message.type === 'tool_result'" :content="typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 2)" />
+    <ToolResultCard
+      v-else-if="message.type === 'tool_status' || message.type === 'tool_result'"
+      :content="typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 2)"
+      :tool-name="message.toolName"
+      :tool-input="message.toolInput"
+      :status="message.status"
+      :is-pending="message.type === 'tool_status' || message.status === 'rendering'"
+    />
 
     <div v-else-if="message.type === 'error'" class="card bg-error text-error-content shadow-xl">
       <div class="card-body p-3">
@@ -145,7 +134,6 @@ import { useToast } from 'vue-toastification';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
 import { useSmartBuffer } from '@/composables/useSmartBuffer';
 import { Trash2, RefreshCw, Archive, MessageSquareMore } from 'lucide-vue-next';
-import ToolCallCard from './ToolCallCard.vue';
 import ToolResultCard from './ToolResultCard.vue';
 import QuestionSuggestions from './QuestionSuggestions.vue';
 
@@ -171,10 +159,13 @@ interface Question {
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool';
   type?: 'text' | 'tool_status' | 'tool_result' | 'error' | 'compression_summary';
   content: string | ContentPart[];
   tool_calls?: ToolCall[];
+  toolCallId?: string;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
   question?: Question;
   streamCompleted?: boolean;
   status?: string;
@@ -345,6 +336,20 @@ const renderedHtml = computed(() => {
   // 渲染表情
   content = ContentProcessor.renderWithEmotes(content, props.message.randomSeed);
   return content;
+});
+
+const shouldHideAssistantMessage = computed(() => {
+  if (props.message.role !== 'assistant' || props.message.type !== 'text') return false;
+  const hasToolCalls = Array.isArray(props.message.tool_calls) && props.message.tool_calls.length > 0;
+  if (!hasToolCalls) return false;
+  const contentText = typeof props.message.content === 'string'
+    ? props.message.content.trim()
+    : props.message.content
+        .map(item => item.type === 'text' ? (item.text || '') : '')
+        .join('')
+        .trim();
+  const hasReasoning = Boolean(props.message.reasoning?.trim());
+  return !contentText && !hasReasoning;
 });
 
 
