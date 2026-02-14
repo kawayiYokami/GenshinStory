@@ -8,7 +8,6 @@ import type { Message, ProtocolMode } from '@/features/agent/types';
 import type { MessageManager } from '@/features/agent/stores/messageManager';
 import { AgentProtocolRuntime } from './provider/AgentProtocolRuntime';
 import { AgentStreamProjector } from './stream/AgentStreamProjector';
-import { buildBackfillEvents, toAgentEventFromStreamPart } from './events/agentEventAdapter';
 
 /**
  * handleStream 返回结果
@@ -58,10 +57,7 @@ export class AgentApiService {
             logger.warn('[AgentApiService] fullStream 消费被中止。');
             break;
           }
-          const event = toAgentEventFromStreamPart(part);
-          if (event) {
-            await projector.consumeEvent(event);
-          }
+          await projector.consumePart(part);
         }
       }
     } catch (err: any) {
@@ -86,10 +82,7 @@ export class AgentApiService {
     }
 
     try {
-      const backfillEvents = buildBackfillEvents(result, steps);
-      for (const event of backfillEvents) {
-        await projector.consumeEvent(event);
-      }
+      await projector.backfillToolMessagesFromSteps(result, steps);
     } catch (e) {
       logger.warn('[AgentApiService] 从 steps 回填工具消息失败:', e);
     }
