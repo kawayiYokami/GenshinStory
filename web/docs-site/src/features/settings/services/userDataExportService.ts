@@ -105,6 +105,23 @@ export interface UserDataImportResult {
   warnings: string[];
 }
 
+export type MemoryLibraryExportPayload = MemoryRecord[];
+
+export type MemoryLibraryImportPayload = MemoryRecord[];
+
+export interface MemoryLibraryImportSummary {
+  schemaVersion: string;
+  exportedAt: string | null;
+  memoryRecords: number;
+}
+
+export interface MemoryLibraryImportResult {
+  strategy: UserDataImportStrategy;
+  applied: boolean;
+  summary: MemoryLibraryImportSummary;
+  warnings: string[];
+}
+
 interface NormalizedAgentState {
   sessions: Record<string, unknown>;
   activeSessionIds: Record<string, string | null>;
@@ -313,13 +330,22 @@ function analyzeImportPayload(payload: UserDataImportPayload): UserDataImportSum
   };
 }
 
+function buildMemoryImportSummary(payload: MemoryLibraryImportPayload): MemoryLibraryImportSummary {
+  const importedRecords = normalizeMemoryRecords(payload as unknown[]);
+  return {
+    schemaVersion: 'json',
+    exportedAt: null,
+    memoryRecords: importedRecords.length,
+  };
+}
+
 function formatDateForFileName(date: Date): string {
   return date.toISOString().replace(/[:.]/g, '-');
 }
 
-function downloadJson(payload: UserDataExportPayload): UserDataExportResult {
+function downloadJson(payload: unknown, filePrefix: string): UserDataExportResult {
   const now = new Date();
-  const fileName = `story-user-data-export-${formatDateForFileName(now)}.json`;
+  const fileName = `${filePrefix}-${formatDateForFileName(now)}.json`;
   const serialized = JSON.stringify(payload, null, 2);
   const blob = new Blob([serialized], { type: 'application/json;charset=utf-8' });
   const objectUrl = URL.createObjectURL(blob);
@@ -458,6 +484,21 @@ async function applyMemoryImport(
   await memoryStoreService.mergeAll(importedRecords);
 }
 
+async function applyMemoryImportRecords(
+  records: unknown[],
+  strategy: Exclude<UserDataImportStrategy, 'preview'>
+): Promise<void> {
+  const importedRecords = normalizeMemoryRecords(records);
+  if (strategy === 'overwrite') {
+    await memoryStoreService.replaceAll(importedRecords);
+    return;
+  }
+
+  if (importedRecords.length > 0) {
+    await memoryStoreService.mergeAll(importedRecords);
+  }
+}
+
 export async function buildUserDataExportPayload(
   overrides: UserDataExportOverrides = {}
 ): Promise<UserDataExportPayload> {
@@ -523,7 +564,7 @@ export async function exportUserData(
   overrides: UserDataExportOverrides = {}
 ): Promise<UserDataExportResult> {
   const payload = await buildUserDataExportPayload(overrides);
-  return downloadJson(payload);
+  return downloadJson(payload, 'story-user-data-export');
 }
 
 export async function readUserDataImportFile(file: File): Promise<UserDataImportPayload> {
@@ -557,6 +598,62 @@ export async function importUserData(
     strategy,
     applied: true,
     summary: analyzeImportPayload(normalizedPayload),
+    warnings,
+  };
+}
+
+export async function buildMemoryLibraryExportPayload(): Promise<MemoryLibraryExportPayload> {
+  return memoryStoreService.list();
+}
+
+export async function exportMemoryLibrary(): Promise<UserDataExportResult> {
+  const payload = await buildMemoryLibraryExportPayload();
+  return downloadJson(payload, 'story-memory-library-export');
+}
+
+export async function readMemoryLibraryImportFile(file: File): Promise<MemoryLibraryImportPayload> {
+  const text = await file.text();
+  const raw = JSON.parse(text);
+  if (!Array.isArray(raw)) {
+    throw new Error('记忆导入文件格式错误：必须是 JSON 数组。');
+  }
+  return raw as MemoryLibraryImportPayload;
+}
+
+export function previewMemoryLibraryImport(payload: MemoryLibraryImportPayload): MemoryLibraryImportResult {
+  const summary = buildMemoryImportSummary(payload);
+  const warnings: string[] = [];
+
+  if (summary.memoryRecords === 0) {
+    warnings.push('文件中未发现有效记忆记录。');
+  }
+
+  return {
+    strategy: 'preview',
+    applied: false,
+    summary,
+    warnings,
+  };
+}
+
+export async function importMemoryLibrary(
+  payload: MemoryLibraryImportPayload,
+  strategy: Exclude<UserDataImportStrategy, 'preview'>
+): Promise<MemoryLibraryImportResult> {
+  const summary = buildMemoryImportSummary(payload);
+  const warnings: string[] = [];
+  const canApply = strategy === 'overwrite' || summary.memoryRecords > 0;
+
+  if (!canApply) {
+    warnings.push('未执行导入：没有可用的记忆记录。');
+  } else {
+    await applyMemoryImportRecords(payload as unknown[], strategy);
+  }
+
+  return {
+    strategy,
+    applied: canApply,
+    summary,
     warnings,
   };
 }
