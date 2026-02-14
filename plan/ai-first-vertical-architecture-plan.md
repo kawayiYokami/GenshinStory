@@ -19,7 +19,11 @@
    - `stream/toolEventNormalizer.ts`（事件归一）
    - `stream/AgentStreamProjector.ts`（UI 投影）
    - `AgentApiService.ts` 退化为编排层。
-4. 验证：
+4. `AgentEvent` 契约化（第三阶段）：
+   - `events/AgentEvent.ts` 定义统一事件类型；
+   - `events/agentEventAdapter.ts` 统一转换 `fullStream part` 与 `steps backfill`；
+   - `AgentStreamProjector` 只消费 `AgentEvent`，不再直接依赖 provider 原始事件结构。
+5. 验证：
    - `npm run build` 通过；
    - `npm run test -- AgentApiService` 通过（已修复 vitest hoist mock 问题）。
 

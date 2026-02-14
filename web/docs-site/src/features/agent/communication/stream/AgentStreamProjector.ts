@@ -1,13 +1,14 @@
 import logger from '@/features/app/services/loggerService';
 import type { Message } from '@/features/agent/types';
 import type { MessageManager } from '@/features/agent/stores/messageManager';
-import {
-  normalizeToolCall,
-  normalizeToolResult,
-  toPlainResultContent,
-  toToolInput,
-  type NormalizedToolCall,
-} from './toolEventNormalizer';
+import type { AgentEvent } from '../events/AgentEvent';
+import { toPlainResultContent } from './toolEventNormalizer';
+
+interface CurrentToolCall {
+  toolCallId?: string;
+  toolName?: string;
+  toolInput: Record<string, unknown>;
+}
 
 export class AgentStreamProjector {
   private assistantMessage: Message | null = null;
@@ -17,9 +18,9 @@ export class AgentStreamProjector {
   private reasoningStartTime: number | null = null;
   private reasoningDuration: number | null = null;
 
-  private currentToolCall: NormalizedToolCall | null = null;
-  private streamedToolCallIds = new Set<string>();
-  private streamedToolResultIds = new Set<string>();
+  private currentToolCall: CurrentToolCall | null = null;
+  private projectedToolCallIds = new Set<string>();
+  private projectedToolResultIds = new Set<string>();
 
   constructor(private messageManager: MessageManager) {}
 
@@ -27,28 +28,28 @@ export class AgentStreamProjector {
     return this.assistantMessage;
   }
 
-  async consumePart(part: any): Promise<void> {
-    switch (part?.type) {
+  async consumeEvent(event: AgentEvent): Promise<void> {
+    switch (event.type) {
       case 'reasoning-delta':
-        this.onReasoningDelta(part);
+        this.onReasoningDelta(event.text);
         break;
       case 'text-delta':
-        await this.onTextDelta(part);
+        await this.onTextDelta(event.text);
         break;
-      case 'tool-call':
-        await this.onToolCall(part);
+      case 'tool-called':
+        await this.onToolCalled(event);
         break;
-      case 'tool-result':
-        await this.onToolResult(part);
+      case 'tool-resulted':
+        await this.onToolResulted(event);
         break;
       case 'step-start':
-        logger.log(`[AgentApiService] step-start 事件: step ${part.stepNumber}`);
+        logger.log(`[AgentApiService] step-start 事件: step ${event.stepNumber}`);
         break;
       case 'step-finish':
-        logger.log(`[AgentApiService] step-finish 事件: finishReason=${part.finishReason}`);
+        logger.log(`[AgentApiService] step-finish 事件: finishReason=${event.finishReason}`);
         break;
       case 'error':
-        logger.error('[AgentApiService] 流中收到错误事件:', part.error);
+        logger.error('[AgentApiService] 流中收到错误事件:', event.error);
         break;
       default:
         break;
@@ -61,69 +62,6 @@ export class AgentStreamProjector {
       messageId: this.messageId,
       updates: { status: 'error' },
     });
-  }
-
-  async backfillToolMessagesFromSteps(result: any, steps: any[]): Promise<void> {
-    const candidateSteps: any[] = Array.isArray(steps) ? [...steps] : [];
-    const topToolCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
-    const topToolResults = Array.isArray(result?.toolResults) ? result.toolResults : [];
-    if (candidateSteps.length === 0 && (topToolCalls.length > 0 || topToolResults.length > 0)) {
-      candidateSteps.push({ toolCalls: topToolCalls, toolResults: topToolResults });
-    }
-
-    for (let stepIndex = 0; stepIndex < candidateSteps.length; stepIndex += 1) {
-      const step = candidateSteps[stepIndex];
-      const stepToolCalls = Array.isArray(step?.toolCalls) ? step.toolCalls : [];
-      const stepToolResults = Array.isArray(step?.toolResults) ? step.toolResults : [];
-
-      const resultsById = new Map<string, any>();
-      for (let resultIndex = 0; resultIndex < stepToolResults.length; resultIndex += 1) {
-        const normalized = normalizeToolResult(stepToolResults[resultIndex], `step_${stepIndex}_result_${resultIndex}`);
-        if (normalized.toolCallId) {
-          resultsById.set(normalized.toolCallId, normalized);
-        }
-      }
-
-      for (let callIndex = 0; callIndex < stepToolCalls.length; callIndex += 1) {
-        const call = normalizeToolCall(stepToolCalls[callIndex], `step_${stepIndex}_call_${callIndex}`);
-        if (!call.toolName || call.toolName === 'ask_choice') {
-          continue;
-        }
-
-        if (!this.streamedToolCallIds.has(call.toolCallId)) {
-          await this.messageManager.addMessage({
-            role: 'assistant',
-            type: 'text',
-            content: '',
-            status: 'done',
-            streamCompleted: true,
-            tool_calls: [{
-              tool: call.toolName,
-              action_id: call.toolCallId,
-              ...(call.toolInput || {}),
-            }] as any,
-          });
-          this.streamedToolCallIds.add(call.toolCallId);
-        }
-
-        if (!this.streamedToolResultIds.has(call.toolCallId)) {
-          const matched = resultsById.get(call.toolCallId);
-          const rawOutput = matched?.output ?? '';
-          const resultContent = toPlainResultContent(rawOutput);
-
-          await this.messageManager.addMessage({
-            role: 'tool',
-            type: 'tool_result',
-            content: resultContent,
-            status: 'done',
-            toolCallId: call.toolCallId,
-            toolName: call.toolName,
-            toolInput: call.toolInput || {},
-          });
-          this.streamedToolResultIds.add(call.toolCallId);
-        }
-      }
-    }
   }
 
   async finalize(result: any): Promise<void> {
@@ -179,21 +117,20 @@ export class AgentStreamProjector {
     }
   }
 
-  private onReasoningDelta(part: any): void {
-    if (typeof part?.text !== 'string') return;
+  private onReasoningDelta(text: string): void {
     if (!this.reasoningStartTime) {
       this.reasoningStartTime = Date.now();
     }
-    this.collectedReasoning += part.text;
+    this.collectedReasoning += text;
   }
 
-  private async onTextDelta(part: any): Promise<void> {
+  private async onTextDelta(text: string): Promise<void> {
     if (this.reasoningStartTime && this.reasoningDuration === null) {
       this.reasoningDuration = Math.round((Date.now() - this.reasoningStartTime) / 1000);
       logger.log(`[AgentApiService] 思维链完成，耗时: ${this.reasoningDuration}s`);
     }
 
-    if (typeof part?.text !== 'string' || !part.text) return;
+    if (!text) return;
     if (!this.messageId) {
       const newMsg = await this.messageManager.addMessage({
         role: 'assistant',
@@ -207,32 +144,40 @@ export class AgentStreamProjector {
       }
     }
     if (this.messageId) {
-      await this.messageManager.appendMessageContent({ messageId: this.messageId, chunk: part.text });
+      await this.messageManager.appendMessageContent({ messageId: this.messageId, chunk: text });
     }
   }
 
-  private async onToolCall(part: any): Promise<void> {
-    logger.log(`[AgentApiService] tool-call 事件: ${part.toolName}`, { toolCallId: part.toolCallId, args: part.args });
-    const normalizedToolInput = toToolInput(part.args ?? part.input ?? {});
-
-    this.currentToolCall = {
-      toolCallId: part.toolCallId,
-      toolName: part.toolName,
-      toolInput: normalizedToolInput,
-    };
-    if (part.toolCallId) {
-      this.streamedToolCallIds.add(String(part.toolCallId));
+  private async onToolCalled(event: Extract<AgentEvent, { type: 'tool-called' }>): Promise<void> {
+    const toolCallId = event.toolCallId ? String(event.toolCallId) : undefined;
+    if (toolCallId && this.projectedToolCallIds.has(toolCallId)) {
+      return;
     }
 
-    if (this.messageId) {
-      await this.messageManager.updateMessage({
-        messageId: this.messageId,
-        updates: { status: 'done', streamCompleted: true },
+    if (event.source === 'stream') {
+      logger.log(`[AgentApiService] tool-call 事件: ${event.toolName}`, {
+        toolCallId,
+        args: event.toolInput,
       });
-      this.messageId = null;
+      this.currentToolCall = {
+        toolCallId,
+        toolName: event.toolName,
+        toolInput: event.toolInput,
+      };
+      if (this.messageId) {
+        await this.messageManager.updateMessage({
+          messageId: this.messageId,
+          updates: { status: 'done', streamCompleted: true },
+        });
+        this.messageId = null;
+      }
     }
 
-    if (part.toolName && part.toolName !== 'ask_choice') {
+    if (toolCallId) {
+      this.projectedToolCallIds.add(toolCallId);
+    }
+
+    if (event.toolName && event.toolName !== 'ask_choice') {
       const toolCallMessage = await this.messageManager.addMessage({
         role: 'assistant',
         type: 'text',
@@ -240,9 +185,9 @@ export class AgentStreamProjector {
         status: 'done',
         streamCompleted: true,
         tool_calls: [{
-          tool: part.toolName,
-          action_id: part.toolCallId,
-          ...normalizedToolInput,
+          tool: event.toolName,
+          action_id: toolCallId,
+          ...event.toolInput,
         }] as any,
       });
 
@@ -251,13 +196,17 @@ export class AgentStreamProjector {
       }
     }
 
-    let statusContent = `正在执行工具: ${part.toolName}...`;
-    if (part.toolName === 'explore') {
-      const tasks = Array.isArray(normalizedToolInput.tasks)
-        ? normalizedToolInput.tasks.map(task => String(task || '').trim()).filter(Boolean)
+    if (event.source !== 'stream') {
+      return;
+    }
+
+    let statusContent = `正在执行工具: ${event.toolName}...`;
+    if (event.toolName === 'explore') {
+      const tasks = Array.isArray(event.toolInput.tasks)
+        ? event.toolInput.tasks.map(task => String(task || '').trim()).filter(Boolean)
         : [];
       if (tasks.length > 0) {
-        statusContent = `正在执行工具: ${part.toolName}（${tasks.length} 个任务）...`;
+        statusContent = `正在执行工具: ${event.toolName}（${tasks.length} 个任务）...`;
       }
     }
 
@@ -266,29 +215,37 @@ export class AgentStreamProjector {
       type: 'tool_status',
       content: statusContent,
       status: 'rendering',
-      toolCallId: part.toolCallId,
-      toolName: part.toolName,
-      toolInput: normalizedToolInput,
+      toolCallId,
+      toolName: event.toolName,
+      toolInput: event.toolInput,
     });
     if (statusMsg) {
       this.currentToolStatusId = statusMsg.id;
     }
   }
 
-  private async onToolResult(part: any): Promise<void> {
-    logger.log(`[AgentApiService] tool-result 事件: ${part.toolName}`, { toolCallId: part.toolCallId });
+  private async onToolResulted(event: Extract<AgentEvent, { type: 'tool-resulted' }>): Promise<void> {
+    const toolCallId = event.toolCallId || this.currentToolCall?.toolCallId;
+    const toolName = event.toolName || this.currentToolCall?.toolName;
+    const toolInput =
+      Object.keys(event.toolInput || {}).length > 0
+        ? event.toolInput
+        : (this.currentToolCall?.toolInput || {});
 
-    const toolResult = part.result ?? part.output ?? part.content ?? '';
-    const resultContent = typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult);
-
-    const toolCallId = part.toolCallId || this.currentToolCall?.toolCallId;
-    const toolName = part.toolName || this.currentToolCall?.toolName;
-    const toolInput = toToolInput(part.input ?? part.args ?? this.currentToolCall?.toolInput ?? {});
-    if (toolCallId) {
-      this.streamedToolResultIds.add(String(toolCallId));
+    if (event.source === 'stream') {
+      logger.log(`[AgentApiService] tool-result 事件: ${toolName}`, { toolCallId });
     }
 
-    if (this.currentToolStatusId) {
+    if (toolCallId && this.projectedToolResultIds.has(toolCallId)) {
+      return;
+    }
+
+    const resultContent = toPlainResultContent(event.output);
+    if (toolCallId) {
+      this.projectedToolResultIds.add(toolCallId);
+    }
+
+    if (event.source === 'stream' && this.currentToolStatusId) {
       await this.messageManager.replaceMessage(this.currentToolStatusId, {
         role: 'tool',
         type: 'tool_result',
@@ -311,6 +268,8 @@ export class AgentStreamProjector {
       });
     }
 
-    this.currentToolCall = null;
+    if (event.source === 'stream') {
+      this.currentToolCall = null;
+    }
   }
 }
