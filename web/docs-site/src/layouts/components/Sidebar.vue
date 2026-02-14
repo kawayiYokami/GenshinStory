@@ -72,16 +72,31 @@
             <details ref="sessionMenu" @toggle="handleMenuToggle('session')" :open="activeMenu === 'session'">
               <summary class="font-semibold">会话历史</summary>
               <Transition name="slide" mode="out-in">
-                <ul v-if="activeMenu === 'session'" class="mt-2 space-y-1">
-                <li v-for="session in currentDomainSessions" :key="session.id" :class="{ 'bordered': session.id === activeSessionId }" class="group">
-                  <a @click="handleSwitchSession(session.id)" class="block p-2 rounded-lg relative">
-                    <div class="font-semibold truncate">{{ getSessionSummary(session) }}</div>
-                    <div class="text-xs text-base-content/70 truncate mt-1">{{ getAgentName(session.roleId) }}</div>
-                    <div class="session-actions opacity-0 group-hover:opacity-100 absolute right-1 top-1/2 -translate-y-1/2">
-                      <button @click.stop="handleDeleteSession(session.id)" class="session-action-btn">
-                        <Trash2 class="h-4 w-4" />
-                      </button>
+                <ul v-if="activeMenu === 'session'" class="mt-1 space-y-0.5">
+                <li 
+                  v-for="session in currentDomainSessions" 
+                  :key="session.id" 
+                  class="group"
+                >
+                  <a 
+                    @click="handleSwitchSession(session.id)" 
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors relative"
+                    :class="session.id === activeSessionId ? 'bg-accent/15 border-l-2 border-accent' : ''"
+                  >
+                    <div class="flex-1 min-w-0 w-0">
+                      <div class="text-sm font-medium truncate text-base-content block">
+                        {{ getSessionSummary(session) }}
+                      </div>
+                      <div class="text-[10px] text-base-content/50 truncate mt-0.5 block">
+                        {{ getAgentName(session.roleId) }} · {{ formatRelativeTime(session.createdAt) }}
+                      </div>
                     </div>
+                    <button 
+                      @click.stop="handleDeleteSession(session.id)" 
+                      class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-base-300 transition-all shrink-0"
+                    >
+                      <Trash2 class="h-3.5 w-3.5 text-base-content/50 hover:text-error" />
+                    </button>
                   </a>
                 </li>
               </ul>
@@ -203,6 +218,23 @@ const getAgentName = (roleId: string): string => {
   return agent ? agent.name : '未知智能体';
 };
 
+const formatRelativeTime = (createdAt: string): string => {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return '刚刚';
+  if (diffMins < 60) return `${diffMins}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+  
+  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+};
+
 const handleStartChatWithAgent = async (agentId: string) => {
   emit('startChatWithAgent', agentId);
 };
@@ -297,15 +329,6 @@ watch(() => route.path, (newPath, oldPath) => {
 </script>
 
 <style scoped>
-.session-actions {
-  transition: opacity 0.2s ease-in-out;
-}
-
-li > a:hover .session-actions,
-li.bordered a .session-actions {
-  opacity: 1;
-}
-
 /* --- Custom Scrollbar --- */
 .sidebar-scrollable::-webkit-scrollbar {
   width: 8px;
