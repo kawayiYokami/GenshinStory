@@ -1,13 +1,40 @@
 name: "search_docs"
 type: "execution"
-description: "在文档索引中检索相关片段，返回路径、行号与上下文。"
+description: "搜索功能：1) 全文搜索包含查询词的相关文档；2) 在包含指定路径的文档中搜索关键词（路径部分匹配即可）。返回匹配的文档路径、行号、上下文片段，以及每个文档的元数据。支持自定义返回结果数量，默认10个，最大50个"
 usage: |
-  参数说明：
-  - query: string，可选。关键词检索。
-  - regex: string，可选。正则检索。
-  - path: string，可选。路径过滤（子串匹配）。
-  - maxResults: number，可选。返回结果数量，范围 1-50，默认 10。
-  约束：
-  - query 与 regex 至少提供一个。
-examples: []
-error_guidance: "参数缺失或非法时返回错误；maxResults 超范围会自动裁剪到 1-50。"
+  全文搜索：
+  {
+    "tool": "search_docs",
+    "query": "关键词A 关键词B"
+  }
+  指定目录搜索：
+  {
+    "tool": "search_docs",
+    "query": "关键词",
+    "path": "路径关键词"
+  }
+  自定义返回结果数量：
+  {
+    "tool": "search_docs",
+    "query": "关键词",
+    "maxResults": 20
+  }
+examples:
+  - |-
+    {
+      "tool": "search_docs",
+      "query": "原神 角色"
+    }
+  - |-
+    {
+      "tool": "search_docs",
+      "query": "任务 剧情",
+      "path": "guide"
+    }
+  - |-
+    {
+      "tool": "search_docs",
+      "query": "角色",
+      "maxResults": 15
+    }
+error_guidance: "查询参数无效或缺失时返回错误，查询结果过大时提示上下文限制，目录路径不存在时提示有效路径，maxResults参数超出范围(1-50)时自动调整为有效值"

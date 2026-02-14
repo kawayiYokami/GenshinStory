@@ -1,15 +1,23 @@
 name: "report_findings"
 type: "execution"
-description: "提交探索子代理的最终结构化报告。"
+description: "提交子代理侦查汇报。必须先至少成功调用一次 read_doc。"
 usage: |
-  参数说明：
-  - answer: string，必填。直接回答任务问题的结论。
-  - insights: string[]，必填。探索见解（建议 2-5 条）。
-  - references: string[]，必填。精确引用，格式 path:line 或 path:start-end。
-  - summary: string，可选。总结句。
-  - evidence: string[]，可选。补充证据条目。
-  - confidence: number，可选。置信度，范围 0-1。
-examples: []
+  {
+    "tool": "report_findings",
+    "scoutId": "scout_xxx",
+    "summary": "结论摘要",
+    "evidence": ["证据1", "证据2"],
+    "confidence": 0.78
+  }
+examples:
+  - |-
+    {
+      "tool": "report_findings",
+      "scoutId": "scout_abcd1234",
+      "summary": "已确认材料掉落点",
+      "evidence": ["docs/a.md:10-25", "docs/b.md:8-16"],
+      "confidence": 0.82
+    }
 error_guidance: |
-  缺少 answer、insights 或 references 会返回错误。
-  未先成功调用 read_doc 时会返回 TOOL_ORDER_VIOLATION（可恢复错误）。
+  必须提供 scoutId。
+  若未先成功调用 read_doc，会返回 TOOL_ORDER_VIOLATION（可恢复错误），请先调用 read_doc 后再汇报。

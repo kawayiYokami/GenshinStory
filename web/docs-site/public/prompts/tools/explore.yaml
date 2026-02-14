@@ -1,12 +1,23 @@
 name: "explore"
 type: "execution"
-description: "发起探索子任务并返回结构化探索结果。"
+description: "发起探索任务。一次最多 5 个子任务，仅允许探索类任务。返回每个任务的 scoutId。"
 usage: |
-  参数说明：
-  - tasks: string[]，必填。探索任务列表，长度 1-5，任务必须是探索类目标。
-  - maxToolCalls: number，可选。每个子任务的非 report 工具调用上限，默认 100，最大 100。
-  - timeoutMs: number，可选。每个子任务超时毫秒数，默认 600000（10分钟），最大 600000。
-examples: []
+  {
+    "tool": "explore",
+    "tasks": ["探索角色突破材料来源", "检索天赋书掉落位置"],
+    "maxToolCalls": 100,
+    "timeoutMs": 600000
+  }
+examples:
+  - |-
+    {
+      "tool": "explore",
+      "tasks": ["探索武器突破素材", "查找副本开放时间", "核验材料别名"],
+      "maxToolCalls": 100,
+      "timeoutMs": 600000
+    }
 error_guidance: |
-  tasks 为空、任务数超过 5、或包含非探索类任务时返回错误。
-  maxToolCalls 与 timeoutMs 超出允许范围时会被限制到系统上限。
+  tasks 不能为空，且单次最多 5 个任务。
+  仅允许探索类任务（探索/检索/查找/阅读/核验/调查）。
+  单个子任务默认最大执行时长 10 分钟，默认最多 100 次工具调用。
+  每个子任务报告必须包含：answer（直接回答问题）、insights（探索见解）、references（精确文件行号 path:line / path:start-end）。
