@@ -3,6 +3,7 @@ import { useDataStore } from '@/features/app/stores/data';
 import { useAppStore } from '@/features/app/stores/app';
 import type { IndexItem } from '@/features/app/stores/data';
 import pathService from '../../../app/services/pathService';
+import filePathService from '../../../app/services/filePathService';
 import tokenizerService from '@/lib/tokenizer/tokenizerService';
 import { stripMarkdown } from '@/lib/markdown/markdownStripper';
 
@@ -93,20 +94,16 @@ class LocalToolsService {
     const appStore = useAppStore();
     const currentDomain = appStore.currentDomain;
     if (!currentDomain) return '';
-    const cleanLogicalPath = logicalPath.startsWith('/') ? logicalPath.substring(1) : logicalPath;
-
-    // 对路径的每一部分进行编码，以处理中文和特殊字符
-    const encodedPath = cleanLogicalPath.split('/').map(part => encodeURIComponent(part)).join('/');
-
-    return `/domains/${currentDomain}/docs/${encodedPath}`;
+    return filePathService.toPhysicalDocPath(logicalPath, currentDomain);
   }
 
   private _getLogicalPathFromFrontendPath(frontendPath: string): string {
     const appStore = useAppStore();
     const currentDomain = appStore.currentDomain;
-    if (!currentDomain) return '';
-    const logical = frontendPath.replace(`/v2/${currentDomain}/category/`, '');
-    return `${logical}.md`;
+    return filePathService.fromFrontendCategoryPath(frontendPath, {
+      domain: currentDomain || undefined,
+      ensureMdExtension: true,
+    });
   }
 
   // --- 工具函数 ---
@@ -163,6 +160,12 @@ class LocalToolsService {
 
     const contentPromises = docRequests.map(async (request) => {
         let { path, lineRanges, preserveMarkdown = false } = request;
+        const appStore = useAppStore();
+        const currentDomain = appStore.currentDomain || undefined;
+        path = filePathService.normalizeLogicalPath(path, {
+          domain: currentDomain,
+          ensureMdExtension: true,
+        });
 
         // 修复: 增强 lineRanges 的健壮性
         if (typeof lineRanges === 'string') {
@@ -171,7 +174,7 @@ class LocalToolsService {
             lineRanges = [];
         }
 
-        const originalPath = path;
+        const originalPath = request.path;
         let physicalPath: string;
         let fullContent: string;
 
@@ -182,7 +185,10 @@ class LocalToolsService {
         } catch (initialError) {
 
             try {
-                const justTheFileName = path.split('/').pop()?.split('\\').pop();
+                const justTheFileName = filePathService.normalizeLogicalPath(path, {
+                  domain: currentDomain,
+                  ensureMdExtension: true,
+                }).split('/').pop();
                 if (!justTheFileName) throw initialError;
 
                 const resolvedPath = await pathService.resolveLogicalPath(justTheFileName);
@@ -192,7 +198,6 @@ class LocalToolsService {
                 if (resolvedPath) {
                     if (resolvedPath !== path) {
                         path = resolvedPath;
-                    } else {
                     }
 
                     physicalPath = this._getPhysicalPathFromLogicalPath(path);
@@ -480,8 +485,14 @@ class LocalToolsService {
       const allResults = await this._performSearch(terms, _signal || new AbortController().signal);
 
       // 3. 路径过滤（包含关系）
-      const filteredResults = docPath && docPath.trim()
-        ? allResults.filter(r => this._pathContains(r.path, docPath.trim()))
+      const normalizedDocPath = docPath && docPath.trim()
+        ? filePathService.normalizeLogicalPath(docPath.trim(), {
+            domain: currentDomain,
+            ensureMdExtension: false,
+          })
+        : '';
+      const filteredResults = normalizedDocPath
+        ? allResults.filter(r => this._pathContains(r.path, normalizedDocPath))
         : allResults;
 
       // 4. 分组并排序
@@ -497,7 +508,7 @@ class LocalToolsService {
         : undefined;
 
       // 7. 格式化输出
-      return this._formatOutput(limitedResults, query, docPath, summary);
+      return this._formatOutput(limitedResults, query, normalizedDocPath || docPath, summary);
     }
 
     private async _performSearch(terms: string[], _signal: AbortSignal): Promise<SearchResult[]> {

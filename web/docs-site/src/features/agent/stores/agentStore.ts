@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid';
 import logger, { logs } from '@/features/app/services/loggerService';
 import { useAppStore } from '@/features/app/stores/app';
 import localTools from '../tools/implementations/localToolsService';
+import filePathService from '@/features/app/services/filePathService';
 import type { Ref } from 'vue';
 import type { LogEntry } from '@/features/app/services/loggerService';
 import { useConfigStore } from '@/features/app/stores/config';
@@ -416,7 +417,10 @@ export const useAgentStore = defineStore('agent', () => {
       logger.log(`[AgentStore] 正在为 ${references.length} 个引用获取内容...`);
       for (const ref of references) {
         try {
-          const logicalPath = (localTools as any)._getLogicalPathFromFrontendPath(ref.path);
+          const logicalPath = filePathService.fromFrontendCategoryPath(ref.path, {
+            domain: currentDomain.value || undefined,
+            ensureMdExtension: true,
+          });
           const content = await localTools.readDoc([{ path: logicalPath }]);
           contentPayload.push({
             type: 'doc',

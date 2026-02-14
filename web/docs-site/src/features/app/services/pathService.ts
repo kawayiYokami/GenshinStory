@@ -1,6 +1,7 @@
 import logger from './loggerService';
 import { useAppStore } from '@/features/app/stores/app';
 import localforage from 'localforage';
+import filePathService from './filePathService';
 
 interface CatalogTree {
     [key: string]: CatalogTree | null;
@@ -30,31 +31,50 @@ class PathService {
     if (!catalogTree) return null;
 
     const cleanPath = logicalPath.split('#')[0];
-    const normalizedPath = cleanPath.trim().replace(/\\/g, '/');
-    const pathParts = normalizedPath.split('/').filter(p => p);
+    const normalizedPath = filePathService.normalizeLogicalPath(cleanPath, {
+      domain: currentDomain,
+      ensureMdExtension: false,
+    });
+    if (!normalizedPath) return null;
 
-    let currentNode: any = catalogTree;
-    let isValid = true;
-    for (const part of pathParts) {
+    const exactCandidates = [normalizedPath];
+    if (!normalizedPath.toLowerCase().endsWith('.md')) {
+      exactCandidates.push(`${normalizedPath}.md`);
+    }
+
+    for (const candidate of exactCandidates) {
+      const candidateParts = candidate.split('/').filter(p => p);
+      let currentNode: any = catalogTree;
+      let isValid = true;
+      for (const part of candidateParts) {
         if (currentNode && typeof currentNode === 'object' && part in currentNode) {
-            currentNode = currentNode[part];
+          currentNode = currentNode[part];
         } else {
-            isValid = false;
-            break;
+          isValid = false;
+          break;
         }
-    }
-    if (isValid && currentNode === null) {
-        return normalizedPath;
+      }
+      if (isValid && currentNode === null) {
+        return filePathService.normalizeLogicalPath(candidate, {
+          domain: currentDomain,
+          ensureMdExtension: true,
+        });
+      }
     }
 
+    const pathParts = normalizedPath.split('/').filter(p => p);
     const justTheFileName = pathParts.length > 0 ? pathParts[pathParts.length - 1].toLowerCase() : null;
     if (!justTheFileName) return null;
+    const justTheFileNameWithoutExt = justTheFileName.endsWith('.md')
+      ? justTheFileName.slice(0, -3)
+      : justTheFileName;
 
     const traverse = (node: CatalogTree, currentPath: string): string | null => {
         for (const key in node) {
             const newPath = currentPath ? `${currentPath}/${key}` : key;
             if (node[key] === null) {
-                if (key.toLowerCase() === justTheFileName || key.toLowerCase() === `${justTheFileName}.md`) {
+                const keyLower = key.toLowerCase();
+                if (keyLower === justTheFileName || keyLower === `${justTheFileNameWithoutExt}.md`) {
                     return newPath;
                 }
             } else if (typeof node[key] === 'object') {
@@ -66,7 +86,12 @@ class PathService {
     };
 
     const foundPath = traverse(catalogTree, '');
-    return foundPath;
+    if (!foundPath) return null;
+
+    return filePathService.normalizeLogicalPath(foundPath, {
+      domain: currentDomain,
+      ensureMdExtension: true,
+    });
   }
 
   public async ensureCatalogReady(): Promise<void> {
@@ -97,12 +122,13 @@ class PathService {
           const cachedTree = await catalogStore.getItem<CatalogTree>(currentDomain);
           if (cachedTree) {
             logger.warn(`网络请求失败，从 LocalForage 缓存加载了备用数据 for '${currentDomain}'.`);
-            this._catalogTreeCache[currentDomain] = cachedTree;
+            this._catalogTreeCache[currentDomain] = filePathService.normalizeCatalogTreeRoot(cachedTree, currentDomain);
             return; // 从缓存加载后返回
           }
           throw new Error(`HTTP 错误! status: ${response.status}`);
         }
-        const tree = await response.json();
+        const rawTree = await response.json();
+        const tree = filePathService.normalizeCatalogTreeRoot(rawTree, currentDomain);
 
         this._catalogTreeCache[currentDomain] = tree;
         await catalogStore.setItem(currentDomain, tree); // 更新缓存
@@ -115,7 +141,7 @@ class PathService {
         const cachedTree = await catalogStore.getItem<CatalogTree>(currentDomain);
         if (cachedTree) {
             logger.warn(`网络请求和解析失败，从 LocalForage 缓存加载了最终备用数据 for '${currentDomain}'.`);
-            this._catalogTreeCache[currentDomain] = cachedTree;
+            this._catalogTreeCache[currentDomain] = filePathService.normalizeCatalogTreeRoot(cachedTree, currentDomain);
             return;
         }
 
@@ -141,7 +167,11 @@ class PathService {
     try {
       await this.ensureCatalogReady();
       const catalogTree = this._catalogTreeCache[currentDomain];
-      const pathParts = path.trim().replace(/^\/|\/$/g, '').split('/').filter(p => p);
+      const normalizedPath = filePathService.normalizeLogicalPath(path, {
+        domain: currentDomain,
+        ensureMdExtension: false,
+      });
+      const pathParts = normalizedPath ? normalizedPath.split('/').filter(p => p) : [];
       
       let currentLevel: any = catalogTree;
       for (const part of pathParts) {
@@ -156,8 +186,7 @@ class PathService {
         return `错误：路径 '${path}' 不是一个目录。`;
       }
       
-      const normalizedBasePath = path.trim().replace(/\/$/, '');
-      const finalPath = normalizedBasePath === '/' ? '' : normalizedBasePath;
+      const finalPath = normalizedPath || '';
 
       const results = Object.keys(currentLevel).map(key => {
         const fullPath = [finalPath, key].filter(Boolean).join('/');

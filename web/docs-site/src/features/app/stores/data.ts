@@ -261,7 +261,14 @@ export const useDataStore = defineStore('data', () => {
             if (!response.ok) {
                 throw new Error(response.status === 404 ? `文件未找到: ${path}` : `Markdown 文件加载失败: ${response.statusText}`);
             }
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
             const markdown = await response.text();
+
+            const looksLikeHtmlShell = /^\s*<!doctype html>/i.test(markdown) || /^\s*<html/i.test(markdown);
+            if (contentType.includes('text/html') || looksLikeHtmlShell) {
+                throw new Error(`读取文档失败：路径 '${path}' 返回了 HTML 页面，请检查文档路径是否被错误拼接或被路由回退。`);
+            }
+
             contentCache.value[path] = markdown;
             return markdown;
         }

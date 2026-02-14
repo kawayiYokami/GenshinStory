@@ -2,6 +2,7 @@ import yaml from 'js-yaml';
 import logger from '../../../app/services/loggerService';
 import { toolPromptService } from './toolPromptService';
 import { useDataStore } from '@/features/app/stores/data';
+import filePathService from '@/features/app/services/filePathService';
 
 // --- 类型定义 ---
 interface DirectoryNode {
@@ -98,7 +99,8 @@ async function getFileStructure(domain: string): Promise<string> {
             throw new Error(`Failed to load catalog: ${response.status} ${response.statusText}`);
         }
 
-        const catalogData = await response.json();
+        const rawCatalogData = await response.json();
+        const catalogData = filePathService.normalizeCatalogTreeRoot(rawCatalogData, domain);
         logger.log(`[PromptService] catalog.json 内容:`, catalogData);
 
         // 递归格式化目录树

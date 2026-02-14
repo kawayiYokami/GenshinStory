@@ -58,7 +58,7 @@
               <div
                 v-for="item in getPaginatedItems(subCategory)"
                 :key="item.path"
-                @click="docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'))"
+                @click="docViewerStore.open(filePathService.fromFrontendCategoryPath(item.path, { domain: appStore.currentDomain || undefined, ensureMdExtension: true }))"
                 class="card card-compact bg-base-100 shadow cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div class="card-body">
@@ -80,6 +80,7 @@ import { useRoute } from 'vue-router';
 import { useAppStore } from '@/features/app/stores/app';
 import { useDataStore } from '@/features/app/stores/data';
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
+import filePathService from '@/features/app/services/filePathService';
 import { storeToRefs } from 'pinia';
 import localToolsService from '../../agent/tools/implementations/localToolsService';
 
@@ -143,10 +144,10 @@ watchEffect(async () => {
     const matchedPaths = new Set<string>();
     if (searchResult.results) {
       searchResult.results.forEach((result: any) => {
-        // 将前端路径转换为逻辑路径进行比较
-        // 例如：/v2/gi/category/任务/世界任务 -> 任务/世界任务
-        let logicalPath = result.path.replace(/^\/v2\/[^\/]+\/category\//, '');
-        // 移除 .md 扩展名，因为原始item路径没有扩展名
+        let logicalPath = filePathService.normalizeLogicalPath(result.path, {
+          domain: appStore.currentDomain || undefined,
+          ensureMdExtension: true
+        });
         logicalPath = logicalPath.replace(/\.md$/, '');
         matchedPaths.add(logicalPath);
       });
@@ -157,9 +158,10 @@ watchEffect(async () => {
     for (const subCategory of subCategories.value) {
       const items = subCategoryIndex.value.get(subCategory) || [];
       const filteredItems = items.filter(item => {
-        // item.path 是类似 /v2/gi/category/任务/世界任务 的格式
-        // 我们需要提取出逻辑路径来匹配
-        const itemLogicalPath = item.path.replace(/^\/v2\/[^\/]+\/category\//, '');
+        const itemLogicalPath = filePathService.normalizeLogicalPath(item.path, {
+          domain: appStore.currentDomain || undefined,
+          ensureMdExtension: false
+        });
         return matchedPaths.has(itemLogicalPath);
       });
       newResults[subCategory] = filteredItems;

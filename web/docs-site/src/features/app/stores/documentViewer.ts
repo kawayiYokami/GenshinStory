@@ -2,9 +2,12 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import localToolsService from '../../agent/tools/implementations/localToolsService';
 import logger from '@/features/app/services/loggerService';
+import { useAppStore } from '@/features/app/stores/app';
+import filePathService from '@/features/app/services/filePathService';
 import type { Ref } from 'vue';
 
 export const useDocumentViewerStore = defineStore('documentViewer', () => {
+  const appStore = useAppStore();
   const isVisible = ref(false);
   const isLoading = ref(false);
   const documentPath: Ref<string> = ref('');
@@ -20,17 +23,21 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
    * @param keywords 可选，要高亮显示的关键词。
    */
   async function open(path: string, lineNumber?: number, keywords?: string[]): Promise<void> {
-    logger.log(`[DocViewer] 正在打开文档: ${path}${lineNumber ? ` (跳转到行 ${lineNumber})` : ''}`);
+    const normalizedPath = filePathService.normalizeLogicalPath(path, {
+      domain: appStore.currentDomain || undefined,
+      ensureMdExtension: true,
+    });
+    logger.log(`[DocViewer] 正在打开文档: ${normalizedPath}${lineNumber ? ` (跳转到行 ${lineNumber})` : ''}`);
     isVisible.value = true;
     isLoading.value = true;
-    documentPath.value = path;
+    documentPath.value = normalizedPath;
     targetLine.value = lineNumber || null;
     highlightKeywords.value = keywords || [];
     errorMessage.value = '';
     documentContent.value = ''; // 清除先前的内容
 
     try {
-      const jsonResult = await localToolsService.readDoc([{ path, preserveMarkdown: true }]);
+      const jsonResult = await localToolsService.readDoc([{ path: normalizedPath, preserveMarkdown: true }]);
 
       try {
         const parsedResult = JSON.parse(jsonResult);
@@ -56,7 +63,7 @@ export const useDocumentViewerStore = defineStore('documentViewer', () => {
       }
 
     } catch (error: any) {
-      logger.error(`[DocViewer] 加载文档 ${path} 失败:`, error);
+      logger.error(`[DocViewer] 加载文档 ${normalizedPath} 失败:`, error);
       errorMessage.value = `无法加载文档: ${error.message}`;
     } finally {
       isLoading.value = false;

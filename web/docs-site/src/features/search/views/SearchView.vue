@@ -70,6 +70,7 @@ import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useAppStore } from "@/features/app/stores/app";
 import { useDataStore } from "@/features/app/stores/data";
 import { useDocumentViewerStore } from '@/features/app/stores/documentViewer';
+import filePathService from '@/features/app/services/filePathService';
 import { storeToRefs } from 'pinia';
 import { useResponsive } from '@/composables/useResponsive';
 import {
@@ -172,7 +173,11 @@ watch(() => appStore.currentDomain, (newDomain) => {
 
 // 处理条目点击
 const handleItemClick = (item: CatalogItem) => {
-  docViewerStore.open(item.path.replace(/\/v2\/[^/]+\/category\/(.+?)(?:-尾声)?(-\d+)?$/, '$1$2.md'));
+  const logicalPath = filePathService.fromFrontendCategoryPath(item.path, {
+    domain: appStore.currentDomain || undefined,
+    ensureMdExtension: true,
+  });
+  docViewerStore.open(logicalPath);
 };
 
 // 更新搜索面板高度（添加防抖优化）

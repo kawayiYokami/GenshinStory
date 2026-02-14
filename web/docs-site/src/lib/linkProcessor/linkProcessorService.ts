@@ -1,5 +1,6 @@
-import logger from '@/features/app/services/loggerService';
 import pathService from '../../features/app/services/pathService';
+import { useAppStore } from '@/features/app/stores/app';
+import filePathService from '@/features/app/services/filePathService';
 
 // --- 类型定义 ---
 export interface LinkResolutionResult {
@@ -47,16 +48,22 @@ class LinkProcessorService {
     // 路径可能在 group2 (官方格式), group3 (原始格式), 或 group1 (仅路径格式)
     let originalPath = (group2 || group3 || group1).trim();
 
-    // 提取行号（如果存在）
+    // 提取行号（如果存在）：只解析路径末尾的 :number 或 :start-end
     let lineNumber: number | undefined;
-    if (originalPath.includes(':')) {
-        const parts = originalPath.split(':');
-        originalPath = parts[0];
-        const lineStr = parts[1];
-        if (lineStr && /^\d+$/.test(lineStr)) {
-            lineNumber = parseInt(lineStr, 10);
-        }
+    const lineMatch = originalPath.match(/^(.*):(\d+(?:-\d+)?)$/);
+    if (lineMatch) {
+      originalPath = lineMatch[1].trim();
+      const firstLine = lineMatch[2].split('-')[0];
+      if (/^\d+$/.test(firstLine)) {
+        lineNumber = parseInt(firstLine, 10);
+      }
     }
+
+    const appStore = useAppStore();
+    originalPath = filePathService.normalizeLogicalPath(originalPath, {
+      domain: appStore.currentDomain || undefined,
+      ensureMdExtension: false,
+    });
 
     baseResult.displayText = displayText;
     baseResult.originalPath = originalPath;
