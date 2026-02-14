@@ -1,15 +1,11 @@
 import logger from './loggerService';
 import { useAppStore } from '@/features/app/stores/app';
-import localforage from 'localforage';
 import filePathService from './filePathService';
+import { catalogTreeStore as catalogStore } from '@/features/app/services/storageFacade';
 
 interface CatalogTree {
     [key: string]: CatalogTree | null;
 }
-
-const catalogStore = localforage.createInstance({
-  name: "catalogTreeCache"
-});
 
 class PathService {
   private _catalogLoadingPromise: { [domain: string]: Promise<void> } = {};

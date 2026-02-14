@@ -26,6 +26,7 @@
 import { Menu, Search, MessageCircle } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import { computed } from 'vue';
+import storageFacade from '@/features/app/services/storageFacade';
 
 const router = useRouter();
 const route = useRoute();
@@ -49,12 +50,12 @@ const showAgentButton = computed(() => currentPageType.value !== 'agent')
 
 const navigateToSearch = () => {
   // 获取当前域
-  const targetDomain = route.params.domain || localStorage.getItem('currentDomain') || 'default';
+  const targetDomain = route.params.domain || storageFacade.getCurrentDomain() || 'default';
   router.push(`/domain/${targetDomain}/search`);
 };
 const navigateToAgent = () => {
   // 使用与侧边栏相同的域处理逻辑
-  const targetDomain = route.params.domain || localStorage.getItem('currentDomain') || 'default';
+  const targetDomain = route.params.domain || storageFacade.getCurrentDomain() || 'default';
   router.push(`/domain/${targetDomain}/agent`);
   // 关闭可能打开的侧边栏
   const drawerCheckbox = document.getElementById('drawer') as HTMLInputElement;

@@ -179,6 +179,7 @@
 import { ref, onMounted } from 'vue';
 import promptService, { type InstructionInfo, type CustomPersona } from '../../agent/tools/implementations/promptService';
 import { useAgentStore } from '@/features/agent/stores/agentStore';
+import storageFacade from '@/features/app/services/storageFacade';
 
 // Types
 type TabType = 'instruction' | 'persona';
@@ -244,10 +245,8 @@ const loadData = async () => {
   // For now, I will write the code assuming `promptService.getCustomPersonas` exists or I'll add it.
 
   // Let's use a temporary approach: Read from localStorage directly here since it's the same origin.
-  const CUSTOM_PERSONAS_KEY = 'customPersonas';
   try {
-      const stored = localStorage.getItem(CUSTOM_PERSONAS_KEY);
-      customPersonas.value = stored ? JSON.parse(stored) : [];
+      customPersonas.value = storageFacade.getCustomPersonas<CustomPersona[]>();
   } catch (e) {
       console.error(e);
       customPersonas.value = [];

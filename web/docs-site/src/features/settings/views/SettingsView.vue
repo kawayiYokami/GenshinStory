@@ -32,6 +32,7 @@
 
     <CustomInstructionsSection />
     <ThemeSection />
+    <DataExportSection />
   </div>
 
   <!-- No Key Modal -->
@@ -64,6 +65,7 @@ import SettingsHeader from '../components/SettingsHeader.vue';
 import AIConfigSection from '../components/AIConfigSection.vue';
 import ThemeSection from '../components/ThemeSection.vue';
 import CustomInstructionsSection from '../components/CustomInstructionsSection.vue';
+import DataExportSection from '../components/DataExportSection.vue';
 
 // Stores
 const configStore = useConfigStore();

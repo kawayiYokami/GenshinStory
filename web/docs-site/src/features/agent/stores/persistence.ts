@@ -1,12 +1,11 @@
 import { type Ref } from 'vue';
-import localforage from 'localforage';
 import logger from '@/features/app/services/loggerService';
 import type { Session } from '../types';
+import { sessionsStore, lastUsedRolesStore } from '@/features/app/services/storageFacade';
+export { sessionsStore, lastUsedRolesStore };
 
 // --- Localforage 和 debounce 设置 ---
 const AGENT_CACHE_VERSION = '2.0';
-export const sessionsStore = localforage.createInstance({ name: 'agentSessions' });
-export const lastUsedRolesStore = localforage.createInstance({ name: 'lastUsedRoles' });
 
 export async function forceClearAgentCache(): Promise<void> {
   await sessionsStore.clear();

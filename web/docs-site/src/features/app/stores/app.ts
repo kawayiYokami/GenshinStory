@@ -6,6 +6,7 @@
 
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import storageFacade from '@/features/app/services/storageFacade';
 
 /**
  * 域信息接口
@@ -35,7 +36,7 @@ export interface Game {
 
 export const useAppStore = defineStore('app', () => {
     // --- State ---
-    const currentDomain = ref<string | null>(null);
+    const currentDomain = ref<string | null>(storageFacade.getCurrentDomain());
     const availableDomains = ref<Domain[]>([]);
     const isLoadingDomains = ref(false);
     const isCoreDataReady = ref(false); // <-- NEW: The guard state
@@ -61,6 +62,7 @@ export const useAppStore = defineStore('app', () => {
             availableDomains.value = domains;
             if (domains.length > 0 && !currentDomain.value) {
                 currentDomain.value = domains[0].id;
+                storageFacade.setCurrentDomain(currentDomain.value);
             }
             return domains;
         } catch (error) {
@@ -80,11 +82,13 @@ export const useAppStore = defineStore('app', () => {
         const isValid = availableDomains.value.some(d => d.id === domainId);
         if (isValid) {
             currentDomain.value = domainId;
+            storageFacade.setCurrentDomain(domainId);
         }
         else if (availableDomains.value.length > 0) {
             const defaultDomain = availableDomains.value[0].id;
             console.warn(`Invalid domain specified: ${domainId}. Defaulting to '${defaultDomain}'.`);
             currentDomain.value = defaultDomain;
+            storageFacade.setCurrentDomain(defaultDomain);
         } else {
             console.error("Cannot set current domain, no available domains loaded.");
         }

@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import logger from '@/features/app/services/loggerService';
 import type { Ref } from 'vue';
 import type { AgentProtocolMode } from '@/features/agent/types';
+import storageFacade from '@/features/app/services/storageFacade';
 
 // --- 类型定义 ---
 export interface CustomParam {
@@ -31,12 +32,11 @@ export interface Config {
     customParams?: CustomParam[];
 }
 
-const CONFIG_STORAGE_KEY = 'ai_configs_v2';
-
 // --- 迁移逻辑 ---
 function migrateFromOldStorage(): Config[] | null {
-  const oldApiUrl = localStorage.getItem('apiUrl');
-  const oldApiKey = localStorage.getItem('apiKey');
+  const legacySnapshot = storageFacade.getLegacyConfigSnapshot();
+  const oldApiUrl = legacySnapshot.apiUrl;
+  const oldApiKey = legacySnapshot.apiKey;
 
   if (!oldApiUrl && !oldApiKey) {
     return null;
@@ -44,7 +44,7 @@ function migrateFromOldStorage(): Config[] | null {
 
   logger.log("检测到旧版配置，正在执行一次性迁移...");
 
-  const modelName = localStorage.getItem('modelName') || 'gpt-4';
+  const modelName = legacySnapshot.modelName || 'gpt-4';
   const defaultConfig: Config = {
     id: nanoid(),
     name: `默认配置 (${modelName})`,
@@ -52,10 +52,10 @@ function migrateFromOldStorage(): Config[] | null {
     apiUrl: oldApiUrl || '',
     apiKey: oldApiKey || '',
     modelName: modelName,
-    temperature: parseFloat(localStorage.getItem('temperature') || '0.7'),
+    temperature: parseFloat(legacySnapshot.temperature || '0.7'),
     stream: true,
-    maxContextLength: parseInt(localStorage.getItem('maxContextLength') || '128000', 10),
-    requestInterval: parseInt(localStorage.getItem('requestInterval') || '1000', 10),
+    maxContextLength: parseInt(legacySnapshot.maxContextLength || '128000', 10),
+    requestInterval: parseInt(legacySnapshot.requestInterval || '1000', 10),
     maxIterations: 10, // 默认迭代次数限制为 10
     agentProtocolMode: 'auto',
     enableStructuredTools: true,
@@ -65,12 +65,7 @@ function migrateFromOldStorage(): Config[] | null {
     customParams: [], // 迁移时也初始化空数组
   };
 
-  localStorage.removeItem('apiUrl');
-  localStorage.removeItem('apiKey');
-  localStorage.removeItem('modelName');
-  localStorage.removeItem('temperature');
-  localStorage.removeItem('maxContextLength');
-  localStorage.removeItem('requestInterval');
+  storageFacade.clearLegacyConfigSnapshot();
 
   logger.log("旧版配置已成功迁移并清理。");
   return [defaultConfig];
@@ -78,7 +73,7 @@ function migrateFromOldStorage(): Config[] | null {
 
 // --- 从 localStorage 加载配置 ---
 function loadConfigs(): Config[] {
-  const storedConfigs = localStorage.getItem(CONFIG_STORAGE_KEY);
+  const storedConfigs = storageFacade.getString('ai_configs_v2');
   if (storedConfigs) {
     try {
       const loaded = JSON.parse(storedConfigs) as Config[];
@@ -116,7 +111,7 @@ function loadConfigs(): Config[] {
 export const useConfigStore = defineStore('config', () => {
   // --- 状态 ---
   const configs: Ref<Config[]> = ref(loadConfigs());
-  const activeConfigId: Ref<string | null> = ref(localStorage.getItem('activeConfigId') || (configs.value.length > 0 ? configs.value[0].id : null));
+  const activeConfigId: Ref<string | null> = ref(storageFacade.getActiveConfigId() || (configs.value.length > 0 ? configs.value[0].id : null));
   const isFetchingModels = ref(false);
 
   // --- 计算属性 ---
@@ -131,7 +126,7 @@ export const useConfigStore = defineStore('config', () => {
   // --- 监听器 ---
   watch(configs, (newConfigs) => {
     try {
-      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(newConfigs));
+      storageFacade.setConfigList(newConfigs);
     } catch (e: any) {
       if (e.name === 'QuotaExceededError') {
         logger.error('!!! 严重: localStorage 配额超出。无法保存配置。');
@@ -144,11 +139,7 @@ export const useConfigStore = defineStore('config', () => {
 
   watch(activeConfigId, (newId) => {
     logger.log(`--- STORE: activeConfigId 的 watch 已触发。新 ID: ${newId} ---`);
-    if (newId) {
-      localStorage.setItem('activeConfigId', newId);
-    } else {
-      localStorage.removeItem('activeConfigId');
-    }
+    storageFacade.setActiveConfigId(newId);
     logger.log(`--- STORE: activeConfigId 已保存到 localStorage ---`);
   });
 

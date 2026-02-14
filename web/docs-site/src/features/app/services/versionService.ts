@@ -3,13 +3,7 @@
  * @description 负责检查服务器数据版本，管理本地缓存清理
  * @author yokami
  */
-import localforage from 'localforage';
-import { sessionsStore, lastUsedRolesStore } from '@/features/agent/stores/persistence';
-
-// 重新创建一个指向相同数据库的实例
-const catalogStore = localforage.createInstance({ name: "catalogTreeCache" });
-
-const DATA_VERSION_KEY = 'dataVersion'; // 定义用于 localStorage 的键，避免魔法字符串
+import storageFacade, { catalogTreeStore } from '@/features/app/services/storageFacade';
 
 /**
  * 清除数据相关的本地缓存，但保留用户聊天记录
@@ -20,7 +14,7 @@ async function clearDataCaches(): Promise<void[]> {
   console.log("检测到新数据版本，正在清除数据缓存（保留聊天记录）...");
   const clearPromises = [
     // 只清除数据相关缓存，保留用户数据
-    catalogStore.clear()
+    catalogTreeStore.clear()
     // sessionsStore 和 lastUsedRolesStore 不再清除
   ];
   return Promise.all(clearPromises);
@@ -44,14 +38,14 @@ export async function checkVersion(): Promise<void> {
     const serverVersion = serverConfig.version;
 
     // 2. 获取本地存储的版本
-    const localVersion = localStorage.getItem(DATA_VERSION_KEY);
+    const localVersion = storageFacade.getDataVersion();
 
     // 3. 比较版本并执行操作
     if (serverVersion !== localVersion) {
       console.log(`版本不匹配。服务器版本: ${serverVersion}, 本地版本: ${localVersion}`);
       await clearDataCaches(); // 改为只清除数据缓存，保留聊天记录
       // 4. 更新本地版本号
-      localStorage.setItem(DATA_VERSION_KEY, serverVersion);
+      storageFacade.setDataVersion(serverVersion);
       console.log("缓存清除完毕，本地版本已更新至", serverVersion);
     } else {
       console.log("本地数据已是最新版本，无需更新。");

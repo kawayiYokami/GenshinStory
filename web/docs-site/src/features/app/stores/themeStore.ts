@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import storageFacade from '@/features/app/services/storageFacade';
 
 // List of curated DaisyUI themes for the selector
 export type ThemeName =
@@ -30,7 +31,7 @@ export const useThemeStore = defineStore('theme', {
      * The current theme of the application.
      * Defaults to 'light'.
      */
-    currentTheme: (localStorage.getItem('app-theme') as ThemeName) || 'light',
+    currentTheme: (storageFacade.getTheme() as ThemeName) || 'light',
     /**
      * Whether a theme transition is currently in progress.
      */
@@ -44,7 +45,7 @@ export const useThemeStore = defineStore('theme', {
      */
     setTheme(themeName: ThemeName) {
       this.currentTheme = themeName;
-      localStorage.setItem('app-theme', themeName);
+      storageFacade.setTheme(themeName);
       // Update the DOM to reflect the new theme
       document.documentElement.setAttribute('data-theme', themeName);
     },
@@ -67,7 +68,7 @@ export const useThemeStore = defineStore('theme', {
      * Applies the theme stored in localStorage or the default theme.
      */
     initTheme() {
-      const storedTheme = localStorage.getItem('app-theme') as ThemeName || this.currentTheme;
+      const storedTheme = storageFacade.getTheme() as ThemeName || this.currentTheme;
       document.documentElement.setAttribute('data-theme', storedTheme);
     }
   },

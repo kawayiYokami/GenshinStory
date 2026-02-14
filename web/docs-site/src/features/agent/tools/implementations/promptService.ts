@@ -3,6 +3,7 @@ import logger from '../../../app/services/loggerService';
 import { toolPromptService } from './toolPromptService';
 import { useDataStore } from '@/features/app/stores/data';
 import filePathService from '@/features/app/services/filePathService';
+import storageFacade from '@/features/app/services/storageFacade';
 
 // --- 类型定义 ---
 interface DirectoryNode {
@@ -244,13 +245,9 @@ function formatDirectoryTree(tree: DirectoryNode, prefix = '', isLast = true): s
 
 // --- Custom Instructions Management ---
 
-const CUSTOM_INSTRUCTIONS_KEY = 'customInstructions';
-const CUSTOM_PERSONAS_KEY = 'customPersonas';
-
 function getCustomInstructions(): InstructionInfo[] {
     try {
-        const stored = localStorage.getItem(CUSTOM_INSTRUCTIONS_KEY);
-        return stored ? JSON.parse(stored) : [];
+        return storageFacade.getCustomInstructions<InstructionInfo[]>();
     } catch (error) {
         logger.error('[PromptService] 从 LocalStorage 加载自定义指令失败:', error);
         return [];
@@ -259,7 +256,7 @@ function getCustomInstructions(): InstructionInfo[] {
 
 function saveCustomInstructions(customInstructions: InstructionInfo[]): void {
     try {
-        localStorage.setItem(CUSTOM_INSTRUCTIONS_KEY, JSON.stringify(customInstructions));
+        storageFacade.setCustomInstructions(customInstructions);
     } catch (error) {
         logger.error('[PromptService] 保存自定义指令到 LocalStorage 失败:', error);
     }
@@ -308,8 +305,7 @@ export function removeCustomInstruction(id: string): boolean {
 
 function getCustomPersonas(): CustomPersona[] {
     try {
-        const stored = localStorage.getItem(CUSTOM_PERSONAS_KEY);
-        return stored ? JSON.parse(stored) : [];
+        return storageFacade.getCustomPersonas<CustomPersona[]>();
     } catch (error) {
         logger.error('[PromptService] 从 LocalStorage 加载自定义角色失败:', error);
         return [];
@@ -318,7 +314,7 @@ function getCustomPersonas(): CustomPersona[] {
 
 function saveCustomPersonas(customPersonas: CustomPersona[]): void {
     try {
-        localStorage.setItem(CUSTOM_PERSONAS_KEY, JSON.stringify(customPersonas));
+        storageFacade.setCustomPersonas(customPersonas);
     } catch (error) {
         logger.error('[PromptService] 保存自定义角色到 LocalStorage 失败:', error);
     }

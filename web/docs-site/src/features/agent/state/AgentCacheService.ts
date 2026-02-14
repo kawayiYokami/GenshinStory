@@ -1,8 +1,5 @@
-import localforage from 'localforage';
 import logger from '@/features/app/services/loggerService';
-
-const sessionsStore = localforage.createInstance({ name: 'agentSessions' });
-const lastUsedRolesStore = localforage.createInstance({ name: 'lastUsedRoles' });
+import { sessionsStore, lastUsedRolesStore } from '@/features/app/services/storageFacade';
 
 class AgentCacheService {
   public async forceClearAgentCache(): Promise<void> {
