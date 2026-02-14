@@ -12,7 +12,7 @@
  */
 export interface FlatToolCall {
   /** 工具名称 */
-  tool: 'search_docs' | 'read_doc' | 'ask_choice' | 'explore';
+  tool: 'search_docs' | 'read_doc' | 'ask_choice' | 'explore' | 'report_findings';
 
   // 共用参数
   /** 路径参数 - search_docs: 搜索目录路径, read_doc: 读取文件路径 */
@@ -29,6 +29,8 @@ export interface FlatToolCall {
   target?: string;
   /** 行范围，格式如 "15-30" */
   line_range?: string;
+  /** 子任务 ID */
+  scoutId?: string;
 
   // ask_choice 专用参数
   /** 问题文本 */
@@ -39,6 +41,11 @@ export interface FlatToolCall {
   // explore 专用参数
   tasks?: string[];
   maxToolCalls?: number;
+
+  // report_findings 专用参数
+  summary?: string;
+  evidence?: string[];
+  confidence?: number;
 
   // 元数据字段
   /** 工具调用唯一ID */

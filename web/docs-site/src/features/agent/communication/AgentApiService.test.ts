@@ -2,19 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed } from 'vue';
 import { AgentApiService } from './AgentApiService';
 
-const {
-  createChatCompletionMock,
-  createStructuredChatCompletionMock,
-  getCapabilitiesMock,
-  loadToolsMock,
-  toSdkToolDefinitionsMock,
-} = vi.hoisted(() => ({
-  createChatCompletionMock: vi.fn(),
-  createStructuredChatCompletionMock: vi.fn(),
-  getCapabilitiesMock: vi.fn(),
-  loadToolsMock: vi.fn(async () => undefined),
-  toSdkToolDefinitionsMock: vi.fn(() => ({ search_docs: {} })),
-}));
+const createChatCompletionMock = vi.fn();
+const createStructuredChatCompletionMock = vi.fn();
+const getCapabilitiesMock = vi.fn();
 
 vi.mock('@/lib/llm/llmProviderService', () => ({
   default: {
@@ -26,15 +16,8 @@ vi.mock('@/lib/llm/llmProviderService', () => ({
 
 vi.mock('../tools/registry/toolRegistryService', () => ({
   toolRegistryService: {
-    loadTools: loadToolsMock,
-    toSdkToolDefinitions: toSdkToolDefinitionsMock,
-  }
-}));
-
-vi.mock('@/features/agent/tools/registry/toolRegistryService', () => ({
-  toolRegistryService: {
-    loadTools: loadToolsMock,
-    toSdkToolDefinitions: toSdkToolDefinitionsMock,
+    loadTools: vi.fn(async () => undefined),
+    toSdkToolDefinitions: vi.fn(() => ({ search_docs: {} })),
   }
 }));
 

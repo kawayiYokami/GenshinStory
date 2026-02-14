@@ -21,11 +21,19 @@ const toolSchemas: Record<string, z.ZodObject<any>> = {
     path: z.string().optional(),
     limit: z.number().optional(),
     maxResults: z.number().optional(),
+    scoutId: z.string().optional(),
   }),
   read_doc: z.object({
     path: z.string().optional(),
     target: z.string().optional(),
     line_range: z.string().optional(),
+    scoutId: z.string().optional(),
+  }),
+  report_findings: z.object({
+    scoutId: z.string().optional(),
+    summary: z.string().optional(),
+    evidence: z.array(z.string()).optional(),
+    confidence: z.number().optional(),
   }),
   explore: z.object({
     tasks: z.array(z.string()),

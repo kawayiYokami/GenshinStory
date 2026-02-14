@@ -1,30 +1,35 @@
-import type { Config } from '@/features/app/stores/config';
+export const SCOUT_ALLOWED_TOOLS = ['search_docs', 'read_doc', 'report_findings'] as const;
+export type ScoutAllowedTool = typeof SCOUT_ALLOWED_TOOLS[number];
 
-export interface ExploreEvidence {
-  source: string;
-  note: string;
-}
+export const MAX_CONCURRENT_SCOUTS = 5;
+export const DEFAULT_MAX_TOOL_CALLS = 3;
 
-export interface ExploreReport {
+export interface ScoutTask {
+  scoutId: string;
   task: string;
-  status: 'success' | 'partial' | 'failed' | 'timeout';
-  answer: string;
-  insights: string[];
-  references: string[];
-  summary: string;
-  evidence: ExploreEvidence[];
-  confidence: number;
-  usedCalls: number;
+  status: 'running' | 'completed';
+  createdAt: string;
+  updatedAt: string;
   maxToolCalls: number;
-  error?: string;
+  nonReportToolCalls: number;
+  successfulReadCount: number;
+  forceReportRequired: boolean;
 }
 
-export interface RunChildSessionOptions {
-  config: Config;
-  task: string;
-  maxToolCalls: number;
-  timeoutMs?: number;
+export interface DispatchScoutTasksParams {
+  tasks: string[];
+  maxToolCalls?: number;
 }
 
-export const MAX_CHILD_SESSION_CONCURRENCY = 5;
-export const DEFAULT_CHILD_TIMEOUT_MS = 10 * 60 * 1000;
+export interface DispatchScoutTasksResult {
+  ok: boolean;
+  code?: string;
+  message: string;
+  tasks?: Array<{ scoutId: string; task: string }>;
+}
+
+export interface ScoutGuardDecision {
+  allow: boolean;
+  code?: string;
+  message?: string;
+}
