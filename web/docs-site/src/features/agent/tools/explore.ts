@@ -1,6 +1,6 @@
 import type { Tool, ToolExecutionResult } from './tool';
 import { useConfigStore } from '@/features/app/stores/config';
-import { runChildSessionsInParallel } from '@/features/scout-agent/childSessionRunner';
+import { runChildSessionsInParallel } from '@/features/scout-agent';
 
 interface ExploreParams {
   tasks?: string[];

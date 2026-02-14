@@ -1,13 +1,11 @@
 import type { Tool, ToolExecutionResult } from './tool';
 import localTools from './implementations/localToolsService';
 import logger from '../../app/services/loggerService';
-import scoutAgentService from '@/features/scout-agent/scoutAgentService';
 
 export interface ReadDocParams {
   args?: any;
   path?: string;
   line_range?: string;
-  scoutId?: string;
 }
 
 const readDocTool: Tool<ReadDocParams> = {
@@ -34,11 +32,6 @@ const readDocTool: Tool<ReadDocParams> = {
         path: docPath,
         lineRanges: lineRange ? [lineRange] : []
       }]);
-
-      const scoutId = String(params.scoutId || '').trim();
-      if (scoutId && !String(result).startsWith('错误')) {
-        scoutAgentService.markReadSuccess(scoutId);
-      }
 
       // 单文件读取，不需要复杂逻辑
       const followUpPrompt = "感谢你帮我读取了文档。请先对刚才读取的文档内容做一个简要的总结和汇报，然后告诉我是否可以继续进行下一步分析。";
