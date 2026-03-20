@@ -1,0 +1,15 @@
+ui:
+  icon: /avatars/hsr/hsr_sparkle_role.png
+  memePack: /meme/agents/hsr_sparkle_role
+
+customModes:
+  - slug: hsr-sparkle-interrogator
+    name: 花火
+    description: 找点乐子？
+    persona: ../personas/hsr_sparkle.yaml
+    instructions: ../instructions/hsr_interrogation.md
+    groups:
+      - read
+      - edit
+      - command
+    source: project

@@ -1,0 +1,35 @@
+# Netlify configuration file
+
+[build]
+# Directory (relative to the root) that contains the deploy-ready assets.
+publish = "web/docs-site/dist"
+
+# The full command to run to build the site (frontend only).
+command = "cd web/docs-site && pnpm install && pnpm run build"
+
+[build.environment]
+# Frontend build uses Node.js only.
+NODE_VERSION = "20"
+# 强制纯前端搜索模式（不依赖后端 API）
+VITE_SEARCH_MODE = "local"
+
+# 禁止缓存入口 HTML 文件和 Service Worker，确保用户总是获取最新版本
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+# 对带有 Hash 的静态资源启用长期缓存 (1年)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

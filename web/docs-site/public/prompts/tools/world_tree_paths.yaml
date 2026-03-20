@@ -1,0 +1,15 @@
+name: "world_tree_paths"
+type: "execution"
+description: "查询两个实体之间的关系路径，返回可解释的连接链路。"
+usage: |
+  参数说明：
+  - from_entity_id: string，必填。起点实体 ID。
+  - to_entity_id: string，必填。终点实体 ID。
+  - max_depth: number，可选。最大路径深度，建议 2~3。
+  - max_paths: number，可选。最多返回路径条数。
+  约束：
+  - 适合“两个实体如何联系起来”的问题。
+examples: []
+error_guidance: |
+  from_entity_id 或 to_entity_id 缺失，或后端模式未启用时会返回错误。
+

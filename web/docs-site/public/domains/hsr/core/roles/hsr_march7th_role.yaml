@@ -1,0 +1,13 @@
+ui:
+  icon: /avatars/hsr/hsr_march7th_role.png
+  memePack: /meme/agents/hsr_march7th_role
+
+customModes:
+  - slug: hsr-march7th
+    name: 三月七
+    description: 可爱天才美少女
+    persona: ../personas/hsr_march7th.yaml
+    instructions: ../instructions/hsr_interrogation.md
+    groups:
+      - read
+    source: project

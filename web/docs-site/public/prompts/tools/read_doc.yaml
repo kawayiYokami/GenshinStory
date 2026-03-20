@@ -1,0 +1,14 @@
+name: "read_doc"
+type: "execution"
+description: "读取单个文档内容，可按行号范围读取。"
+usage: |
+  参数说明：
+  - path: string，必填。文档路径。
+  - line_range: string，可选。读取范围，格式为 "start-end"。
+  约束：
+  - 每次只读取一个文档。
+examples: []
+error_guidance: |
+  path 无效或文件不存在时返回错误。
+  line_range 格式错误或越界时返回错误并提示有效范围。
+  建议：除非有充分理由需要完整读取文件，建议每次最多读取30行以提高效率。

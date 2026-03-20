@@ -1,0 +1,16 @@
+name: "world_tree_expand"
+type: "execution"
+description: "对指定实体进行邻接扩展，返回相关节点、关系和关联文件。"
+usage: |
+  参数说明：
+  - entity_id: string，必填。中心实体 ID。
+  - relation_types: string[]，可选。限制关系类型。
+  - depth: number，可选。扩展深度，建议 1~2。
+  - max_nodes / max_edges: number，可选。限制返回规模。
+  - include_related_files: boolean，可选。是否返回关联文件。
+  约束：
+  - 适合“围绕某个实体继续追踪关系”的场景。
+examples: []
+error_guidance: |
+  entity_id 缺失或后端模式未启用时会返回错误。
+

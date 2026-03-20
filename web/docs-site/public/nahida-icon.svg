@@ -1,0 +1,31 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <path fill="#fdece0" d="M100,120 a45,50 0 0,0 -80,0 a40,40 0 0,0 160,0 a45,50 0 0,0 -80,0" />
+  <circle cx="100" cy="100" r="50" fill="#fdece0"/>
+  
+  <!-- Hair - back layer -->
+  <path fill="#f2f3f4" d="M100,30 Q40,40 20,100 T20,150 Q60,190 100,180 Q140,190 180,150 T180,100 Q160,40 100,30 Z"/>
+
+  <!-- Hair - front bangs -->
+  <path fill="#f2f3f4" d="M100,40 Q60,45 50,90 Q70,70 100,70 Q130,70 150,90 Q140,45 100,40 Z"/>
+  <path fill="#ffffff" d="M100,40 Q80,42 70,70 Q80,60 100,60 Q120,60 130,70 Q120,42 100,40 Z"/>
+  
+  <!-- Eyes -->
+  <ellipse cx="80" cy="105" rx="10" ry="12" fill="#69c66d"/>
+  <ellipse cx="120" cy="105" rx="10" ry="12" fill="#69c66d"/>
+  <circle cx="78" cy="103" r="3" fill="#ffffff"/>
+  <circle cx="118" cy="103" r="3" fill="#ffffff"/>
+  <circle cx="80" cy="107" r="4" fill="#2b6b3b"/>
+  <circle cx="120" cy="107" r="4" fill="#2b6b3b"/>
+
+  <!-- Mouth -->
+  <path d="M 95,125 q 5,5 10,0" stroke="#c4a594" stroke-width="2" fill="none" />
+
+  <!-- Elf ears -->
+  <path fill="#fdece0" stroke="#e6c8b9" stroke-width="1.5" d="M48,90 Q20,100 48,110 L52,100 Z" />
+  <path fill="#fdece0" stroke="#e6c8b9" stroke-width="1.5" d="M152,90 Q180,100 152,110 L148,100 Z" />
+
+  <!-- Hair accessory/Leaf -->
+  <path fill="#a3d6a2" d="M90,40 L100,20 L110,40 Q100,35 90,40 Z" />
+  <circle cx="100" cy="38" r="3" fill="gold"/>
+</svg>

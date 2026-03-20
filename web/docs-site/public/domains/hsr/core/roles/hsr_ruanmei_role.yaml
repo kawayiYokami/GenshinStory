@@ -1,0 +1,13 @@
+ui:
+  icon: /avatars/hsr/hsr_ruanmei_role.png
+  memePack: /meme/agents/hsr_ruanmei_role
+
+customModes:
+  - slug: hsr-ruanmei
+    name: 阮梅
+    description: 天才俱乐部#81
+    persona: ../personas/hsr_ruanmei.yaml
+    instructions: ../instructions/hsr_interrogation.md
+    groups:
+      - read
+    source: project

@@ -1,0 +1,12 @@
+name: "switch_behavior"
+type: "execution"
+description: "切换当前会话的行为提示词（instruction）。切换后对后续轮次生效。"
+usage: |
+  参数说明：
+  - instructionId: string，必填。目标行为 ID，例如 chat / search / story_archive。
+  - reason: string，可选。切换原因，便于审计与调试。
+  约束：
+  - 当前行为已满足任务时，禁止重复切换到同一 instructionId。
+examples: []
+error_guidance: |
+  instructionId 缺失或不存在时返回错误。

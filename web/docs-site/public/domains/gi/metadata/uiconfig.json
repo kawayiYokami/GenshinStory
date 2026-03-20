@@ -1,0 +1,39 @@
+{
+  "categoryTranslations": {
+    "武器": "武器",
+    "敌人": "敌人",
+    "背包": "材料",
+    "NPC-商店": "NPC",
+    "角色": "角色",
+    "任务": "任务",
+    "冒险家协会": "委托",
+    "动物": "动物",
+    "书籍": "读物",
+    "圣遗物": "圣遗物",
+    "地图文本": "读物",
+    "组织": "组织",
+    "角色逸闻": "逸闻",
+    "秘境": "秘境",
+    "食物": "食物",
+    "装扮": "装扮"
+  },
+  "navigation": [
+    { "id": "agent", "type": "route", "label": "问答", "iconKey": "agent" },
+    { "id": "search", "type": "route", "label": "搜索", "iconKey": "search" },
+    { "id": "任务", "type": "category", "iconKey": "quest" },
+    { "id": "冒险家协会", "type": "category", "iconKey": "quest" },
+    { "id": "角色", "type": "category", "iconKey": "character" },
+    { "id": "角色逸闻", "type": "category", "iconKey": "dialogue" },
+    { "id": "武器", "type": "category", "iconKey": "weapon" },
+    { "id": "圣遗物", "type": "category", "iconKey": "relicset" },
+    { "id": "背包", "type": "category", "iconKey": "material" },
+    { "id": "敌人", "type": "category", "iconKey": "rogue_events" },
+    { "id": "动物", "type": "category", "iconKey": "star" },
+    { "id": "NPC-商店", "type": "category", "iconKey": "users" },
+    { "id": "组织", "type": "category", "iconKey": "shieldcheck" },
+    { "id": "书籍", "type": "category", "iconKey": "book" },
+    { "id": "秘境", "type": "category", "iconKey": "miracles" },
+    { "id": "食物", "type": "category", "iconKey": "material" },
+    { "id": "装扮", "type": "category", "iconKey": "weapon" }
+  ]
+}

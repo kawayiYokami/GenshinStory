@@ -1,0 +1,27 @@
+[
+  {
+    "id": "fanwork",
+    "name": "🎭 二创",
+    "path": "fanwork.md"
+  },
+  {
+    "id": "subtext",
+    "name": "🪶 索隐",
+    "path": "subtext.md"
+  },
+  {
+    "id": "story_archive",
+    "name": "💬 探讨",
+    "path": "story_archive.md"
+  },
+  {
+    "id": "search",
+    "name": "🔎 查证",
+    "path": "interrogation.md"
+  },
+  {
+    "id": "chat",
+    "name": "☕ 闲聊",
+    "path": "chat.md"
+  }
+]

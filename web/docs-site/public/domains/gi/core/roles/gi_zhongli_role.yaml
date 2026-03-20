@@ -1,0 +1,13 @@
+ui:
+  icon: /avatars/gi/gi_zhongli_role.webp
+  memePack: /meme/agents/gi_zhongli_role
+
+customModes:
+  - slug: gi-zhongli
+    name: 钟离
+    description: 尘世闲游
+    persona: ../personas/gi_zhongli.yaml
+    # instructions: ../instructions/gi_knowledge_sharing.md
+    groups:
+      - read
+    source: project

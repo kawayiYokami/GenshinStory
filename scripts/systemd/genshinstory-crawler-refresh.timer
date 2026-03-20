@@ -1,0 +1,12 @@
+[Unit]
+Description=Run GenshinStory crawler refresh every 7 days
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=7d
+Persistent=true
+RandomizedDelaySec=30min
+Unit=genshinstory-crawler-refresh.service
+
+[Install]
+WantedBy=timers.target

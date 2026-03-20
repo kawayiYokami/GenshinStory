@@ -1,0 +1,615 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-17T23:43:00.542479+00:00",
+  "emoteNames": [
+    "angry",
+    "happy",
+    "sad",
+    "surprised",
+    "confused",
+    "color",
+    "cpu",
+    "fool",
+    "givemoney",
+    "like",
+    "see",
+    "shy",
+    "work",
+    "reply",
+    "meow",
+    "baka",
+    "morning",
+    "sleep",
+    "sigh"
+  ],
+  "default": {
+    "angry": [
+      "/meme/memes/angry/表情11_401.png",
+      "/meme/memes/angry/表情11_407.png",
+      "/meme/memes/angry/表情14_524.png",
+      "/meme/memes/angry/表情15_567.png",
+      "/meme/memes/angry/表情17_677.png",
+      "/meme/memes/angry/表情18_687.png",
+      "/meme/memes/angry/表情2_46.png",
+      "/meme/memes/angry/表情3_89.png",
+      "/meme/memes/angry/表情7_273.png"
+    ],
+    "happy": [
+      "/meme/memes/happy/表情10_371.png",
+      "/meme/memes/happy/表情10_377.png",
+      "/meme/memes/happy/表情12_442.png",
+      "/meme/memes/happy/表情12_448.png",
+      "/meme/memes/happy/表情13_482.png",
+      "/meme/memes/happy/表情13_488.png",
+      "/meme/memes/happy/表情13_491.png",
+      "/meme/memes/happy/表情13_503.png",
+      "/meme/memes/happy/表情13_510.png",
+      "/meme/memes/happy/表情13_511.png",
+      "/meme/memes/happy/表情14_526.png",
+      "/meme/memes/happy/表情14_532.png",
+      "/meme/memes/happy/表情14_534.png",
+      "/meme/memes/happy/表情15_562.png",
+      "/meme/memes/happy/表情15_563.png",
+      "/meme/memes/happy/表情15_569.png",
+      "/meme/memes/happy/表情15_570.png",
+      "/meme/memes/happy/表情15_573.png",
+      "/meme/memes/happy/表情15_574.png",
+      "/meme/memes/happy/表情15_575.png",
+      "/meme/memes/happy/表情15_590.png",
+      "/meme/memes/happy/表情15_594.png",
+      "/meme/memes/happy/表情16_636.png",
+      "/meme/memes/happy/表情17_659.png",
+      "/meme/memes/happy/表情17_664.png",
+      "/meme/memes/happy/表情17_667.png",
+      "/meme/memes/happy/表情17_668.png",
+      "/meme/memes/happy/表情17_670.png",
+      "/meme/memes/happy/表情18_681.png",
+      "/meme/memes/happy/表情18_684.png",
+      "/meme/memes/happy/表情18_710.png",
+      "/meme/memes/happy/表情18_711.png",
+      "/meme/memes/happy/表情18_712.png",
+      "/meme/memes/happy/表情1_13.png",
+      "/meme/memes/happy/表情1_18.png",
+      "/meme/memes/happy/表情1_25.png",
+      "/meme/memes/happy/表情1_30.png",
+      "/meme/memes/happy/表情1_5.png",
+      "/meme/memes/happy/表情1_6.png",
+      "/meme/memes/happy/表情2_44.png",
+      "/meme/memes/happy/表情2_45.png",
+      "/meme/memes/happy/表情2_80.png",
+      "/meme/memes/happy/表情3_114.png",
+      "/meme/memes/happy/表情3_85.png",
+      "/meme/memes/happy/表情3_98.png",
+      "/meme/memes/happy/表情3_99.png",
+      "/meme/memes/happy/表情4_131.png",
+      "/meme/memes/happy/表情4_136.png",
+      "/meme/memes/happy/表情4_139.png",
+      "/meme/memes/happy/表情4_141.png",
+      "/meme/memes/happy/表情4_143.png",
+      "/meme/memes/happy/表情5_174.png",
+      "/meme/memes/happy/表情5_175.png",
+      "/meme/memes/happy/表情5_177.png",
+      "/meme/memes/happy/表情5_191.png",
+      "/meme/memes/happy/表情6_216.png",
+      "/meme/memes/happy/表情6_220.png",
+      "/meme/memes/happy/表情6_226.png",
+      "/meme/memes/happy/表情6_227.png",
+      "/meme/memes/happy/表情6_236.png",
+      "/meme/memes/happy/表情6_237.png",
+      "/meme/memes/happy/表情7_248.png",
+      "/meme/memes/happy/表情7_251.png",
+      "/meme/memes/happy/表情7_256.png",
+      "/meme/memes/happy/表情7_259.png",
+      "/meme/memes/happy/表情7_261.png",
+      "/meme/memes/happy/表情8_291.png",
+      "/meme/memes/happy/表情8_292.png",
+      "/meme/memes/happy/表情9_360.png"
+    ],
+    "sad": [
+      "/meme/memes/sad/表情13_492.png",
+      "/meme/memes/sad/表情14_557.png",
+      "/meme/memes/sad/表情15_565.png",
+      "/meme/memes/sad/表情15_566.png",
+      "/meme/memes/sad/表情15_568.png",
+      "/meme/memes/sad/表情15_595.png",
+      "/meme/memes/sad/表情17_669.png",
+      "/meme/memes/sad/表情17_678.png",
+      "/meme/memes/sad/表情1_23.png",
+      "/meme/memes/sad/表情1_34.png",
+      "/meme/memes/sad/表情7_243.png",
+      "/meme/memes/sad/表情7_268.png",
+      "/meme/memes/sad/表情9_326.png"
+    ],
+    "surprised": [
+      "/meme/memes/surprised/表情10_376.png",
+      "/meme/memes/surprised/表情12_461.png",
+      "/meme/memes/surprised/表情13_495.png",
+      "/meme/memes/surprised/表情13_502.png",
+      "/meme/memes/surprised/表情15_579.png",
+      "/meme/memes/surprised/表情16_626.png",
+      "/meme/memes/surprised/表情16_627.png",
+      "/meme/memes/surprised/表情17_665.png",
+      "/meme/memes/surprised/表情17_666.png",
+      "/meme/memes/surprised/表情1_27.png",
+      "/meme/memes/surprised/表情1_33.png",
+      "/meme/memes/surprised/表情2_42.png",
+      "/meme/memes/surprised/表情2_72.png",
+      "/meme/memes/surprised/表情4_133.png",
+      "/meme/memes/surprised/表情7_262.png"
+    ],
+    "confused": [
+      "/meme/memes/confused/表情10_400.png",
+      "/meme/memes/confused/表情12_455.png",
+      "/meme/memes/confused/表情13_487.png",
+      "/meme/memes/confused/表情14_531.png",
+      "/meme/memes/confused/表情14_551.png",
+      "/meme/memes/confused/表情15_580.png",
+      "/meme/memes/confused/表情1_17.png",
+      "/meme/memes/confused/表情2_69.png",
+      "/meme/memes/confused/表情2_70.png",
+      "/meme/memes/confused/表情3_117.png",
+      "/meme/memes/confused/表情3_90.png",
+      "/meme/memes/confused/表情5_187.png",
+      "/meme/memes/confused/表情7_249.png",
+      "/meme/memes/confused/表情7_258.png",
+      "/meme/memes/confused/表情8_286.png",
+      "/meme/memes/confused/表情8_290.png"
+    ],
+    "color": [
+      "/meme/memes/color/表情12_465.png",
+      "/meme/memes/color/表情15_577.png"
+    ],
+    "cpu": [
+      "/meme/memes/cpu/表情10_372.png",
+      "/meme/memes/cpu/表情14_556.png",
+      "/meme/memes/cpu/表情15_578.png",
+      "/meme/memes/cpu/表情17_672.png",
+      "/meme/memes/cpu/表情1_3.png",
+      "/meme/memes/cpu/表情2_79.png",
+      "/meme/memes/cpu/表情3_115.png",
+      "/meme/memes/cpu/表情3_118.png",
+      "/meme/memes/cpu/表情4_134.png",
+      "/meme/memes/cpu/表情5_176.png",
+      "/meme/memes/cpu/表情5_190.png",
+      "/meme/memes/cpu/表情7_245.png",
+      "/meme/memes/cpu/表情7_246.png",
+      "/meme/memes/cpu/表情7_255.png",
+      "/meme/memes/cpu/表情7_271.png",
+      "/meme/memes/cpu/表情8_287.png",
+      "/meme/memes/cpu/表情9_321.png"
+    ],
+    "fool": [
+      "/meme/memes/fool/表情13_514.png",
+      "/meme/memes/fool/表情18_693.png",
+      "/meme/memes/fool/表情2_59.png"
+    ],
+    "givemoney": [
+      "/meme/memes/givemoney/表情17_679.png",
+      "/meme/memes/givemoney/表情18_683.png",
+      "/meme/memes/givemoney/表情1_15.png",
+      "/meme/memes/givemoney/表情1_16.png",
+      "/meme/memes/givemoney/表情1_36.png",
+      "/meme/memes/givemoney/表情1_4.png",
+      "/meme/memes/givemoney/表情1_7.png",
+      "/meme/memes/givemoney/表情1_8.png",
+      "/meme/memes/givemoney/表情6_234.png",
+      "/meme/memes/givemoney/表情6_235.png",
+      "/meme/memes/givemoney/表情7_264.png",
+      "/meme/memes/givemoney/表情9_325.png"
+    ],
+    "like": [
+      "/meme/memes/like/表情12_459.png",
+      "/meme/memes/like/表情13_490.png",
+      "/meme/memes/like/表情14_529.png",
+      "/meme/memes/like/表情14_530.png",
+      "/meme/memes/like/表情17_657.png",
+      "/meme/memes/like/表情18_682.png",
+      "/meme/memes/like/表情3_94.png",
+      "/meme/memes/like/表情3_97.png",
+      "/meme/memes/like/表情6_225.png",
+      "/meme/memes/like/表情6_229.png"
+    ],
+    "see": [
+      "/meme/memes/see/表情10_370.png",
+      "/meme/memes/see/表情10_392.png",
+      "/meme/memes/see/表情12_458.png",
+      "/meme/memes/see/表情12_460.png",
+      "/meme/memes/see/表情12_462.png",
+      "/meme/memes/see/表情12_466.png",
+      "/meme/memes/see/表情14_523.png",
+      "/meme/memes/see/表情14_558.png",
+      "/meme/memes/see/表情15_571.png",
+      "/meme/memes/see/表情15_584.png",
+      "/meme/memes/see/表情17_662.png",
+      "/meme/memes/see/表情1_21.png",
+      "/meme/memes/see/表情2_48.png",
+      "/meme/memes/see/表情2_77.png",
+      "/meme/memes/see/表情4_140.png",
+      "/meme/memes/see/表情7_269.png",
+      "/meme/memes/see/表情7_275.png",
+      "/meme/memes/see/表情7_278.png",
+      "/meme/memes/see/表情8_281.png"
+    ],
+    "shy": [
+      "/meme/memes/shy/表情10_394.png",
+      "/meme/memes/shy/表情13_483.png",
+      "/meme/memes/shy/表情13_512.png",
+      "/meme/memes/shy/表情14_521.png",
+      "/meme/memes/shy/表情14_555.png",
+      "/meme/memes/shy/表情15_596.png",
+      "/meme/memes/shy/表情16_629.png",
+      "/meme/memes/shy/表情18_690.png",
+      "/meme/memes/shy/表情1_29.png",
+      "/meme/memes/shy/表情2_41.png",
+      "/meme/memes/shy/表情2_43.png",
+      "/meme/memes/shy/表情2_57.png",
+      "/meme/memes/shy/表情2_62.png",
+      "/meme/memes/shy/表情3_93.png",
+      "/meme/memes/shy/表情5_186.png",
+      "/meme/memes/shy/表情7_260.png",
+      "/meme/memes/shy/表情7_274.png",
+      "/meme/memes/shy/表情8_289.png",
+      "/meme/memes/shy/表情8_293.png",
+      "/meme/memes/shy/表情8_319.png"
+    ],
+    "work": [
+      "/meme/memes/work/表情10_361.png",
+      "/meme/memes/work/表情11_402.png",
+      "/meme/memes/work/表情14_527.png",
+      "/meme/memes/work/表情15_585.png",
+      "/meme/memes/work/表情18_685.png",
+      "/meme/memes/work/表情1_22.png",
+      "/meme/memes/work/表情3_96.png",
+      "/meme/memes/work/表情4_138.png",
+      "/meme/memes/work/表情5_163.png",
+      "/meme/memes/work/表情7_265.png",
+      "/meme/memes/work/表情8_320.png"
+    ],
+    "reply": [
+      "/meme/memes/reply/表情15_564.png",
+      "/meme/memes/reply/表情3_113.png",
+      "/meme/memes/reply/表情4_122.png",
+      "/meme/memes/reply/表情5_173.png",
+      "/meme/memes/reply/表情7_250.png",
+      "/meme/memes/reply/表情7_253.png"
+    ],
+    "meow": [
+      "/meme/memes/meow/表情13_493.png",
+      "/meme/memes/meow/表情13_494.png",
+      "/meme/memes/meow/表情13_501.png",
+      "/meme/memes/meow/表情13_513.png",
+      "/meme/memes/meow/表情13_515.png",
+      "/meme/memes/meow/表情13_519.png",
+      "/meme/memes/meow/表情13_520.png",
+      "/meme/memes/meow/表情14_533.png",
+      "/meme/memes/meow/表情14_554.png",
+      "/meme/memes/meow/表情15_589.png",
+      "/meme/memes/meow/表情15_592.png",
+      "/meme/memes/meow/表情17_658.png",
+      "/meme/memes/meow/表情17_675.png",
+      "/meme/memes/meow/表情17_680.png",
+      "/meme/memes/meow/表情1_14.png",
+      "/meme/memes/meow/表情1_24.png",
+      "/meme/memes/meow/表情1_28.png",
+      "/meme/memes/meow/表情2_66.png",
+      "/meme/memes/meow/表情2_67.png",
+      "/meme/memes/meow/表情3_100.png",
+      "/meme/memes/meow/表情3_92.png",
+      "/meme/memes/meow/表情4_130.png",
+      "/meme/memes/meow/表情4_142.png",
+      "/meme/memes/meow/表情5_170.png",
+      "/meme/memes/meow/表情5_171.png",
+      "/meme/memes/meow/表情5_172.png",
+      "/meme/memes/meow/表情6_222.png",
+      "/meme/memes/meow/表情7_263.png",
+      "/meme/memes/meow/表情7_270.png",
+      "/meme/memes/meow/表情7_277.png",
+      "/meme/memes/meow/表情8_288.png",
+      "/meme/memes/meow/表情8_318.png"
+    ],
+    "baka": [
+      "/meme/memes/baka/表情11_406.png",
+      "/meme/memes/baka/表情12_441.png",
+      "/meme/memes/baka/表情13_484.png",
+      "/meme/memes/baka/表情14_522.png",
+      "/meme/memes/baka/表情15_561.png",
+      "/meme/memes/baka/表情17_649.png",
+      "/meme/memes/baka/表情17_674.png",
+      "/meme/memes/baka/表情17_676.png",
+      "/meme/memes/baka/表情1_19.png",
+      "/meme/memes/baka/表情1_35.png",
+      "/meme/memes/baka/表情2_47.png",
+      "/meme/memes/baka/表情3_116.png",
+      "/meme/memes/baka/表情4_121.png",
+      "/meme/memes/baka/表情4_137.png",
+      "/meme/memes/baka/表情4_144.png",
+      "/meme/memes/baka/表情4_145.png",
+      "/meme/memes/baka/表情7_244.png",
+      "/meme/memes/baka/表情7_252.png",
+      "/meme/memes/baka/表情7_276.png"
+    ],
+    "morning": [
+      "/meme/memes/morning/表情16_630.png"
+    ],
+    "sleep": [
+      "/meme/memes/sleep/表情10_374.png",
+      "/meme/memes/sleep/表情14_528.png",
+      "/meme/memes/sleep/表情15_572.png",
+      "/meme/memes/sleep/表情15_581.png",
+      "/meme/memes/sleep/表情15_591.png",
+      "/meme/memes/sleep/表情15_593.png",
+      "/meme/memes/sleep/表情16_625.png",
+      "/meme/memes/sleep/表情17_660.png",
+      "/meme/memes/sleep/表情17_661.png",
+      "/meme/memes/sleep/表情17_673.png",
+      "/meme/memes/sleep/表情2_60.png",
+      "/meme/memes/sleep/表情2_68.png",
+      "/meme/memes/sleep/表情2_78.png",
+      "/meme/memes/sleep/表情3_91.png",
+      "/meme/memes/sleep/表情3_95.png",
+      "/meme/memes/sleep/表情6_221.png",
+      "/meme/memes/sleep/表情7_272.png",
+      "/meme/memes/sleep/表情7_280.png"
+    ],
+    "sigh": [
+      "/meme/memes/sigh/表情10_375.png",
+      "/meme/memes/sigh/表情12_443.png",
+      "/meme/memes/sigh/表情12_449.png",
+      "/meme/memes/sigh/表情12_456.png",
+      "/meme/memes/sigh/表情12_457.png",
+      "/meme/memes/sigh/表情14_525.png",
+      "/meme/memes/sigh/表情14_552.png",
+      "/meme/memes/sigh/表情14_553.png",
+      "/meme/memes/sigh/表情15_576.png",
+      "/meme/memes/sigh/表情16_628.png",
+      "/meme/memes/sigh/表情16_635.png",
+      "/meme/memes/sigh/表情17_650.png",
+      "/meme/memes/sigh/表情17_651.png",
+      "/meme/memes/sigh/表情17_652.png",
+      "/meme/memes/sigh/表情17_663.png",
+      "/meme/memes/sigh/表情17_671.png",
+      "/meme/memes/sigh/表情18_686.png",
+      "/meme/memes/sigh/表情18_692.png",
+      "/meme/memes/sigh/表情18_694.png",
+      "/meme/memes/sigh/表情1_26.png",
+      "/meme/memes/sigh/表情1_31.png",
+      "/meme/memes/sigh/表情1_32.png",
+      "/meme/memes/sigh/表情2_58.png",
+      "/meme/memes/sigh/表情2_65.png",
+      "/meme/memes/sigh/表情2_71.png",
+      "/meme/memes/sigh/表情4_135.png",
+      "/meme/memes/sigh/表情5_162.png",
+      "/meme/memes/sigh/表情5_189.png",
+      "/meme/memes/sigh/表情6_217.png",
+      "/meme/memes/sigh/表情6_228.png",
+      "/meme/memes/sigh/表情7_242.png",
+      "/meme/memes/sigh/表情7_247.png",
+      "/meme/memes/sigh/表情7_267.png",
+      "/meme/memes/sigh/表情7_279.png"
+    ]
+  },
+  "agents": {
+    "gi_nahida_role": {
+      "happy": [
+        "/meme/agents/gi_nahida_role/happy/nahida_3_2_1.png",
+        "/meme/agents/gi_nahida_role/happy/nahida_3_2_2.png"
+      ],
+      "surprised": [
+        "/meme/agents/gi_nahida_role/surprised/nahida_3_2_5.png"
+      ],
+      "confused": [
+        "/meme/agents/gi_nahida_role/confused/nahida_3_2_3.png"
+      ],
+      "cpu": [
+        "/meme/agents/gi_nahida_role/cpu/nahida_3_2_4.png"
+      ],
+      "like": [
+        "/meme/agents/gi_nahida_role/like/nahida_3_6_2.png"
+      ],
+      "reply": [
+        "/meme/agents/gi_nahida_role/reply/nahida_3_6_1.png"
+      ],
+      "meow": [
+        "/meme/agents/gi_nahida_role/meow/nahida_5_1_1.png"
+      ],
+      "morning": [
+        "/meme/agents/gi_nahida_role/morning/nahida_3_2_6.png"
+      ]
+    },
+    "gi_mona_role": {
+      "angry": [
+        "/meme/agents/gi_mona_role/angry/mona_6_2_1.png"
+      ],
+      "happy": [
+        "/meme/agents/gi_mona_role/happy/mona_1_1_2.png"
+      ],
+      "sad": [
+        "/meme/agents/gi_mona_role/sad/mona_1_2_1.png"
+      ],
+      "surprised": [
+        "/meme/agents/gi_mona_role/surprised/mona_christmas_1.png"
+      ],
+      "confused": [
+        "/meme/agents/gi_mona_role/confused/mona_2_8_1.png"
+      ],
+      "cpu": [
+        "/meme/agents/gi_mona_role/cpu/mona_2_8_2.png"
+      ],
+      "givemoney": [
+        "/meme/agents/gi_mona_role/givemoney/mona_1_2_2.png"
+      ],
+      "like": [
+        "/meme/agents/gi_mona_role/like/mona_1_1_1.png"
+      ],
+      "reply": [
+        "/meme/agents/gi_mona_role/reply/mona_3_3_1.png"
+      ],
+      "sleep": [
+        "/meme/agents/gi_mona_role/sleep/mona_news_1.png"
+      ]
+    },
+    "gi_zhongli_role": {
+      "angry": [
+        "/meme/agents/gi_zhongli_role/angry/zhongli_2_4_1.png"
+      ],
+      "happy": [
+        "/meme/agents/gi_zhongli_role/happy/zhongli_winter_2.png"
+      ],
+      "cpu": [
+        "/meme/agents/gi_zhongli_role/cpu/zhongli_1_2_4.png"
+      ],
+      "givemoney": [
+        "/meme/agents/gi_zhongli_role/givemoney/zhongli_winter_1.png"
+      ],
+      "like": [
+        "/meme/agents/gi_zhongli_role/like/zhongli_2_5_1.png"
+      ],
+      "work": [
+        "/meme/agents/gi_zhongli_role/work/zhongli_1_2_3.png"
+      ],
+      "reply": [
+        "/meme/agents/gi_zhongli_role/reply/zhongli_1_2_1.png"
+      ],
+      "baka": [
+        "/meme/agents/gi_zhongli_role/baka/zhongli_2_4_2.png"
+      ],
+      "sigh": [
+        "/meme/agents/gi_zhongli_role/sigh/zhongli_1_2_2.png"
+      ]
+    },
+    "gi_furina_role": {
+      "angry": [
+        "/meme/agents/gi_furina_role/angry/furina_4_3_4.png"
+      ],
+      "happy": [
+        "/meme/agents/gi_furina_role/happy/furina_4_3_1.png"
+      ],
+      "sad": [
+        "/meme/agents/gi_furina_role/sad/furina_4_3_3.png"
+      ],
+      "confused": [
+        "/meme/agents/gi_furina_role/confused/furina_4_3_2.png"
+      ],
+      "like": [
+        "/meme/agents/gi_furina_role/like/furina_4_0_1.png"
+      ],
+      "see": [
+        "/meme/agents/gi_furina_role/see/furina_4_2_1.png"
+      ],
+      "meow": [
+        "/meme/agents/gi_furina_role/meow/furina_hylab_love_1.png"
+      ]
+    },
+    "hsr_ruanmei_role": {
+      "confused": [
+        "/meme/agents/hsr_ruanmei_role/confused/ruanmei_1_6_3.png"
+      ],
+      "reply": [
+        "/meme/agents/hsr_ruanmei_role/reply/ruanmei_1_6_4.png"
+      ],
+      "sleep": [
+        "/meme/agents/hsr_ruanmei_role/sleep/ruanmei_1_6_1.png"
+      ],
+      "sigh": [
+        "/meme/agents/hsr_ruanmei_role/sigh/ruanmei_1_6_2.png"
+      ]
+    },
+    "hsr_herta_role": {
+      "surprised": [
+        "/meme/agents/hsr_herta_role/surprised/herta_3_1_1.png"
+      ],
+      "confused": [
+        "/meme/agents/hsr_herta_role/confused/herta_test_1.png"
+      ],
+      "cpu": [
+        "/meme/agents/hsr_herta_role/cpu/herta_3_1_2.png"
+      ],
+      "like": [
+        "/meme/agents/hsr_herta_role/like/herta_3_1_3.png"
+      ],
+      "see": [
+        "/meme/agents/hsr_herta_role/see/herta_3_1_4.png"
+      ],
+      "reply": [
+        "/meme/agents/hsr_herta_role/reply/herta_2_3_1.png"
+      ],
+      "sigh": [
+        "/meme/agents/hsr_herta_role/sigh/herta_1_6_1.png"
+      ]
+    },
+    "hsr_sparkle_role": {
+      "angry": [
+        "/meme/agents/hsr_sparkle_role/angry/sparkle_2_3_2.png"
+      ],
+      "happy": [
+        "/meme/agents/hsr_sparkle_role/happy/sparkle_2_0_1.png"
+      ],
+      "color": [
+        "/meme/agents/hsr_sparkle_role/color/sparkle_2_0_3.png"
+      ],
+      "shy": [
+        "/meme/agents/hsr_sparkle_role/shy/sparkle_2_0_4.png"
+      ],
+      "meow": [
+        "/meme/agents/hsr_sparkle_role/meow/sparkle_2_0_2.png"
+      ],
+      "baka": [
+        "/meme/agents/hsr_sparkle_role/baka/sparkle_2_3_1.png"
+      ]
+    },
+    "hsr_march7th_role": {
+      "angry": [
+        "/meme/agents/hsr_march7th_role/angry/march_role_10.png"
+      ],
+      "happy": [
+        "/meme/agents/hsr_march7th_role/happy/march_role_13.png",
+        "/meme/agents/hsr_march7th_role/happy/march_role_4.png"
+      ],
+      "sad": [
+        "/meme/agents/hsr_march7th_role/sad/march_role_7.png"
+      ],
+      "confused": [
+        "/meme/agents/hsr_march7th_role/confused/march_2_4_1.png",
+        "/meme/agents/hsr_march7th_role/confused/march_2_4_3.png",
+        "/meme/agents/hsr_march7th_role/confused/march_test_1.png"
+      ],
+      "color": [
+        "/meme/agents/hsr_march7th_role/color/march_role_9.png"
+      ],
+      "like": [
+        "/meme/agents/hsr_march7th_role/like/march_2_2_1.png",
+        "/meme/agents/hsr_march7th_role/like/march_role_12.png",
+        "/meme/agents/hsr_march7th_role/like/march_role_3.png"
+      ],
+      "see": [
+        "/meme/agents/hsr_march7th_role/see/march_role_14.png"
+      ],
+      "shy": [
+        "/meme/agents/hsr_march7th_role/shy/march_role_5.png"
+      ],
+      "work": [
+        "/meme/agents/hsr_march7th_role/work/march_role_8.png"
+      ],
+      "reply": [
+        "/meme/agents/hsr_march7th_role/reply/march_role_1.png"
+      ],
+      "meow": [
+        "/meme/agents/hsr_march7th_role/meow/march_2_4_2.png",
+        "/meme/agents/hsr_march7th_role/meow/march_center_1.png",
+        "/meme/agents/hsr_march7th_role/meow/march_role_2.png"
+      ],
+      "baka": [
+        "/meme/agents/hsr_march7th_role/baka/march_role_15.png"
+      ],
+      "morning": [
+        "/meme/agents/hsr_march7th_role/morning/march_role_11.png"
+      ],
+      "sleep": [
+        "/meme/agents/hsr_march7th_role/sleep/march_role_6.png"
+      ],
+      "sigh": [
+        "/meme/agents/hsr_march7th_role/sigh/march_role_16.png"
+      ]
+    }
+  }
+}

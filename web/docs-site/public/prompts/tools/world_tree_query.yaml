@@ -1,0 +1,18 @@
+name: "world_tree_query"
+type: "execution"
+description: "查询世界树图谱，返回相关实体、关系、事件与推荐阅读文件。"
+usage: |
+  参数说明：
+  - query: string，必填。自然语言查询问题。
+  - intent: string，可选。建议值：entity / relationship / event / timeline / theme / analysis。
+  - entities: string[]，可选。预识别实体名。
+  - max_files / max_relations / max_entities / max_events: number，可选。控制返回规模。
+  - max_chunks_per_file: number，可选。每个文件最多返回的片段数。
+  - include_quotes: boolean，可选。是否返回证据摘录。
+  约束：
+  - 关系、剧情链路、时间线问题优先使用本工具。
+  - 本工具结果用于导航，不直接替代 read_doc 证据验证。
+examples: []
+error_guidance: |
+  query 缺失或后端模式未启用时会返回错误。
+

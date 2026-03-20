@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/nahida-icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="智慧宫" />
+    <meta name="theme-color" content="#6C627A" />
+    <link rel="apple-touch-icon" href="/nahida-icon.svg" />
+    <title>智慧宫</title>
+    <script>
+      // 自救脚本：如果主资源加载失败（通常是因为 Service Worker 缓存了旧 index.html 指向了不存在的 assets），
+      // 则强制注销 SW 并重载。
+      window.addEventListener('error', function(e) {
+        // 检查是否是脚本或样式表的加载错误 (tagName 检查)
+        const target = e.target;
+        if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
+          // 进一步确认是否是 404 导致的加载失败 (通常表现为 error 事件)
+          console.error('Resource load failed, attempting auto-recovery:', target.src || target.href);
+
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (let registration of registrations) {
+                registration.unregister();
+              }
+              // 强制从服务器重新加载，忽略缓存
+              window.location.reload(true);
+            });
+          }
+        }
+      }, true); // 使用捕获阶段，因为资源加载错误不会冒泡
+    </script>
+  </head>
+  <body class="bg-genshin-bg-secondary text-genshin-text-secondary font-['Roboto',sans-serif] antialiased">
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

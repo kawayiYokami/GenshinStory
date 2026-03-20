@@ -1,0 +1,23 @@
+name: "memory"
+type: "execution"
+description: "写入、召回或删除关键记忆（包含正文与关键词）。仅用于主会话。"
+usage: |
+  参数说明：
+  - action: string，可选。支持 add / recall / remove，默认 add。
+  - judgment: string。action=add 时必填，单条可复用结论（完整陈述句）。
+  - keywords: string[] 或 string。action=add 时必填，原子化关键词列表（如“旅行者 生日”，不要“旅行者的生日”）。
+  - reasoning: string。action=add 时可选，说明为何生成该记忆；若 judgment 已完整可留空 ""。
+  - memoryType: string，可选。user_instruction / world_tree，默认 user_instruction。
+  - derivedFrom: string，可选。user / document，默认 user。
+    规则：若 derivedFrom 不是 document，则无论 memoryType 为何都归类为 user_instruction。
+  - query: string。action=recall 时必填，召回查询文本。
+  - topK: number，可选。action=recall 时返回上限，默认 7。
+  - id: string，可选。action=add 时可用于覆盖指定记忆；action=remove 时必填。
+  约束：
+  - action=add 时，keywords 至少包含 1 个关键词，judgment 必须是陈述句。
+  - 禁止记录过程性描述（例如“AI 查询了…/解释了…”）。
+examples: []
+error_guidance: |
+  action=add 缺少 judgment 或 keywords 时返回错误。
+  action=recall 缺少 query 时返回错误。
+  action=remove 缺少 id 时返回错误。

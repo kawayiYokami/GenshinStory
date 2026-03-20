@@ -1,0 +1,13 @@
+ui:
+  icon: /avatars/gi/gi_nahida_role.png
+  memePack: /meme/agents/gi_nahida_role
+
+customModes:
+  - slug: gi-user-story-creator
+    name: 纳西妲
+    description: 可爱的纳西妲
+    persona: ../personas/gi_nahida.yaml
+    instructions: ../instructions/gi_knowledge_sharing.md
+    groups:
+      - read
+    source: project

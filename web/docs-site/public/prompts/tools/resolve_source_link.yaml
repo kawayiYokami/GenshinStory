@@ -1,0 +1,27 @@
+name: "resolve_source_link"
+type: "execution"
+description: "根据文件名或相对路径，返回高置信度的米游社百科信源链接。用于用户要求“给出信源/来源链接”时。"
+usage: |
+  何时调用：
+  - 用户明确要“信源/来源链接/官网条目链接”
+  - 你已经拿到文件名或相对路径（例如 `角色/玛拉妮-508006.md`）
+
+  参数：
+  - title: 必填，文件名或相对路径（可含路径、后缀）
+  - k: 可选，至少返回的高分候选数量，默认 3
+  - minScore: 可选，最小分数阈值，默认 200（高置信）
+
+  返回：
+  - found: 是否达到 k 个高分候选
+  - matched/url: Top1 候选及其链接
+  - matches: 高分候选列表（按分数降序）
+examples:
+  - "resolve_source_link({\"title\":\"角色/玛拉妮-508006.md\"})"
+  - "resolve_source_link({\"title\":\"任务/四叶草之章-第一幕-真正的宝物-595.md\",\"k\":3,\"minScore\":200})"
+error_guidance: |
+  - 如果 found=false 但 matches 非空：使用 Top1 链接，并在回答中注明“高置信候选不足 k 个”
+  - 如果 matches 为空：告知暂未匹配到高置信链接，并建议用户提供更精确文件名
+prompt_trigger:
+  - "用户要信源"
+  - "给我来源链接"
+  - "提供对应百科链接"

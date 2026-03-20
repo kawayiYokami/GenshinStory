@@ -1,0 +1,13 @@
+ui:
+  icon: /avatars/gi/gi_mona_role.png
+  memePack: /meme/agents/gi_mona_role
+
+customModes:
+  - slug: gi-mona
+    name: 莫娜
+    description: 伟大的占星术士
+    persona: ../personas/gi_mona.yaml
+    instructions: ../instructions/gi_knowledge_sharing.md
+    groups:
+      - read
+    source: project

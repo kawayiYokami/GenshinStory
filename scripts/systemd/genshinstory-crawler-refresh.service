@@ -1,0 +1,15 @@
+[Unit]
+Description=GenshinStory weekly crawler + content generation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<deploy-user>
+Group=<deploy-group>
+WorkingDirectory=<repo-absolute-path>
+ExecStart=/usr/bin/env bash <repo-absolute-path>/scripts/run_weekly_crawlers.sh
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
